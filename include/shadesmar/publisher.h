@@ -22,7 +22,7 @@ class Publisher {
 
   Publisher(std::string topic_name, uint32_t buffer_size) :
       topic_name_(topic_name), buffer_size_(buffer_size) {
-    mem_ = std::make_shared<Memory>(topic_name, sizeof(T), true);
+    mem_ = std::make_shared<Memory>(topic_name, sizeof(T));
   }
 
   bool publish(std::shared_ptr<T> msg) {
@@ -36,6 +36,7 @@ class Publisher {
   bool publish(T *msg) {
     std::cout << "Publishing " << *msg << std::endl;
     bool success = mem_->write(msg);
+    mem_->inc();
     return success;
   }
 

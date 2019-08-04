@@ -20,14 +20,15 @@ namespace shm {
 template<typename T>
 class Subscriber {
  public:
-  Subscriber(std::string topic_name, std::function<void(std::shared_ptr<T>)> callback):
+  Subscriber(std::string topic_name, std::function<void(std::shared_ptr<T>)> callback) :
       topic_name_(topic_name), spinning_(false),
-      msg_(reinterpret_cast<T*>(malloc(sizeof(T)))){
+      msg_(reinterpret_cast<T *>(malloc(sizeof(T)))),
+      counter_(0) {
     callback_ = std::move(callback);
-    mem_ = std::make_shared<Memory>(topic_name_, sizeof(T), false);
+    mem_ = std::make_shared<Memory>(topic_name_, sizeof(T));
   }
 
-  void spin(float rate=0.0f) {
+  void spin(float rate = 0.0f) {
     // if rate is 0.0, spin continuously
     spinning_ = true;
 
@@ -36,8 +37,12 @@ class Subscriber {
 
   void spinOnce() {
     // no threading
+    int pub_count = mem_->counter();
+    if (pub_count == counter_)
+      return;
     mem_->read(msg_.get(), true);
     callback_(msg_);
+    counter_ = pub_count;
   }
 
   void shutdown() {
@@ -47,7 +52,6 @@ class Subscriber {
 
     spinning_ = false;
   }
-
 
  private:
   std::string topic_name_;
@@ -59,6 +63,7 @@ class Subscriber {
 
   std::shared_ptr<T> msg_;
 
+  int counter_;
 
 };
 }

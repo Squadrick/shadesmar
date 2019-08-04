@@ -4,6 +4,8 @@
 
 #include <shadesmar/subscriber.h>
 
+#include <unistd.h>
+
 #include <iostream>
 
 void callback(std::shared_ptr<int> msg) {
@@ -15,5 +17,6 @@ int main() {
 
   while (true) {
     sub.spinOnce();
+    usleep(10000);
   }
 }

@@ -28,40 +28,45 @@
 using namespace boost::interprocess;
 namespace shm {
 struct MemInfo {
+  int init;
   int msg_size;
   int buffer_size;
   int counter;
-
-
 };
 
 class Memory {
  public:
-  Memory(std::string topic, uint32_t msg_size, bool create) :
-      topic_(topic), msg_size_(msg_size), buffer_size_(1), create_(create) {
+  Memory(std::string topic, uint32_t msg_size) :
+      topic_(topic), msg_size_(msg_size), buffer_size_(1) {
 
-    if (create_) {
-      // TODO: Support multiple publishers
-      remove_old_shared_memory();
-    }
-    size_t size = buffer_size_ + msg_size_ + SAFE_REGION;
+    size_t _size = buffer_size_ * msg_size_ + SAFE_REGION;
+    size_t size = _size + sizeof(MemInfo);
     std::shared_ptr<shared_memory_object> mem;
 
-    if (create_)
-      mem = std::make_shared<shared_memory_object>(create_only, topic_.c_str(), read_write);
-    else
-      mem = std::make_shared<shared_memory_object>(open_only, topic_.c_str(), read_write);
-
+    mem = std::make_shared<shared_memory_object>(open_or_create, topic_.c_str(), read_write);
     mem->truncate(size);
-
     region_ = std::make_shared<mapped_region>(*mem, read_write);
+
+    info_ = reinterpret_cast<MemInfo *>(static_cast<char *>(region_->get_address()) + size);
+    boost::interprocess::scoped_lock<interprocess_upgradable_mutex> lock(info_mutex);
+    if (info_->init != 666) {
+      // not inited
+      info_->init = 1337;
+      info_->buffer_size = buffer_size_;
+      info_->msg_size = msg_size_;
+      info_->counter = 0;
+    } else {
+      if (info_->msg_size != msg_size_)
+        throw "message sizes do not match";
+    }
   }
 
   ~Memory() {
   }
 
   bool write(void *data) {
-    boost::interprocess::scoped_lock<upgradable_mutex_type> lock(mutex);
+    boost::interprocess::scoped_lock<interprocess_upgradable_mutex> lock(mem_mutex);
+    std::cout << region_->get_address() << std::endl;
     std::memcpy(region_->get_address(), data, msg_size_);
     return true;
   }
@@ -72,8 +77,9 @@ class Memory {
   }
 
   bool read(void *src, bool overwrite = true) {
-    boost::interprocess::sharable_lock<upgradable_mutex_type> lock(mutex);
+    boost::interprocess::sharable_lock<interprocess_upgradable_mutex> lock(mem_mutex);
     if (overwrite) {
+      std::cout << region_->get_address() << std::endl;
       std::memcpy(src, region_->get_address(), msg_size_);
     } else {
       // TODO: Non-overwritten
@@ -85,6 +91,16 @@ class Memory {
     // implement GPU memcpy here
   }
 
+  void inc() {
+    boost::interprocess::scoped_lock<interprocess_upgradable_mutex> lock(info_mutex);
+    ++(info_->counter);
+  }
+
+  int counter() {
+    boost::interprocess::sharable_lock<interprocess_upgradable_mutex> lock(mem_mutex);
+    return (info_->counter);
+  }
+
  private:
   void remove_old_shared_memory() {
     std::cout << "removed" << std::endl;
@@ -93,13 +109,11 @@ class Memory {
 
   uint32_t msg_size_, buffer_size_;
   std::string topic_;
-  bool create_;
 
-  typedef interprocess_upgradable_mutex upgradable_mutex_type;
-  mutable upgradable_mutex_type mutex;
+  mutable interprocess_upgradable_mutex mem_mutex, info_mutex;
 
   std::shared_ptr<mapped_region> region_;
-
+  MemInfo *info_;
 
 };
 }
