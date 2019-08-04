@@ -8,9 +8,7 @@
 
 #include <iostream>
 
-void callback(std::shared_ptr<int> msg) {
-  std::cout << *msg << std::endl;
-}
+void callback(std::shared_ptr<int> msg) { std::cout << *msg << std::endl; }
 
 int main() {
   shm::Subscriber<int> sub("test", callback);

@@ -10,5 +10,9 @@ include_directories(include)
 
 add_executable(publish src/publisher.cpp)
 target_link_libraries(publish ${Boost_LIBRARIES} rt)
+
 add_executable(subscribe src/subscriber.cpp)
 target_link_libraries(subscribe ${Boost_LIBRARIES} rt)
+
+add_executable(flush_topic src/flush_topic.cpp)
+target_link_libraries(flush_topic ${Boost_LIBRARIES} rt)

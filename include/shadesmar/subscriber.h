@@ -17,15 +17,17 @@
 #include <shadesmar/memory.h>
 
 namespace shm {
-template<typename T>
+template <typename T>
 class Subscriber {
  public:
-  Subscriber(std::string topic_name, std::function<void(std::shared_ptr<T>)> callback) :
-      topic_name_(topic_name), spinning_(false),
-      msg_(reinterpret_cast<T *>(malloc(sizeof(T)))),
-      counter_(0) {
+  Subscriber(std::string topic_name,
+             std::function<void(std::shared_ptr<T>)> callback)
+      : topic_name_(topic_name),
+        spinning_(false),
+        msg_(reinterpret_cast<T *>(malloc(sizeof(T)))),
+        counter_(0) {
     callback_ = std::move(callback);
-    mem_ = std::make_shared<Memory>(topic_name_, sizeof(T));
+    mem_ = std::make_shared<Memory>(topic_name_, sizeof(T), false);
   }
 
   void spin(float rate = 0.0f) {
@@ -38,8 +40,7 @@ class Subscriber {
   void spinOnce() {
     // no threading
     int pub_count = mem_->counter();
-    if (pub_count == counter_)
-      return;
+    if (pub_count == counter_) return;
     mem_->read(msg_.get(), true);
     callback_(msg_);
     counter_ = pub_count;
@@ -47,8 +48,7 @@ class Subscriber {
 
   void shutdown() {
     // stop spinning
-    if (!spinning_)
-      return;
+    if (!spinning_) return;
 
     spinning_ = false;
   }
@@ -64,7 +64,6 @@ class Subscriber {
   std::shared_ptr<T> msg_;
 
   int counter_;
-
 };
-}
-#endif //SHADERMAR_SUBSCRIBER_H
+}  // namespace shm
+#endif  // SHADERMAR_SUBSCRIBER_H

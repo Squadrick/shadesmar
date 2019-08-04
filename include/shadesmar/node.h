@@ -15,7 +15,6 @@ namespace shm {
 class Node {
  public:
   Node() {}
-
 };
-}
-#endif //SHADERMAR_NODE_H
+}  // namespace shm
+#endif  // SHADERMAR_NODE_H
