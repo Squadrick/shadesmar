@@ -29,7 +29,6 @@ class Publisher {
   bool publish(T &msg) { return publish(&msg); }
 
   bool publish(T *msg) {
-    std::cout << "Publishing " << *msg << std::endl;
     bool success = mem_->write(msg);
     mem_->inc();
     return success;

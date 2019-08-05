@@ -2,18 +2,21 @@
 // Created by squadrick on 8/2/19.
 //
 
+#include <shadesmar/message.h>
 #include <shadesmar/publisher.h>
-
 #include <unistd.h>
 
 int main() {
-  shm::Publisher<int> p("test", 10);
+  shm::Publisher<shm::Msg> p("test1", 10);
+  int a = 0, loops = 1000;
+  auto *msg = new shm::Msg;
 
-  int a = 0;
-
-  while (true) {
-    p.publish(a);
+  for (int i = 0; i < loops; ++i) {
+    std::memset(msg->bytes, a % 256, MSGSIZE);
+    msg->count = a % 256;
+    std::cout << "Publishing " << a << std::endl;
+    p.publish(msg);
     ++a;
-    usleep(1000000);
   }
+  delete msg;
 }

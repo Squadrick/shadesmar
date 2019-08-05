@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by squadrick on 8/3/19.
 //
@@ -21,17 +23,18 @@ template <typename T>
 class Subscriber {
  public:
   Subscriber(std::string topic_name,
-             std::function<void(std::shared_ptr<T>)> callback)
-      : topic_name_(topic_name),
+             std::function<void(std::shared_ptr<T>)> callback,
+             bool reference_passing = false)
+      : topic_name_(std::move(topic_name)),
         spinning_(false),
         msg_(reinterpret_cast<T *>(malloc(sizeof(T)))),
+        reference_passing_(reference_passing),
         counter_(0) {
     callback_ = std::move(callback);
-    mem_ = std::make_shared<Memory>(topic_name_, sizeof(T), false);
+    mem_ = std::make_unique<Memory>(topic_name_, sizeof(T), false);
   }
 
-  void spin(float rate = 0.0f) {
-    // if rate is 0.0, spin continuously
+  void spin() {
     spinning_ = true;
 
     // create a thread
@@ -56,10 +59,10 @@ class Subscriber {
  private:
   std::string topic_name_;
 
-  std::shared_ptr<Memory> mem_;
+  std::unique_ptr<Memory> mem_;
   std::function<void(std::shared_ptr<T>)> callback_;
 
-  bool spinning_;
+  bool spinning_, reference_passing_;
 
   std::shared_ptr<T> msg_;
 
