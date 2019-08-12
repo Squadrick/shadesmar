@@ -11,5 +11,5 @@ int main(int argc, char **argv) {
   mem.remove_old_shared_memory();
 
   boost::interprocess::named_mutex::remove((topic + "MemMutex").c_str());
-  boost::interprocess::named_mutex::remove((topic + "MemMutex").c_str());
+  boost::interprocess::named_mutex::remove((topic + "InfoMutex").c_str());
 }
