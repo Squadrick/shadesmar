@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 int main() {
-  shm::Publisher<shm::Msg> p("test1", 10);
+  shm::Publisher<shm::Msg> p("test", 10);
   int a = 0, loops = 1000;
   auto *msg = new shm::Msg;
 

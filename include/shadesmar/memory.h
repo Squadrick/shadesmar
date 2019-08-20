@@ -26,6 +26,7 @@
 
 #define SAFE_REGION 1024  // 1kB
 #define INFO_INIT 1337
+#define MAX_BUFFER 1 << 27  // 128 MB
 
 using namespace boost::interprocess;
 namespace shm {
@@ -36,6 +37,12 @@ struct MemInfo {
   int counter;
   int pub_count;
   int sub_count;
+  interprocess_upgradable_mutex mutex;
+};
+
+struct SharedMem {
+  char data[MAX_BUFFER];
+  interprocess_upgradable_mutex mutex;
 };
 
 class Memory {
@@ -44,20 +51,26 @@ class Memory {
       : topic_(topic),
         msg_size_(msg_size),
         buffer_size_(1),
-        publisher_(publisher),
-        mem_mutex(open_or_create, (topic + "MemMutex").c_str()),
-        info_mutex(open_or_create, (topic + "InfoMutex").c_str()) {
+        publisher_(publisher) {
     if (msg_size == 0) {
       remove_old_shared_memory();
       return;
     }
-    size_ = sizeof(MemInfo) + buffer_size_ * msg_size_ + SAFE_REGION;
-    std::shared_ptr<shared_memory_object> mem;
 
-    mem = std::make_shared<shared_memory_object>(open_or_create, topic_.c_str(),
-                                                 read_write);
-    mem->truncate(size_);
-    region_ = std::make_shared<mapped_region>(*mem, read_write);
+    std::string mem_name = topic_ + "Mem";
+    std::string info_name = topic_ + "Info";
+
+    auto __mem =
+        shared_memory_object(open_or_create, mem_name.c_str(), read_write);
+    __mem.truncate(sizeof(SharedMem));
+    mem_region_ = std::make_shared<mapped_region>(__mem, read_write);
+    mem_ = new (mem_region_->get_address()) SharedMem;
+
+    auto __info =
+        shared_memory_object(open_or_create, info_name.c_str(), read_write);
+    __info.truncate(sizeof(MemInfo));
+    info_region_ = std::make_shared<mapped_region>(__info, read_write);
+    info_ = new (info_region_->get_address()) MemInfo;
 
     init_info();
   }
@@ -65,8 +78,7 @@ class Memory {
   ~Memory() {
     if (msg_size_ == 0) return;
     int pub_count, sub_count;
-
-    info_mutex.lock();
+    info_->mutex.lock();
 
     if (publisher_) {
       info_->pub_count -= 1;
@@ -77,7 +89,7 @@ class Memory {
     pub_count = info_->pub_count;
     sub_count = info_->sub_count;
 
-    info_mutex.unlock();
+    info_->mutex.unlock();
 
     if (pub_count + sub_count == 0) {
       remove_old_shared_memory();
@@ -85,9 +97,7 @@ class Memory {
   }
 
   void init_info() {
-    info_ = reinterpret_cast<MemInfo *>(region_->get_address());
-
-    info_mutex.lock();
+    info_->mutex.lock();
     if (info_->init != INFO_INIT) {
       info_->init = INFO_INIT;
       info_->buffer_size = buffer_size_;
@@ -105,14 +115,13 @@ class Memory {
       info_->sub_count += 1;
     }
 
-    info_mutex.unlock();
+    info_->mutex.unlock();
   }
 
   bool write(void *data) {
-    auto addr = static_cast<char *>(region_->get_address()) + sizeof(MemInfo);
-    mem_mutex.lock();
-    std::memcpy(addr, data, msg_size_);
-    mem_mutex.unlock();
+    mem_->mutex.lock();
+    std::memcpy(mem_->data, data, msg_size_);
+    mem_->mutex.unlock();
     return true;
   }
 
@@ -122,10 +131,9 @@ class Memory {
   }
 
   bool read(void *src, bool overwrite = true) {
-    auto addr = static_cast<char *>(region_->get_address()) + sizeof(MemInfo);
-    mem_mutex.lock();
-    std::memcpy(src, addr, msg_size_);
-    mem_mutex.unlock();
+    mem_->mutex.lock_sharable();
+    std::memcpy(src, mem_->data, msg_size_);
+    mem_->mutex.unlock_sharable();
     return true;
   }
 
@@ -134,15 +142,15 @@ class Memory {
   }
 
   void inc() {
-    info_mutex.lock();
+    info_->mutex.lock();
     ++(info_->counter);
-    info_mutex.unlock();
+    info_->mutex.unlock();
   }
 
   int counter() {
-    info_mutex.lock();
+    info_->mutex.lock_sharable();
     int val = info_->counter;
-    info_mutex.unlock();
+    info_->mutex.unlock_sharable();
     return val;
   }
 
@@ -155,9 +163,8 @@ class Memory {
   uint32_t msg_size_, buffer_size_, size_;
   std::string topic_;
 
-  mutable named_mutex mem_mutex, info_mutex;
-
-  std::shared_ptr<mapped_region> region_;
+  std::shared_ptr<mapped_region> mem_region_, info_region_;
+  SharedMem *mem_;
   MemInfo *info_;
 
   bool publisher_;
