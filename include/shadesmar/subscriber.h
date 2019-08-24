@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include <shadesmar/memory.h>
+#include <thread>
 
 namespace shm {
 template <typename T>
@@ -37,7 +38,11 @@ class Subscriber {
   void spin() {
     spinning_ = true;
 
-    // create a thread
+    spin_thread_ = std::make_shared<std::thread>([&]() {
+      while(spinning_) {
+        spinOnce();
+      }
+    });
   }
 
   void spinOnce() {
@@ -52,8 +57,8 @@ class Subscriber {
   void shutdown() {
     // stop spinning
     if (!spinning_) return;
-
     spinning_ = false;
+    spin_thread_->join();
   }
 
  private:
@@ -65,6 +70,8 @@ class Subscriber {
   bool spinning_, reference_passing_;
 
   std::shared_ptr<T> msg_;
+
+  std::shared_ptr<std::thread> spin_thread_;
 
   int counter_;
 };
