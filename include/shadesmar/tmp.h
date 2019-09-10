@@ -6,12 +6,12 @@
 #define SHADERMAR_TMP_H
 
 #include <sys/stat.h>
-#include <fstream>
-#include <random>
-#include <iterator>
 #include <algorithm>
-#include <string>
 #include <experimental/filesystem>
+#include <fstream>
+#include <iterator>
+#include <random>
+#include <string>
 
 namespace shm {
 
@@ -20,18 +20,20 @@ std::string const default_chars =
 
 std::string const tmp_prefix = "/tmp/shm/";
 
-std::string random_string(size_t len=15, std::string const &allowed_chars = default_chars) {
-  std::mt19937_64 gen { std::random_device()() };
-  std::uniform_int_distribution<size_t> dist {0, allowed_chars.length()-1};
+std::string random_string(size_t len = 15,
+                          std::string const& allowed_chars = default_chars) {
+  std::mt19937_64 gen{std::random_device()()};
+  std::uniform_int_distribution<size_t> dist{0, allowed_chars.length() - 1};
   std::string ret;
-  std::generate_n(std::back_inserter(ret), len, [&] { return allowed_chars[dist(gen)]; });
+  std::generate_n(std::back_inserter(ret), len,
+                  [&] { return allowed_chars[dist(gen)]; });
   return ret;
 }
 
 inline bool file_exists(std::string file_name) {
   // POSIX only
   struct stat buffer;
-  return (stat (file_name.c_str(), &buffer) == 0);
+  return (stat(file_name.c_str(), &buffer) == 0);
 }
 
 void tmp_write_topic(std::string topic) {
@@ -53,7 +55,8 @@ std::vector<std::string> tmp_get_topics() {
     return topic_names;
   }
 
-  for (const auto& entry: std::experimental::filesystem::directory_iterator(tmp_prefix)) {
+  for (const auto& entry :
+       std::experimental::filesystem::directory_iterator(tmp_prefix)) {
     std::fstream file;
     file.open(entry.path().generic_string(), std::ios::in);
     std::string topic_name;
@@ -64,5 +67,5 @@ std::vector<std::string> tmp_get_topics() {
   return topic_names;
 }
 
-}
-#endif //SHADERMAR_TMP_H
+}  // namespace shm
+#endif  // SHADERMAR_TMP_H

@@ -39,7 +39,7 @@ class Subscriber {
     spinning_ = true;
 
     spin_thread_ = std::make_shared<std::thread>([&]() {
-      while(spinning_) {
+      while (spinning_) {
         spinOnce();
       }
     });

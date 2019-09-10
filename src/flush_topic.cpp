@@ -19,11 +19,10 @@ void flush(std::string const &topic) {
 
 int main(int argc, char **argv) {
   if (argc == 1) {
-    for(auto& topic: shm::tmp_get_topics()) {
+    for (auto &topic : shm::tmp_get_topics()) {
       flush(topic);
     }
-  }
-  else {
+  } else {
     flush(std::string(argv[1]));
   }
 }
