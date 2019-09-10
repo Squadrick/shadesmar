@@ -3,9 +3,9 @@
 //
 
 #include <shadesmar/memory.h>
+#include <shadesmar/tmp.h>
 
-int main(int argc, char **argv) {
-  std::string topic(argv[1]);
+void flush(std::string const &topic) {
   std::cout << "Flushing " << topic << std::endl;
 
   std::string mem_name = topic + "Mem";
@@ -15,7 +15,15 @@ int main(int argc, char **argv) {
   std::string info_name = topic + "Info";
   shm::Memory info(info_name, 0, false);
   info.remove_old_shared_memory();
+}
 
-  boost::interprocess::named_mutex::remove((topic + "MemMutex").c_str());
-  boost::interprocess::named_mutex::remove((topic + "InfoMutex").c_str());
+int main(int argc, char **argv) {
+  if (argc == 1) {
+    for(auto& topic: shm::tmp_get_topics()) {
+      flush(topic);
+    }
+  }
+  else {
+    flush(std::string(argv[1]));
+  }
 }
