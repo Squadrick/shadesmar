@@ -24,9 +24,10 @@
 
 #include <boost/scope_exit.hpp>
 
-#define SAFE_REGION 1024  // 1kB
+#include <shadesmar/tmp.h>
+
 #define INFO_INIT 1337
-#define MAX_BUFFER 1 << 27  // 128 MB
+#define MAX_BUFFER (1 << 27)  // 128 MB
 
 using namespace boost::interprocess;
 namespace shm {
@@ -41,13 +42,22 @@ struct MemInfo {
 };
 
 struct SharedMem {
-  char data[MAX_BUFFER];
+  char data[MAX_BUFFER]{};
   interprocess_upgradable_mutex mutex;
 };
 
+void *shm_malloc(const std::string &key_name, size_t size) {
+  auto __mem = shared_memory_object(open_or_create,
+                                    key_name.c_str(), read_write);
+  __mem.truncate(size);
+  auto __region = new mapped_region(__mem, read_write);
+  std::cout << sizeof(mapped_region) << std::endl;
+  return __region->get_address();
+}
+
 class Memory {
  public:
-  Memory(std::string topic, uint32_t msg_size, bool publisher)
+  Memory(const std::string &topic, uint32_t msg_size, bool publisher)
       : topic_(topic),
         msg_size_(msg_size),
         buffer_size_(1),
@@ -56,21 +66,18 @@ class Memory {
       remove_old_shared_memory();
       return;
     }
+    tmp::write_topic(topic);
 
-    std::string mem_name = topic_ + "Mem";
-    std::string info_name = topic_ + "Info";
+    size_t __shm_size = sizeof(SharedMem) + sizeof(MemInfo) ;
 
-    auto __mem =
-        shared_memory_object(open_or_create, mem_name.c_str(), read_write);
-    __mem.truncate(sizeof(SharedMem));
-    mem_region_ = std::make_shared<mapped_region>(__mem, read_write);
-    mem_ = new (mem_region_->get_address()) SharedMem;
+    auto __shm_obj =
+        shared_memory_object(open_or_create, topic.c_str(), read_write);
+    __shm_obj.truncate(__shm_size);
+    shm_region_ = std::make_shared<mapped_region>(__shm_obj, read_write);
+    auto *__shm_addr = reinterpret_cast<uint8_t *>(shm_region_->get_address());
 
-    auto __info =
-        shared_memory_object(open_or_create, info_name.c_str(), read_write);
-    __info.truncate(sizeof(MemInfo));
-    info_region_ = std::make_shared<mapped_region>(__info, read_write);
-    info_ = new (info_region_->get_address()) MemInfo;
+    mem_ = new(__shm_addr) SharedMem;
+    info_ = new(__shm_addr + sizeof(SharedMem)) MemInfo;
 
     init_info();
   }
@@ -106,7 +113,9 @@ class Memory {
       info_->pub_count = 0;
       info_->sub_count = 0;
     } else {
-      if (info_->msg_size != msg_size_) throw "message sizes do not match";
+      if (info_->msg_size != msg_size_) {
+        std::cerr << "message sizes do not match" << std::endl;
+      }
     }
 
     if (publisher_) {
@@ -163,7 +172,9 @@ class Memory {
   uint32_t msg_size_, buffer_size_, size_;
   std::string topic_;
 
-  std::shared_ptr<mapped_region> mem_region_, info_region_;
+//  std::shared_ptr<mapped_region> mem_region_, info_region_;
+  std::shared_ptr<mapped_region> shm_region_;
+
   SharedMem *mem_;
   MemInfo *info_;
 

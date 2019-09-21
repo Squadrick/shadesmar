@@ -7,7 +7,13 @@
 #include <shadesmar/tmp.h>
 
 int main() {
-  for (int i = 0; i < 10; ++i) shm::tmp_write_topic(shm::random_string(10));
+  for (int i = 0; i < 10; ++i) {
+    shm::tmp::write_topic(shm::tmp::random_string(10));
+  }
 
-  for (auto topic : shm::tmp_get_topics()) std::cout << topic << std::endl;
+  for (const auto& topic : shm::tmp::get_topics()) {
+    std::cout << topic << std::endl;
+  }
+
+  shm::tmp::delete_topics();
 }

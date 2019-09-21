@@ -6,7 +6,7 @@
 #define SHADERMAR_MESSAGE_H
 
 #include <stdint.h>
-#define MSGSIZE 1024
+#define MSGSIZE 64
 
 namespace shm {
 

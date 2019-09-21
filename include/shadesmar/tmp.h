@@ -13,15 +13,17 @@
 #include <random>
 #include <string>
 
-namespace shm {
+#define MEM_NAME(topic) (topic + "Mem")
+#define INFO_NAME(topic) (topic + "Info")
 
+namespace shm::tmp {
 std::string const default_chars =
     "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
 std::string const tmp_prefix = "/tmp/shm/";
 
 std::string random_string(size_t len = 15,
-                          std::string const& allowed_chars = default_chars) {
+                          std::string const &allowed_chars = default_chars) {
   std::mt19937_64 gen{std::random_device()()};
   std::uniform_int_distribution<size_t> dist{0, allowed_chars.length() - 1};
   std::string ret;
@@ -30,13 +32,13 @@ std::string random_string(size_t len = 15,
   return ret;
 }
 
-inline bool file_exists(std::string file_name) {
+inline bool file_exists(const std::string &file_name) {
   // POSIX only
-  struct stat buffer;
+  struct stat buffer{};
   return (stat(file_name.c_str(), &buffer) == 0);
 }
 
-void tmp_write_topic(std::string topic) {
+void write_topic(const std::string &topic) {
   if (!file_exists(tmp_prefix)) {
     std::experimental::filesystem::create_directories(tmp_prefix);
   }
@@ -49,14 +51,14 @@ void tmp_write_topic(std::string topic) {
   file.close();
 }
 
-std::vector<std::string> tmp_get_topics() {
+std::vector<std::string> get_topics() {
   std::vector<std::string> topic_names;
   if (!file_exists(tmp_prefix)) {
     return topic_names;
   }
 
-  for (const auto& entry :
-       std::experimental::filesystem::directory_iterator(tmp_prefix)) {
+  for (const auto &entry :
+      std::experimental::filesystem::directory_iterator(tmp_prefix)) {
     std::fstream file;
     file.open(entry.path().generic_string(), std::ios::in);
     std::string topic_name;
@@ -67,5 +69,6 @@ std::vector<std::string> tmp_get_topics() {
   return topic_names;
 }
 
+void delete_topics() { std::experimental::filesystem::remove_all(tmp_prefix); }
 }  // namespace shm
 #endif  // SHADERMAR_TMP_H
