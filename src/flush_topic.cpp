@@ -8,9 +8,8 @@
 void flush(std::string const &topic) {
   std::cout << "Flushing " << topic << std::endl;
 
-  shm::Memory info(topic, 0, false);
-  info.remove_old_shared_memory();
-
+  shm::Memory tmp(topic, false);
+  tmp.remove_old_shared_memory();
 }
 
 int main(int argc, char **argv) {

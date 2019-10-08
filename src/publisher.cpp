@@ -4,16 +4,14 @@
 
 #include <shadesmar/message.h>
 #include <shadesmar/publisher.h>
-#include <unistd.h>
 
 int main() {
-  shm::Publisher<shm::Msg> p("test", 10);
+  shm::Publisher<shm::Msg<1024>, 16> p("test");
   int a = 0, loops = 1000;
-  auto *msg = new shm::Msg;
+  auto *msg = new shm::Msg<1024>;
 
-  for (int i = 0; i < loops; ++i) {
-    std::memset(msg->bytes, a % 256, MSGSIZE);
-    msg->count = a % 256;
+  for (int i = 0;; ++i) {
+    msg->setVal(a & 255);
     std::cout << "Publishing " << a << std::endl;
     p.publish(msg);
     ++a;

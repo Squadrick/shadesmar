@@ -6,15 +6,14 @@
 #define SHADERMAR_TMP_H
 
 #include <sys/stat.h>
+
 #include <algorithm>
-#include <experimental/filesystem>
 #include <fstream>
 #include <iterator>
 #include <random>
 #include <string>
 
-#define MEM_NAME(topic) (topic + "Mem")
-#define INFO_NAME(topic) (topic + "Info")
+#include <experimental/filesystem>
 
 namespace shm::tmp {
 std::string const default_chars =
@@ -34,7 +33,7 @@ std::string random_string(size_t len = 15,
 
 inline bool file_exists(const std::string &file_name) {
   // POSIX only
-  struct stat buffer{};
+  struct stat buffer {};
   return (stat(file_name.c_str(), &buffer) == 0);
 }
 
@@ -58,7 +57,7 @@ std::vector<std::string> get_topics() {
   }
 
   for (const auto &entry :
-      std::experimental::filesystem::directory_iterator(tmp_prefix)) {
+       std::experimental::filesystem::directory_iterator(tmp_prefix)) {
     std::fstream file;
     file.open(entry.path().generic_string(), std::ios::in);
     std::string topic_name;
@@ -69,6 +68,16 @@ std::vector<std::string> get_topics() {
   return topic_names;
 }
 
+bool exists(const std::string &topic) {
+  auto existing_topics = get_topics();
+  for (auto &existing_topic : existing_topics) {
+    if (existing_topic == topic) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void delete_topics() { std::experimental::filesystem::remove_all(tmp_prefix); }
-}  // namespace shm
+}  // namespace shm::tmp
 #endif  // SHADERMAR_TMP_H

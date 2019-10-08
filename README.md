@@ -11,7 +11,7 @@ Publisher:
 #include <shadesmar/publisher.h>
 
 int main() {
-    shm::Publisher<int> pub("topic_name", 10);
+    shm::Publisher<int, 16 /* buffer size */ > pub("topic_name");
     
     int msg = 0;
     
@@ -28,12 +28,12 @@ Subscriber:
 
 #include <shadesmar/subscriber.h>
 
-void callback(std::shared_ptr<int> msg) {
+void callback(const std::shared_ptr<int>& msg) {
     std::cout << *msg << std::endl;
 }
 
 int main() {
-    shm::Subscriber<int> sub("topic_name", callback);
+    shm::Subscriber<int, 16 /* buffer size */ > sub("topic_name", callback);
     
     // Using `spinOnce` with a manual loop
     while(true) {
@@ -59,6 +59,4 @@ int main() {
 
 * Minimal usage of locks, and uses sharable locks where possible
 
-* Can operate on raw C++ types, or serialization libraries like Cap'n Proto
-
-* Support for type reflection if using serialization libraries
+* Decentralized, without resource starvation
