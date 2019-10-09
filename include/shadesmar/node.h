@@ -2,8 +2,8 @@
 // Created by squadrick on 7/30/19.
 //
 
-#ifndef SHADERMAR_NODE_H
-#define SHADERMAR_NODE_H
+#ifndef shadesmar_NODE_H
+#define shadesmar_NODE_H
 
 #include <memory>
 #include <string>
@@ -17,4 +17,4 @@ class Node {
   Node() {}
 };
 }  // namespace shm
-#endif  // SHADERMAR_NODE_H
+#endif  // shadesmar_NODE_H

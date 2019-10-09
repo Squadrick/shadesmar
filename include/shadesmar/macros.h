@@ -2,8 +2,8 @@
 // Created by squadrick on 06/10/19.
 //
 
-#ifndef SHADERMAR_MACROS_H
-#define SHADERMAR_MACROS_H
+#ifndef shadesmar_MACROS_H
+#define shadesmar_MACROS_H
 
 #ifdef DEBUG_BUILD
 #define DEBUG(str)                 \
@@ -24,4 +24,4 @@
 
 #define INFO_INIT 1337
 
-#endif  // SHADERMAR_MACROS_H
+#endif  // shadesmar_MACROS_H

@@ -2,8 +2,8 @@
 // Created by squadrick on 8/5/19.
 //
 
-#ifndef SHADERMAR_MESSAGE_H
-#define SHADERMAR_MESSAGE_H
+#ifndef shadesmar_MESSAGE_H
+#define shadesmar_MESSAGE_H
 
 #include <cstdint>
 #include <cstring>
@@ -23,4 +23,4 @@ struct Msg {
 };
 }  // namespace shm
 
-#endif  // SHADERMAR_MESSAGE_H
+#endif  // shadesmar_MESSAGE_H

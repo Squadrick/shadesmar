@@ -2,8 +2,8 @@
 // Created by squadrick on 24/8/19.
 //
 
-#ifndef SHADERMAR_TMP_H
-#define SHADERMAR_TMP_H
+#ifndef shadesmar_TMP_H
+#define shadesmar_TMP_H
 
 #include <sys/stat.h>
 
@@ -80,4 +80,4 @@ bool exists(const std::string &topic) {
 
 void delete_topics() { std::experimental::filesystem::remove_all(tmp_prefix); }
 }  // namespace shm::tmp
-#endif  // SHADERMAR_TMP_H
+#endif  // shadesmar_TMP_H

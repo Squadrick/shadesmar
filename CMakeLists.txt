@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(shadermar)
+project(shadesmar)
 SET(CMAKE_VERBOSE_MAKEFILE 1)
 
 find_package(Boost)

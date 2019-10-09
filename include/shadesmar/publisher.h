@@ -2,8 +2,8 @@
 // Created by squadrick on 7/30/19.
 //
 
-#ifndef SHADERMAR_PUBLISHER_H
-#define SHADERMAR_PUBLISHER_H
+#ifndef shadesmar_PUBLISHER_H
+#define shadesmar_PUBLISHER_H
 
 #include <cstdint>
 
@@ -38,4 +38,4 @@ class Publisher {
   std::shared_ptr<Memory<queue_size>> mem_;
 };
 }  // namespace shm
-#endif  // SHADERMAR_PUBLISHER_H
+#endif  // shadesmar_PUBLISHER_H

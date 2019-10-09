@@ -2,8 +2,8 @@
 // Created by squadrick on 8/2/19.
 //
 
-#ifndef SHADERMAR_MEMORY_H
-#define SHADERMAR_MEMORY_H
+#ifndef shadesmar_MEMORY_H
+#define shadesmar_MEMORY_H
 
 #include <sys/ipc.h>
 #include <sys/types.h>
@@ -164,4 +164,4 @@ class Memory {
   SharedQueue<queue_size> *sh_q_;
 };
 }  // namespace shm
-#endif  // SHADERMAR_MEMORY_H
+#endif  // shadesmar_MEMORY_H

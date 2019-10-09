@@ -4,8 +4,8 @@
 // Created by squadrick on 8/3/19.
 //
 
-#ifndef SHADERMAR_SUBSCRIBER_H
-#define SHADERMAR_SUBSCRIBER_H
+#ifndef shadesmar_SUBSCRIBER_H
+#define shadesmar_SUBSCRIBER_H
 
 #include <cstdint>
 #include <cstring>
@@ -87,4 +87,4 @@ class Subscriber {
   uint32_t counter_;
 };
 }  // namespace shm
-#endif  // SHADERMAR_SUBSCRIBER_H
+#endif  // shadesmar_SUBSCRIBER_H

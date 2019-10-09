@@ -2,8 +2,8 @@
 // Created by squadrick on 30/09/19.
 //
 
-#ifndef SHADERMAR_IPC_LOCK_H
-#define SHADERMAR_IPC_LOCK_H
+#ifndef shadesmar_IPC_LOCK_H
+#define shadesmar_IPC_LOCK_H
 
 #include <sys/stat.h>
 
@@ -186,4 +186,4 @@ class IPC_Lock {
   // Total size = 340 bytes
 };
 
-#endif  // SHADERMAR_IPC_LOCK_H
+#endif  // shadesmar_IPC_LOCK_H
