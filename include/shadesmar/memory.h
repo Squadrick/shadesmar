@@ -16,6 +16,7 @@
 #include <iostream>
 #include <string>
 
+#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
 
@@ -25,220 +26,143 @@
 
 using namespace boost::interprocess;
 namespace shm {
-struct MemInfo {
-  int init;
-  int msg_size;
-  int queue_size;
-  std::atomic<uint32_t> counter;
-  int pub_count;
-  int sub_count;
-  IPC_Lock mutex;
 
-  void lock() {
-    DEBUG("MemInfo lock: trying");
-    mutex.lock();
-    DEBUG("MemInfo lock: success");
-  }
+template <uint32_t queue_size>
 
-  void unlock() {
-    DEBUG("MemInfo unlock: trying");
-    mutex.unlock();
-    DEBUG("MemInfo unlock: success");
-  }
+struct SharedQueue {
+  struct Element {
+    managed_shared_memory::handle_t addr_hdl;
+    size_t size;
+    bool empty = true;
+  };
+  std::atomic<uint32_t> init, counter;
 
-  void lock_sharable() {
-    DEBUG("MemInfo share lock: trying");
-    mutex.lock_sharable();
-    DEBUG("MemInfo share lock: success");
-  }
-
-  void unlock_sharable() {
-    DEBUG("MemInfo share unlock: trying");
-    mutex.unlock_sharable();
-    DEBUG("MemInfo share unlock: success");
-  }
-
-  void dump() {
-    DEBUG("MemInfo dump");
-    DEBUG("msg_size: " << msg_size);
-    DEBUG("queue_size: " << queue_size);
-    DEBUG("counter: " << counter);
-    DEBUG("pub_count: " << pub_count);
-    DEBUG("sub_count: " << sub_count);
-    mutex.dump();
-  }
-};
-
-template <uint32_t msg_size, uint32_t queue_size>
-struct SharedMem {
-  char data[msg_size * queue_size]{};
-  IPC_Lock mutex[queue_size];
+  Element __array[queue_size]{};
+  IPC_Lock info_mutex;
+  IPC_Lock queue_mutexes[queue_size];
 
   void lock(uint32_t idx = 0) {
-    DEBUG("SharedMem lock [" << idx << "]: trying");
-    mutex[idx].lock();
-    DEBUG("SharedMem lock [" << idx << "]: success");
+    DEBUG("SharedQueue lock [" << idx << "]: trying");
+    queue_mutexes[idx].lock();
+    DEBUG("SharedQueue lock [" << idx << "]: success");
   }
 
   void unlock(uint32_t idx = 0) {
-    DEBUG("SharedMem unlock [" << idx << "]: trying");
-    mutex[idx].unlock();
-    DEBUG("SharedMem unlock [" << idx << "]: success");
+    DEBUG("SharedQueue unlock [" << idx << "]: trying");
+    queue_mutexes[idx].unlock();
+    DEBUG("SharedQueue unlock [" << idx << "]: success");
   }
 
   void lock_sharable(uint32_t idx = 0) {
-    DEBUG("SharedMem share lock [" << idx << "]: trying");
-    mutex[idx].lock_sharable();
-    DEBUG("SharedMem share lock [" << idx << "]: success");
+    DEBUG("SharedQueue share lock [" << idx << "]: trying");
+    queue_mutexes[idx].lock_sharable();
+    DEBUG("SharedQueue share lock [" << idx << "]: success");
   }
 
   void unlock_sharable(uint32_t idx = 0) {
-    DEBUG("SharedMem share unlock [" << idx << "]: trying");
-    mutex[idx].unlock_sharable();
-    DEBUG("SharedMem share unlock [" << idx << "]: success");
-  }
-
-  void dump() {
-    DEBUG("SharedMem dump");
-    for (int i = 0; i < queue_size; ++i) {
-      DEBUG("Lock " << i);
-      mutex[i].dump();
-    }
+    DEBUG("SharedQueue share unlock [" << idx << "]: trying");
+    queue_mutexes[idx].unlock_sharable();
+    DEBUG("SharedQueue share unlock [" << idx << "]: success");
   }
 };
 
-template <uint32_t msg_size = 0, uint32_t queue_size = 1>
+template <uint32_t queue_size = 1>
 class Memory {
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
  public:
-  Memory(const std::string &topic, bool publisher)
-      : topic_(topic), publisher_(publisher), size_(msg_size * queue_size) {
-    // TODO: Has contention
-    bool mem_exists = tmp::exists(topic);
-    if (!mem_exists) tmp::write_topic(topic);
-
-    size_t __shm_size =
-        sizeof(SharedMem<msg_size, queue_size>) + sizeof(MemInfo);
+  Memory(const std::string &topic, size_t max_buffer_size = 2 << 20)
+      : topic_(topic) {
+    // TODO: Has contention on sh_q_exists
+    bool sh_q_exists = tmp::exists(topic);
+    if (!sh_q_exists) tmp::write_topic(topic);
 
     auto shm_obj =
         shared_memory_object(open_or_create, topic.c_str(), read_write);
-    shm_obj.truncate(__shm_size);
-    shm_region_ = std::make_shared<mapped_region>(shm_obj, read_write);
-    auto *shm_addr = reinterpret_cast<uint8_t *>(shm_region_->get_address());
+    shm_obj.truncate(sizeof(SharedQueue<queue_size>));
+    region_ = std::make_shared<mapped_region>(shm_obj, read_write);
+    auto *base_addr = reinterpret_cast<uint8_t *>(region_->get_address());
 
-    if (!mem_exists) {
-      mem_ = new (shm_addr) SharedMem<msg_size, queue_size>();
-      info_ = new (shm_addr + sizeof(SharedMem<msg_size, queue_size>)) MemInfo;
+    raw_buf_ = std::make_shared<managed_shared_memory>(
+        open_or_create, (topic + "Raw").c_str(), 102400);
+
+    if (!sh_q_exists) {
+      sh_q_ = new (base_addr) SharedQueue<queue_size>();
       init_info();
     } else {
-      mem_ = reinterpret_cast<SharedMem<msg_size, queue_size> *>(shm_addr);
-      info_ = reinterpret_cast<MemInfo *>(
-          shm_addr + sizeof(SharedMem<msg_size, queue_size>));
+      sh_q_ = reinterpret_cast<SharedQueue<queue_size> *>(base_addr);
     }
   }
 
-  ~Memory() {
-    if (msg_size == 0) return;
-    int pub_count, sub_count;
-    std::cout << "~Memory: start\n";
-    info_->lock();
-
-    if (publisher_) {
-      info_->pub_count -= 1;
-    } else {
-      info_->sub_count -= 1;
-    }
-
-    pub_count = info_->pub_count;
-    sub_count = info_->sub_count;
-
-    info_->unlock();
-
-    if (pub_count + sub_count == 0) {
-      remove_old_shared_memory();
-    }
-  }
+  ~Memory() = default;
 
   void init_info() {
     DEBUG("init_info: start");
-    info_->lock();
-    if (info_->init != INFO_INIT) {
-      info_->init = INFO_INIT;
-      info_->queue_size = queue_size;
-      info_->msg_size = msg_size;
-      info_->counter = 0;
-      info_->pub_count = 0;
-      info_->sub_count = 0;
-    } else {
-      if (info_->msg_size != msg_size) {
-        std::cerr << "message sizes do not match" << std::endl;
-        exit(-1);
-      }
-      if (info_->queue_size != queue_size) {
-        std::cerr << "queue sizes do not match" << std::endl;
-      }
+    sh_q_->lock();
+    if (sh_q_->init != INFO_INIT) {
+      sh_q_->init = INFO_INIT;
+      sh_q_->counter = 0;
     }
-
-    if (publisher_) {
-      info_->pub_count += 1;
-    } else {
-      info_->sub_count += 1;
-    }
-
-    info_->unlock();
+    sh_q_->unlock();
   }
 
-  bool write(void *data) {
+  bool write(void *data, size_t size) {
     DEBUG("Writing: start");
-    int pos = info_->counter.fetch_add(1);
+    int pos = sh_q_->counter.fetch_add(1);
     pos &= queue_size - 1;
-    mem_->lock(pos);
-    std::memcpy(mem_->data + pos * msg_size, data, msg_size);
-    mem_->unlock(pos);
+    sh_q_->lock(pos);
+
+    if (size > raw_buf_->get_free_memory()) {
+      auto new_size = raw_buf_->get_size() * 2 + size;
+      raw_buf_->grow((topic_ + "Raw").c_str(), new_size);
+    }
+    auto idx = &(sh_q_->__array[pos]);
+    void *addr = raw_buf_->get_address_from_handle(idx->addr_hdl);
+
+    if (!idx->empty) {
+      raw_buf_->deallocate(addr);
+    }
+
+    void *new_addr = raw_buf_->allocate(size);
+
+    std::memcpy(new_addr, data, size);
+    idx->addr_hdl = raw_buf_->get_handle_from_address(new_addr);
+    idx->size = size;
+    idx->empty = false;
+
+    sh_q_->unlock(pos);
     return true;
   }
 
   bool read(void *src, uint32_t pos, bool overwrite = true) {
     DEBUG("Reading: start");
     pos &= queue_size - 1;
-    mem_->lock_sharable(pos);
-    std::memcpy(src, mem_->data + pos * msg_size, msg_size);
-    mem_->unlock_sharable(pos);
+    sh_q_->lock_sharable(pos);
+
+    auto idx = &(sh_q_->__array[pos]);
+    if (idx->empty) return false;
+    void *dst = raw_buf_->get_address_from_handle(idx->addr_hdl);
+    std::memcpy(src, dst, idx->size);
+
+    sh_q_->unlock_sharable(pos);
     return true;
   }
 
   inline __attribute__((always_inline)) uint32_t counter() {
     // This forces the function to be inlined allowing to be
     // atomic without contention
-    return info_->counter.load();
-  }
-
-  void remove_old_shared_memory() {
-    shared_memory_object::remove(topic_.c_str());
-  }
-
-  void dump() {
-    DEBUG("Memory dump for topic: " << topic_);
-    DEBUG("msg_size: " << msg_size);
-    DEBUG("queue_size: " << queue_size);
-    DEBUG("buffer size: " << size_);
-    info_->dump();
-    mem_->dump();
-    DEBUG("\n");
+    return sh_q_->counter.load();
   }
 
  private:
   uint32_t size_;
   std::string topic_;
 
-  std::shared_ptr<mapped_region> shm_region_;
+  std::shared_ptr<mapped_region> region_;
+  std::shared_ptr<managed_shared_memory> raw_buf_;
 
-  SharedMem<msg_size, queue_size> *mem_;
-  MemInfo *info_;
-
-  bool publisher_;
+  SharedQueue<queue_size> *sh_q_;
 };
 }  // namespace shm
 #endif  // SHADERMAR_MEMORY_H

@@ -31,7 +31,7 @@ class Subscriber {
         reference_passing_(reference_passing),
         counter_(0) {
     callback_ = std::move(callback);
-    mem_ = std::make_unique<Memory<sizeof(T), queue_size>>(topic_name_, false);
+    mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
   }
 
   void spin() {
@@ -59,9 +59,10 @@ class Subscriber {
         // element in the queue
         counter_ = pub_counter - queue_size + 1;
       }
-      mem_->read(msg_.get(), counter_, true);
-      callback_(msg_);
-      counter_++;
+      if (mem_->read(msg_.get(), counter_, true)) {
+        callback_(msg_);
+        counter_++;
+      }
     }
   }
 
@@ -75,7 +76,7 @@ class Subscriber {
  private:
   std::string topic_name_;
 
-  std::unique_ptr<Memory<sizeof(T), queue_size>> mem_;
+  std::unique_ptr<Memory<queue_size>> mem_;
   std::function<void(const std::shared_ptr<T> &)> callback_;
 
   bool spinning_, reference_passing_;

@@ -2,14 +2,17 @@
 // Created by squadrick on 8/4/19.
 //
 
-#include <shadesmar/memory.h>
-#include <shadesmar/tmp.h>
+#include <iostream>
 
+#include <shadesmar/tmp.h>
+#include <boost/interprocess/managed_shared_memory.hpp>
+#include <boost/interprocess/shared_memory_object.hpp>
+using namespace boost::interprocess;
 void flush(std::string const &topic) {
   std::cout << "Flushing " << topic << std::endl;
 
-  shm::Memory tmp(topic, false);
-  tmp.remove_old_shared_memory();
+  shared_memory_object::remove(topic.c_str());
+  shared_memory_object::remove((topic + "Raw").c_str());
 }
 
 int main(int argc, char **argv) {

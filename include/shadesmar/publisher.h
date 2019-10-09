@@ -20,7 +20,7 @@ template <typename msgT, uint32_t queue_size>
 class Publisher {
  public:
   explicit Publisher(std::string topic_name) : topic_name_(topic_name) {
-    mem_ = std::make_shared<Memory<sizeof(msgT), queue_size>>(topic_name, true);
+    mem_ = std::make_shared<Memory<queue_size>>(topic_name);
   }
 
   bool publish(std::shared_ptr<msgT> msg) { return publish(msg.get()); }
@@ -28,14 +28,14 @@ class Publisher {
   bool publish(msgT &msg) { return publish(&msg); }
 
   bool publish(msgT *msg) {
-    bool success = mem_->write(msg);
+    bool success = mem_->write(msg, sizeof(msgT));
     return success;
   }
 
  private:
   std::string topic_name_;
 
-  std::shared_ptr<Memory<sizeof(msgT), queue_size>> mem_;
+  std::shared_ptr<Memory<queue_size>> mem_;
 };
 }  // namespace shm
 #endif  // SHADERMAR_PUBLISHER_H
