@@ -67,6 +67,8 @@ class IPC_Set {
           // successfully found and deleted elem
           return true;
         } else {
+          // possible that some other proc deleted elem
+          // TODO: Maybe do a break instead
           idx++;
           continue;
         }
