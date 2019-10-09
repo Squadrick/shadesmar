@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <cstring>
 
-#define MSG_SIZE (1024)
+#define MSG_SIZE (1024 * 1024)
 namespace shm {
 
 template <uint32_t msg_size>

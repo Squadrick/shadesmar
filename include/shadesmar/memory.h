@@ -5,10 +5,6 @@
 #ifndef shadesmar_MEMORY_H
 #define shadesmar_MEMORY_H
 
-#include <sys/ipc.h>
-#include <sys/types.h>
-
-#include <csignal>
 #include <cstdint>
 #include <cstring>
 
@@ -18,7 +14,6 @@
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/mapped_region.hpp>
-#include <boost/interprocess/shared_memory_object.hpp>
 
 #include <shadesmar/ipc_lock.h>
 #include <shadesmar/macros.h>
@@ -41,29 +36,13 @@ struct SharedQueue {
   IPC_Lock info_mutex;
   IPC_Lock queue_mutexes[queue_size];
 
-  void lock(uint32_t idx) {
-    DEBUG("SharedQueue lock [" << idx << "]: trying");
-    queue_mutexes[idx].lock();
-    DEBUG("SharedQueue lock [" << idx << "]: success");
-  }
+  void lock(uint32_t idx) { queue_mutexes[idx].lock(); }
 
-  void unlock(uint32_t idx) {
-    DEBUG("SharedQueue unlock [" << idx << "]: trying");
-    queue_mutexes[idx].unlock();
-    DEBUG("SharedQueue unlock [" << idx << "]: success");
-  }
+  void unlock(uint32_t idx) { queue_mutexes[idx].unlock(); }
 
-  void lock_sharable(uint32_t idx) {
-    DEBUG("SharedQueue share lock [" << idx << "]: trying");
-    queue_mutexes[idx].lock_sharable();
-    DEBUG("SharedQueue share lock [" << idx << "]: success");
-  }
+  void lock_sharable(uint32_t idx) { queue_mutexes[idx].lock_sharable(); }
 
-  void unlock_sharable(uint32_t idx) {
-    DEBUG("SharedQueue share unlock [" << idx << "]: trying");
-    queue_mutexes[idx].unlock_sharable();
-    DEBUG("SharedQueue share unlock [" << idx << "]: success");
-  }
+  void unlock_sharable(uint32_t idx) { queue_mutexes[idx].unlock_sharable(); }
 };
 
 template <uint32_t queue_size = 1>
@@ -72,7 +51,7 @@ class Memory {
                 "queue_size must be power of two");
 
  public:
-  explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 21))
+  explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 26))
       : topic_(topic) {
     // TODO: Has contention on sh_q_exists
     bool sh_q_exists = tmp::exists(topic);
@@ -98,7 +77,6 @@ class Memory {
   ~Memory() = default;
 
   void init_info() {
-    DEBUG("init_info: start");
     sh_q_->info_mutex.lock();
     if (sh_q_->init != INFO_INIT) {
       sh_q_->init = INFO_INIT;
@@ -108,7 +86,6 @@ class Memory {
   }
 
   bool write(void *data, size_t size) {
-    DEBUG("Writing: start");
     int pos = sh_q_->counter.fetch_add(1);
     pos &= queue_size - 1;  // modulo for power of 2
     sh_q_->lock(pos);
@@ -136,7 +113,6 @@ class Memory {
   }
 
   bool read(void *src, uint32_t pos, bool overwrite = true) {
-    DEBUG("Reading: start");
     pos &= queue_size - 1;
     sh_q_->lock_sharable(pos);
 

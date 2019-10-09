@@ -22,7 +22,6 @@ void callback(const std::shared_ptr<shm::Msg<MSG_SIZE>> &msg) {
 
 int main() {
   shm::Subscriber<shm::Msg<MSG_SIZE>, 16> sub("test", callback);
-
   while (true) {
     sub.spinOnce();
   }

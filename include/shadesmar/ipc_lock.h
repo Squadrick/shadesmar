@@ -8,13 +8,9 @@
 #include <sys/stat.h>
 
 #include <cstdint>
+#include <thread>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
-#include <boost/interprocess/sync/sharable_lock.hpp>
-#include <boost/interprocess/sync/upgradable_lock.hpp>
 
 #include <shadesmar/macros.h>
 
@@ -127,7 +123,7 @@ class IPC_Lock {
         prune_sharable_procs();
       }
 
-      WAIT_CONTINUE(TIMEOUT);
+      std::this_thread::sleep_for(std::chrono::microseconds(2000));
     }
     ex_proc = getpid();
   }
@@ -153,14 +149,16 @@ class IPC_Lock {
         // should never happen
       }
       // TODO: Maybe prune_sharable_procs()?
-      WAIT_CONTINUE(TIMEOUT);
+
+      std::this_thread::sleep_for(std::chrono::microseconds(2000));
     }
     sh_procs.insert(getpid());
   }
 
   void unlock_sharable() {
-    sh_procs.remove(getpid());
-    mutex_.unlock_sharable();
+    if (sh_procs.remove(getpid())) {
+      mutex_.unlock_sharable();
+    }
   }
 
  private:

@@ -6,6 +6,7 @@ find_package(Boost)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-pthread -lstdc++fs")
 #add_compile_options(-g -DDEBUG_BUILD)
+add_compile_options(-O2)
 include_directories(include)
 
 add_executable(publish src/publisher.cpp)
@@ -16,6 +17,3 @@ target_link_libraries(subscribe ${Boost_LIBRARIES} rt stdc++fs)
 
 add_executable(flush_topic src/flush_topic.cpp)
 target_link_libraries(flush_topic ${Boost_LIBRARIES} rt stdc++fs)
-
-add_executable(tmp_test src/tmp_test.cpp)
-target_link_libraries(tmp_test ${Boost_LIBRARIES} rt stdc++fs)
