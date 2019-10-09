@@ -37,7 +37,7 @@ class Subscriber {
   void spin() {
     spinning_ = true;
 
-    spin_thread_ = std::make_shared<std::thread>([&]() {
+    spin_thread_ = std::make_shared<std::thread>([this]() {
       while (spinning_) {
         spinOnce();
       }
@@ -45,9 +45,8 @@ class Subscriber {
   }
 
   void spinOnce() {
-    // pool the buffer once
+    // poll the buffer once
 
-    // no threading
     int pub_counter = mem_->counter();
     if (pub_counter > counter_) {
       // pub_counter must be strictly greater than counter_
@@ -61,8 +60,8 @@ class Subscriber {
       }
       if (mem_->read(msg_.get(), counter_, true)) {
         callback_(msg_);
-        counter_++;
       }
+      counter_++;
     }
   }
 

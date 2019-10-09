@@ -104,24 +104,18 @@ class IPC_Lock {
  public:
   IPC_Lock() = default;
   void lock() {
-    DEBUG("Starting wait time lock");
     // TODO: use timed_lock instead of try_lock
     while (!mutex_.try_lock()) {
       // failed to get mutex_ within timeout,
       // so mutex_ is either held properly
       // or some process which holds it has died
-      DEBUG("ex_proc: " << ex_proc);
-
       if (ex_proc != -1) {
         // ex_proc is not default value, some other proc
         // has access already
         if (proc_exists(ex_proc)) {
-          DEBUG("ex_proc running: " << ex_proc);
           // fear not, everything is alright, wait for
           // next timeout
-          WAIT_CONTINUE(TIMEOUT);
         } else {
-          DEBUG("ex_proc dead, reset");
           // proc is fucked, we don't unlock
           // we just assume that this proc has the lock
           // relinquish control
@@ -135,70 +129,42 @@ class IPC_Lock {
 
       WAIT_CONTINUE(TIMEOUT);
     }
-    DEBUG("lock is free");
     ex_proc = getpid();
   }
 
   void unlock() {
-    DEBUG("Unlocking");
     ex_proc = -1;
     mutex_.unlock();
   }
 
   void lock_sharable() {
-    auto timeout = boost::posix_time::microsec_clock::local_time() +
-                   boost::posix_time::microseconds(2);
-    // need to check only ex_proc
-    DEBUG("Starting wait time lock");
     // TODO: use timed_lock_sharable instead of try_lock_sharable
     while (!mutex_.try_lock_sharable()) {
-      DEBUG("ex_proc: " << ex_proc);
       // only reason for failure is that exclusive lock is held
-      if (ex_proc == -1) {
-        DEBUG("This should never happen");
-        WAIT_CONTINUE(TIMEOUT);
-      }
-
-      if (proc_exists(ex_proc)) {
-        // no problem, go back to waiting
-        DEBUG("Go back to waiting");
-        WAIT_CONTINUE(TIMEOUT);
+      if (ex_proc != -1) {
+        if (proc_exists(ex_proc)) {
+          // no problem, go back to waiting
+        } else {
+          // ex_proc is dead
+          ex_proc = -1;
+          mutex_.unlock();
+        }
       } else {
-        DEBUG("ex_proc is dead, reset");
-        ex_proc = -1;
+        // should never happen
       }
-
-      DEBUG("maybe prune_sharable_procs");
       // TODO: Maybe prune_sharable_procs()?
-
       WAIT_CONTINUE(TIMEOUT);
     }
-    DEBUG("sh lock is free");
     sh_procs.insert(getpid());
   }
 
   void unlock_sharable() {
-    DEBUG("IPC: unlock share");
     sh_procs.remove(getpid());
     mutex_.unlock_sharable();
   }
 
-  void dump() {
-    DEBUG("IPC_Lock dump");
-    DEBUG("ex_proc: " << ex_proc << ", status: " << proc_exists(ex_proc));
-
-    DEBUG("sh_procs:");
-    for (auto &i : sh_procs.__array) {
-      uint32_t sh_proc = i.load();
-      if (sh_proc == 0) continue;
-
-      DEBUG("\t" << sh_proc << ", status: " << proc_exists(sh_proc));
-    }
-  }
-
  private:
   void prune_sharable_procs() {
-    DEBUG("Pruning sharable");
     for (auto &i : sh_procs.__array) {
       uint32_t sh_proc = i.load();
 
@@ -207,8 +173,7 @@ class IPC_Lock {
         if (sh_procs.remove(sh_proc)) {
           // removal of element was a success
           // this ensures no over-pruning or duplicate deletion
-          // TODO: Verify correctness
-          DEBUG("Sh proc pruned: " << sh_proc);
+          // TODO: Verify no contention
           mutex_.unlock_sharable();
         }
       }

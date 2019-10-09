@@ -5,7 +5,7 @@ SET(CMAKE_VERBOSE_MAKEFILE 1)
 find_package(Boost)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-pthread -lstdc++fs")
-add_compile_options(-g -DDEBUG_BUILD)
+#add_compile_options(-g -DDEBUG_BUILD)
 include_directories(include)
 
 add_executable(publish src/publisher.cpp)

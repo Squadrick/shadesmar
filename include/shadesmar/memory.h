@@ -31,35 +31,35 @@ template <uint32_t queue_size>
 
 struct SharedQueue {
   struct Element {
-    managed_shared_memory::handle_t addr_hdl;
-    size_t size;
+    managed_shared_memory::handle_t addr_hdl{};
+    size_t size{};
     bool empty = true;
   };
-  std::atomic<uint32_t> init, counter;
+  std::atomic<uint32_t> init{}, counter{};
 
   Element __array[queue_size]{};
   IPC_Lock info_mutex;
   IPC_Lock queue_mutexes[queue_size];
 
-  void lock(uint32_t idx = 0) {
+  void lock(uint32_t idx) {
     DEBUG("SharedQueue lock [" << idx << "]: trying");
     queue_mutexes[idx].lock();
     DEBUG("SharedQueue lock [" << idx << "]: success");
   }
 
-  void unlock(uint32_t idx = 0) {
+  void unlock(uint32_t idx) {
     DEBUG("SharedQueue unlock [" << idx << "]: trying");
     queue_mutexes[idx].unlock();
     DEBUG("SharedQueue unlock [" << idx << "]: success");
   }
 
-  void lock_sharable(uint32_t idx = 0) {
+  void lock_sharable(uint32_t idx) {
     DEBUG("SharedQueue share lock [" << idx << "]: trying");
     queue_mutexes[idx].lock_sharable();
     DEBUG("SharedQueue share lock [" << idx << "]: success");
   }
 
-  void unlock_sharable(uint32_t idx = 0) {
+  void unlock_sharable(uint32_t idx) {
     DEBUG("SharedQueue share unlock [" << idx << "]: trying");
     queue_mutexes[idx].unlock_sharable();
     DEBUG("SharedQueue share unlock [" << idx << "]: success");
@@ -72,7 +72,7 @@ class Memory {
                 "queue_size must be power of two");
 
  public:
-  Memory(const std::string &topic, size_t max_buffer_size = 2 << 20)
+  explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 21))
       : topic_(topic) {
     // TODO: Has contention on sh_q_exists
     bool sh_q_exists = tmp::exists(topic);
@@ -85,7 +85,7 @@ class Memory {
     auto *base_addr = reinterpret_cast<uint8_t *>(region_->get_address());
 
     raw_buf_ = std::make_shared<managed_shared_memory>(
-        open_or_create, (topic + "Raw").c_str(), 102400);
+        open_or_create, (topic + "Raw").c_str(), max_buffer_size);
 
     if (!sh_q_exists) {
       sh_q_ = new (base_addr) SharedQueue<queue_size>();
@@ -99,18 +99,18 @@ class Memory {
 
   void init_info() {
     DEBUG("init_info: start");
-    sh_q_->lock();
+    sh_q_->info_mutex.lock();
     if (sh_q_->init != INFO_INIT) {
       sh_q_->init = INFO_INIT;
       sh_q_->counter = 0;
     }
-    sh_q_->unlock();
+    sh_q_->info_mutex.unlock();
   }
 
   bool write(void *data, size_t size) {
     DEBUG("Writing: start");
     int pos = sh_q_->counter.fetch_add(1);
-    pos &= queue_size - 1;
+    pos &= queue_size - 1;  // modulo for power of 2
     sh_q_->lock(pos);
 
     if (size > raw_buf_->get_free_memory()) {
@@ -156,7 +156,6 @@ class Memory {
   }
 
  private:
-  uint32_t size_;
   std::string topic_;
 
   std::shared_ptr<mapped_region> region_;
