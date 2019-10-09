@@ -7,7 +7,7 @@
 #include <shadesmar/message.h>
 #include <shadesmar/subscriber.h>
 
-void callback(const std::shared_ptr<shm::Msg<1024>> &msg) {
+void callback(const std::shared_ptr<shm::Msg<MSG_SIZE>> &msg) {
   int val = msg->count;
 
   std::cout << val << std::endl;
@@ -21,6 +21,6 @@ void callback(const std::shared_ptr<shm::Msg<1024>> &msg) {
 }
 
 int main() {
-  shm::Subscriber<shm::Msg<1024>, 16> sub("test", callback);
+  shm::Subscriber<shm::Msg<MSG_SIZE>, 16> sub("test", callback);
   while (true) sub.spinOnce();
 }

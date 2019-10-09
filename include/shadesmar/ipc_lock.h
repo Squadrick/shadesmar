@@ -28,14 +28,9 @@ class IPC_Set {
   static_assert((size & (size - 1)) == 0, "size must be power of two");
 
  public:
-  IPC_Set() {
-    //    for (uint32_t idx = 0; idx < size; ++idx)
-    //      __array[idx] = 0;
-    std::memset(__array, 0, size);
-  }
+  IPC_Set() { std::memset(__array, 0, size); }
 
   void insert(uint32_t elem) {
-    DEBUG("Insert elem: " << elem);
     for (uint32_t idx = hash(elem);; ++idx) {
       idx &= size - 1;
       auto probedElem = __array[idx].load(mem_order);
@@ -43,21 +38,18 @@ class IPC_Set {
       if (probedElem != elem) {
         // The entry is either free or contains another key
         if (probedElem != 0) {
-          DEBUG("Contains another key");
           continue;  // contains another key
         }
         // Entry is free, time for CAS
         // probedKey or __array[idx] is expected to be zero
         uint32_t exp = 0;
-        if (!__array[idx].compare_exchange_strong(exp, elem, mem_order)) {
-          // some other proc got to it before us, continue searching
-          // to know which elem was written to __array[idx], look at exp
-          DEBUG("Other proc won the race");
-          continue;
-        } else {
-          DEBUG("insert success");
+        if (__array[idx].compare_exchange_strong(exp, elem, mem_order)) {
           // successfully insert the element
           break;
+        } else {
+          // some other proc got to it before us, continue searching
+          // to know which elem was written to __array[idx], look at exp
+          continue;
         }
       }
       return;
@@ -65,26 +57,25 @@ class IPC_Set {
   }
 
   bool remove(uint32_t elem) {
-    DEBUG("Remove elem: " << elem);
-    uint32_t idx = hash(elem) & size - 1;
-    uint32_t init_idx = idx;
+    uint32_t idx = hash(elem) & size - 1, init_idx = idx;
     do {
       idx &= size - 1;
       auto probedElem = __array[idx].load(mem_order);
 
       if (probedElem == elem) {
-        __array[idx].compare_exchange_strong(elem, 0, mem_order);
-        DEBUG("Found and deleted");
-        // successfully found and deleted elem
-        return true;
+        if (__array[idx].compare_exchange_strong(elem, 0, mem_order)) {
+          // successfully found and deleted elem
+          return true;
+        } else {
+          idx++;
+          continue;
+        }
       }
       idx++;
-
     } while (idx != init_idx);
 
     // we exit after doing a full pass through the array
     // but we failed to delete an element, maybe already deleted
-    DEBUG("Not found");
     return false;
   }
 
@@ -111,8 +102,6 @@ class IPC_Lock {
  public:
   IPC_Lock() = default;
   void lock() {
-    auto timeout = boost::posix_time::microsec_clock::local_time() +
-                   boost::posix_time::microseconds(2);
     DEBUG("Starting wait time lock");
     // TODO: use timed_lock instead of try_lock
     while (!mutex_.try_lock()) {
