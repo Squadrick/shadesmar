@@ -2,19 +2,20 @@
 // Created by squadrick on 8/2/19.
 //
 
-#include <shadesmar/message.h>
+#include <shadesmar/custom_msg.h>
 #include <shadesmar/publisher.h>
 
 int main() {
-  shm::Publisher<shm::Msg<MSG_SIZE>, 16> p("test");
-  int a = 0, loops = 1000;
-  auto *msg = new shm::Msg<MSG_SIZE>;
+  shm::Publisher<CustomMessage, 16> p("test");
+  int a = 0;
 
   for (int i = 0;; ++i) {
-    msg->setVal(a & 255);
+    CustomMessage msg(i % 16);
+    msg.frame_id = "test123";
+    msg.init_time(shm::msg::SYSTEM);
+
     std::cout << "Publishing " << a << std::endl;
     p.publish(msg);
     ++a;
   }
-  delete msg;
 }

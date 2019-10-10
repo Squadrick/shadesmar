@@ -17,31 +17,34 @@
 #include <thread>
 
 #include <shadesmar/memory.h>
+#include <shadesmar/message.h>
 
 namespace shm {
-template <typename T, uint32_t queue_size>
+template <typename msgT, uint32_t queue_size>
 class Subscriber {
+  static_assert(std::is_base_of<msg::BaseMsg, msgT>::value,
+                "msgT must derive from BaseMsg");
+
  public:
   Subscriber(std::string topic_name,
-             std::function<void(const std::shared_ptr<T> &)> callback,
+             std::function<void(const std::shared_ptr<msgT> &)> callback,
              bool reference_passing = false)
       : topic_name_(std::move(topic_name)),
         spinning_(false),
-        msg_(reinterpret_cast<T *>(malloc(sizeof(T)))),
         reference_passing_(reference_passing),
         counter_(0) {
+    // TODO: Fix contention
+    std::this_thread::sleep_for(std::chrono::microseconds(2000));
     callback_ = std::move(callback);
     mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
   }
 
   void spin() {
+    if (spinning_) return;
     spinning_ = true;
-
-    spin_thread_ = std::make_shared<std::thread>([this]() {
-      while (spinning_) {
-        spinOnce();
-      }
-    });
+    //    spin_thread_ = std::make_shared<std::thread>(&Subscriber::__spin,
+    //    this);
+    spin_thread_ = new std::thread(&Subscriber::__spin, this);
   }
 
   void spinOnce() {
@@ -58,9 +61,20 @@ class Subscriber {
         // element in the queue
         counter_ = pub_counter - queue_size + 1;
       }
-      if (mem_->read(msg_.get(), counter_, true)) {
-        callback_(msg_);
+      msgpack::object_handle oh;
+      std::shared_ptr<msgT> msg = std::make_shared<msgT>();
+      if (reference_passing_) {
+        void *raw_msg;
+        uint32_t size;
+        mem_->read(&raw_msg, size, counter_);
+        oh = msgpack::unpack(reinterpret_cast<const char *>(raw_msg), size);
+        free(raw_msg);
+      } else {
+        mem_->read(oh, counter_);
       }
+
+      oh.get().convert(*msg);
+      callback_(msg);
       counter_++;
     }
   }
@@ -70,19 +84,26 @@ class Subscriber {
     if (!spinning_) return;
     spinning_ = false;
     spin_thread_->join();
+
+    delete spin_thread_;
   }
 
  private:
+  void __spin() {
+    while (spinning_) {
+      spinOnce();
+    }
+  }
+
   std::string topic_name_;
 
   std::unique_ptr<Memory<queue_size>> mem_;
-  std::function<void(const std::shared_ptr<T> &)> callback_;
+  std::function<void(const std::shared_ptr<msgT> &)> callback_;
 
   bool spinning_, reference_passing_;
 
-  std::shared_ptr<T> msg_;
-
-  std::shared_ptr<std::thread> spin_thread_;
+  //  std::shared_ptr<std::thread> spin_thread_;
+  std::thread *spin_thread_{};
 
   uint32_t counter_;
 };

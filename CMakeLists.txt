@@ -17,3 +17,9 @@ target_link_libraries(subscribe ${Boost_LIBRARIES} rt stdc++fs)
 
 add_executable(flush_topic src/flush_topic.cpp)
 target_link_libraries(flush_topic ${Boost_LIBRARIES} rt stdc++fs)
+
+add_executable(serialize_msg src/serialize_msg.cpp)
+target_link_libraries(serialize_msg ${Boost_LIBRARIES} rt stdc++fs)
+
+add_executable(benchmark src/benchmark.cpp)
+target_link_libraries(benchmark ${Boost_LIBRARIES} rt stdc++fs)

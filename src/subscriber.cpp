@@ -4,24 +4,20 @@
 
 #include <iostream>
 
-#include <shadesmar/message.h>
+#include <shadesmar/custom_msg.h>
 #include <shadesmar/subscriber.h>
 
-void callback(const std::shared_ptr<shm::Msg<MSG_SIZE>> &msg) {
-  int val = msg->count;
-
-  std::cout << val << std::endl;
-
-  for (unsigned char byte : msg->bytes) {
-    if (byte != val) {
-      std::cerr << "Error at value: " << val << "->" << (int)byte << std::endl;
-      break;
-    }
-  }
+void callback(const std::shared_ptr<CustomMessage> &msg) {
+  std::cout << msg->seq << std::endl;
+  std::cout << msg->frame_id << std::endl;
+  std::cout << msg->timestamp << std::endl;
+  std::cout << msg->val << std::endl;
+  std::cout << std::endl;
 }
 
 int main() {
-  shm::Subscriber<shm::Msg<MSG_SIZE>, 16> sub("test", callback);
+  shm::Subscriber<CustomMessage, 16> sub("test", callback, true);
+
   while (true) {
     sub.spinOnce();
   }

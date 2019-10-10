@@ -8,16 +8,20 @@
 #include <cstdint>
 
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <string>
 
-#include <iostream>
+#include <msgpack.hpp>
 
 #include <shadesmar/memory.h>
 
 namespace shm {
 template <typename msgT, uint32_t queue_size>
 class Publisher {
+  static_assert(std::is_base_of<msg::BaseMsg, msgT>::value,
+                "msgT must derive from BaseMsg");
+
  public:
   explicit Publisher(std::string topic_name) : topic_name_(topic_name) {
     mem_ = std::make_shared<Memory<queue_size>>(topic_name);
@@ -28,7 +32,11 @@ class Publisher {
   bool publish(msgT &msg) { return publish(&msg); }
 
   bool publish(msgT *msg) {
-    bool success = mem_->write(msg, sizeof(msgT));
+    uint32_t seq = mem_->fetch_inc_counter();
+    msg->seq = seq;
+    msgpack::sbuffer buf;
+    msgpack::pack(buf, *msg);
+    bool success = mem_->write(buf.data(), seq, buf.size());
     return success;
   }
 

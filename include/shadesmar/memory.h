@@ -15,6 +15,8 @@
 #include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 
+#include <msgpack.hpp>
+
 #include <shadesmar/ipc_lock.h>
 #include <shadesmar/macros.h>
 #include <shadesmar/tmp.h>
@@ -85,14 +87,13 @@ class Memory {
     sh_q_->info_mutex.unlock();
   }
 
-  bool write(void *data, size_t size) {
-    int pos = sh_q_->counter.fetch_add(1);
+  bool write(void *data, uint32_t pos, size_t size) {
     pos &= queue_size - 1;  // modulo for power of 2
     sh_q_->lock(pos);
 
     if (size > raw_buf_->get_free_memory()) {
-      auto new_size = raw_buf_->get_size() * 2 + size;
-      raw_buf_->grow((topic_ + "Raw").c_str(), new_size);
+      std::cout << "Increase max_buffer_size" << std::endl;
+      exit(0);
     }
     auto idx = &(sh_q_->__array[pos]);
     void *addr = raw_buf_->get_address_from_handle(idx->addr_hdl);
@@ -112,23 +113,49 @@ class Memory {
     return true;
   }
 
-  bool read(void *src, uint32_t pos, bool overwrite = true) {
+  bool read(msgpack::object_handle &oh, uint32_t pos) {
+    // We deserialize directly from shared memory to local memory
+    // Faster for large messages
     pos &= queue_size - 1;
+
     sh_q_->lock_sharable(pos);
 
     auto idx = &(sh_q_->__array[pos]);
     if (idx->empty) return false;
+
+    const char *dst = reinterpret_cast<const char *>(
+        raw_buf_->get_address_from_handle(idx->addr_hdl));
+    oh = msgpack::unpack(dst, idx->size);
+
+    sh_q_->unlock_sharable(pos);
+    return true;
+  }
+
+  bool read(void **src, uint32_t &size, uint32_t pos) {
+    // We copy from shared memory to local memory, and then deserialize it
+    // Faster for small messages
+    pos &= queue_size - 1;
+
+    sh_q_->lock_sharable(pos);
+
+    auto idx = &(sh_q_->__array[pos]);
+    if (idx->empty) return false;
+
     void *dst = raw_buf_->get_address_from_handle(idx->addr_hdl);
-    std::memcpy(src, dst, idx->size);
+    *src = malloc(idx->size);
+    std::memcpy(*src, dst, idx->size);
+    size = idx->size;
 
     sh_q_->unlock_sharable(pos);
     return true;
   }
 
   inline __attribute__((always_inline)) uint32_t counter() {
-    // This forces the function to be inlined allowing to be
-    // atomic without contention
     return sh_q_->counter.load();
+  }
+
+  inline __attribute__((always_inline)) uint32_t fetch_inc_counter() {
+    return sh_q_->counter.fetch_add(1);
   }
 
  private:

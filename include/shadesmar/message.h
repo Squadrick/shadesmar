@@ -5,22 +5,40 @@
 #ifndef shadesmar_MESSAGE_H
 #define shadesmar_MESSAGE_H
 
+#include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 
-#define MSG_SIZE (1024 * 1024)
-namespace shm {
+#include <msgpack.hpp>
 
-template <uint32_t msg_size>
-struct Msg {
-  int count = 0;
-  uint8_t bytes[msg_size]{};
+#define SHM_PACK(...) MSGPACK_DEFINE(seq, timestamp, frame_id, __VA_ARGS__);
 
-  void setVal(int val) {
-    count = val;
-    std::memset(bytes, val, msg_size);
+namespace shm::msg {
+
+enum TimeType { ROS, ROS2, SYSTEM };
+
+class BaseMsg {
+ public:
+  uint32_t seq{};
+  uint64_t timestamp{};
+  std::string frame_id{};
+
+  BaseMsg() = default;
+
+  inline void init_time(TimeType tt = SYSTEM) {
+    if (tt == ROS) {
+      //      auto ros_time = ros::Time::now();
+      //      timestamp = ros_time.sec * 1000000000 + ros_time.nsec;
+    } else if (tt == ROS2) {
+      timestamp = 0;
+    } else if (tt == SYSTEM) {
+      timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                      std::chrono::system_clock::now().time_since_epoch())
+                      .count();
+    }
   }
 };
-}  // namespace shm
+}  // namespace shm::msg
 
 #endif  // shadesmar_MESSAGE_H
