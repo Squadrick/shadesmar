@@ -16,12 +16,6 @@
   } while (0)
 #endif
 
-#define TIMEOUT 20
-
-#define WAIT_CONTINUE(timeout) \
-  usleep(timeout);             \
-  continue;
-
 #define INFO_INIT 1337
 
 #endif  // shadesmar_MACROS_H

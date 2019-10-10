@@ -11,7 +11,7 @@ int main() {
     shm::tmp::write_topic(shm::tmp::random_string(10));
   }
 
-  for (const auto& topic : shm::tmp::get_topics()) {
+  for (const auto &topic : shm::tmp::get_topics()) {
     std::cout << topic << std::endl;
   }
 
