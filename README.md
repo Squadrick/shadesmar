@@ -4,6 +4,8 @@ An IPC library that uses the system's shared memory to pass messages.
 The communication paradigm is publish-subscibe similar to ROS and ROS2.
 The library was built to be used within [Project MANAS](www.projectmanas.in).
 
+Required packages: Boost, Msgpack
+
 #### Usage
 
 Message Definition (`custom_message.h`):
