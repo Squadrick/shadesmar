@@ -76,9 +76,6 @@ int main() {
     while(true) {
         sub.spinOnce();
     }
-    
-    // Using `spin` to execute asynchronously
-    sub.spin();
 }
 ```
 
