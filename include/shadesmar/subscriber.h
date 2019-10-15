@@ -21,7 +21,7 @@
 namespace shm {
 template <typename msgT, uint32_t queue_size>
 class Subscriber {
-  static_assert(std::is_base_of<msg::BaseMsg, msgT>::value,
+  static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
 
  public:

@@ -11,7 +11,7 @@
 #define VECTOR_SIZE (1280 * 720 * 16)
 #define REF true
 
-class BenchmarkMsg : public shm::msg::BaseMsg {
+class BenchmarkMsg : public shm::BaseMsg {
  public:
   std::vector<uint8_t> arr;
   SHM_PACK(arr);

@@ -16,7 +16,7 @@
 
 #define SHM_PACK(...) MSGPACK_DEFINE(seq, timestamp, frame_id, __VA_ARGS__);
 
-namespace shm::msg {
+namespace shm {
 
 enum TimeType { ROS, ROS2, SYSTEM };
 
@@ -41,6 +41,6 @@ class BaseMsg {
     }
   }
 };
-}  // namespace shm::msg
+}  // namespace shm
 
 #endif  // shadesmar_MESSAGE_H

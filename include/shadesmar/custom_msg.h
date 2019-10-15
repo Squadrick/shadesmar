@@ -5,7 +5,7 @@
 #include <shadesmar/message.h>
 #include <iostream>
 
-class InnerMessage : public shm::msg::BaseMsg {
+class InnerMessage : public shm::BaseMsg {
  public:
   int inner_val{};
   std::string inner_str{};
@@ -14,7 +14,7 @@ class InnerMessage : public shm::msg::BaseMsg {
   InnerMessage() = default;
 };
 
-class CustomMessage : public shm::msg::BaseMsg {
+class CustomMessage : public shm::BaseMsg {
  public:
   int val{};
   std::vector<uint8_t> arr;

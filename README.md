@@ -12,7 +12,7 @@ Message Definition (`custom_message.h`):
 ```c++
 #include <shadesmar/messages.h>
 
-class InnerMessage : public shm::msg::BaseMsg {
+class InnerMessage : public shm::BaseMsg {
   public:
     int inner_val{};
     std::string inner_str{};
@@ -21,7 +21,7 @@ class InnerMessage : public shm::msg::BaseMsg {
     InnerMessage() = default;
 };
 
-class CustomMessage : public shm::msg::BaseMsg {
+class CustomMessage : public shm::BaseMsg {
   public:
     int val{};
     std::vector<int> arr;
@@ -52,7 +52,7 @@ int main() {
     msg.val = 0;
     
     for (int i = 0; i < 1000; ++i) {
-        msg.init_time(shm::msg::SYSTEM); // add system time as the timestamp
+        msg.init_time(shm::SYSTEM); // add system time as the timestamp
         p.publish(msg);
         msg.val++;
     }
@@ -76,6 +76,9 @@ int main() {
     while(true) {
         sub.spinOnce();
     }
+
+    // Using `spin`
+    spin();
 }
 ```
 
