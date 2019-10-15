@@ -8,11 +8,10 @@
 #include <shadesmar/subscriber.h>
 
 void callback(const std::shared_ptr<CustomMessage> &msg) {
-  std::cout << msg->seq << std::endl;
-  std::cout << msg->frame_id << std::endl;
-  std::cout << msg->timestamp << std::endl;
-  std::cout << msg->val << std::endl;
-  std::cout << std::endl;
+  auto timestamp = std::chrono::duration_cast<TIMESCALE>(
+                       std::chrono::system_clock::now().time_since_epoch())
+                       .count();
+  std::cout << "Avg lag: " << timestamp - msg->timestamp << std::endl;
 }
 
 int main() {

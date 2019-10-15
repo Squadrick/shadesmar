@@ -8,7 +8,7 @@
 
 #define QUEUE_SIZE 16
 #define SECONDS 10
-#define VECTOR_SIZE 500000
+#define VECTOR_SIZE (1280 * 720 * 16)
 #define REF true
 
 class BenchmarkMsg : public shm::msg::BaseMsg {
@@ -26,7 +26,7 @@ int count = 0;
 uint64_t lag = 0;
 void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
   ++count;
-  lag += std::chrono::duration_cast<std::chrono::nanoseconds>(
+  lag += std::chrono::duration_cast<TIMESCALE>(
              std::chrono::system_clock::now().time_since_epoch())
              .count() -
          msg->timestamp;
@@ -41,10 +41,9 @@ int main() {
     while (true) {
       sub.spinOnce();
       auto end = std::chrono::system_clock::now();
-      auto diff =
-          std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-      if (diff.count() > 1000) {
-        double lag_ = lag * 10e-9 / count;
+      auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
+      if (diff.count() > TIMESCALE_COUNT) {
+        double lag_ = lag / (count * TIMESCALE_COUNT);
         std::cout << "Number of messages sent: " << count << std::endl;
         std::cout << "Average Lag: " << lag_ << " s" << std::endl;
 
@@ -67,9 +66,8 @@ int main() {
       msg.init_time();
       pub.publish(msg);
       auto end = std::chrono::system_clock::now();
-      auto diff =
-          std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-      if (diff.count() > (SECONDS + 2) * 1000) break;
+      auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
+      if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT) break;
     }
   }
 }

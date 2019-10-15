@@ -32,7 +32,7 @@ struct SharedQueue {
     size_t size{};
     bool empty = true;
   };
-  std::atomic<uint32_t> init{}, counter{};
+  std::atomic_uint32_t init{}, counter{};
 
   Element __array[queue_size]{};
   IPC_Lock info_mutex;
@@ -53,7 +53,7 @@ class Memory {
                 "queue_size must be power of two");
 
  public:
-  explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 26))
+  explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 28))
       : topic_(topic) {
     // TODO: Has contention on sh_q_exists
     bool sh_q_exists = tmp::exists(topic);
@@ -147,6 +147,7 @@ class Memory {
     size = idx->size;
 
     sh_q_->unlock_sharable(pos);
+
     return true;
   }
 

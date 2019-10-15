@@ -12,6 +12,8 @@
 
 #include <msgpack.hpp>
 
+#include <shadesmar/macros.h>
+
 #define SHM_PACK(...) MSGPACK_DEFINE(seq, timestamp, frame_id, __VA_ARGS__);
 
 namespace shm::msg {
@@ -33,7 +35,7 @@ class BaseMsg {
     } else if (tt == ROS2) {
       timestamp = 0;
     } else if (tt == SYSTEM) {
-      timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+      timestamp = std::chrono::duration_cast<TIMESCALE>(
                       std::chrono::system_clock::now().time_since_epoch())
                       .count();
     }

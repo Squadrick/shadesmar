@@ -34,9 +34,14 @@ class Publisher {
   bool publish(msgT *msg) {
     uint32_t seq = mem_->fetch_inc_counter();
     msg->seq = seq;
-    msgpack::sbuffer buf;
-    msgpack::pack(buf, *msg);
-    bool success = mem_->write(buf.data(), seq, buf.size());
+    bool success;
+    TIMEIT(
+        {
+          msgpack::sbuffer buf;
+          msgpack::pack(buf, *msg);
+          success = mem_->write(buf.data(), seq, buf.size());
+        },
+        "PubWrite");
     return success;
   }
 

@@ -17,13 +17,13 @@ class InnerMessage : public shm::msg::BaseMsg {
 class CustomMessage : public shm::msg::BaseMsg {
  public:
   int val{};
-  std::vector<int> arr;
+  std::vector<uint8_t> arr;
   InnerMessage im;
   SHM_PACK(val, arr, im);
 
   explicit CustomMessage(int n) {
     val = n;
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < n; ++i) {
       arr.push_back(val);
     }
   }

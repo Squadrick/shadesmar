@@ -7,15 +7,11 @@
 
 int main() {
   shm::Publisher<CustomMessage, 16> p("test");
-  int a = 0;
-
+  CustomMessage msg(1280 * 720 * 16);
+  msg.frame_id = "test123";
   for (int i = 0;; ++i) {
-    CustomMessage msg(i % 16);
-    msg.frame_id = "test123";
     msg.init_time(shm::msg::SYSTEM);
-
-    std::cout << "Publishing " << a << std::endl;
     p.publish(msg);
-    ++a;
+    std::cout << "Publishing " << i << std::endl;
   }
 }
