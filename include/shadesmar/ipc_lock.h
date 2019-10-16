@@ -21,7 +21,7 @@ using namespace boost::interprocess;
 template <uint32_t size,
           std::memory_order mem_order = std::memory_order_relaxed>
 class IPC_Set {
- public:
+public:
   IPC_Set() { std::memset(__array, 0, size); }
 
   void insert(uint32_t elem) {
@@ -31,7 +31,7 @@ class IPC_Set {
       if (probedElem != elem) {
         // The entry is either free or contains another key
         if (probedElem != 0) {
-          continue;  // contains another key
+          continue; // contains another key
         }
         // Entry is free, time for CAS
         // probedKey or __array[idx] is expected to be zero
@@ -75,7 +75,7 @@ bool proc_exists(__pid_t proc) {
 }
 
 class IPC_Lock {
- public:
+public:
   IPC_Lock() = default;
   void lock() {
     // TODO: use timed_lock instead of try_lock
@@ -133,12 +133,13 @@ class IPC_Lock {
     }
   }
 
- private:
+private:
   void prune_sharable_procs() {
     for (auto &i : shared_owners.__array) {
       uint32_t shared_owner = i.load();
 
-      if (shared_owner == 0) continue;
+      if (shared_owner == 0)
+        continue;
       if (!proc_exists(shared_owner)) {
         if (shared_owners.remove(shared_owner)) {
           // removal of element was a success
@@ -155,4 +156,4 @@ class IPC_Lock {
   IPC_Set<MAX_SHARED_OWNERS> shared_owners;
 };
 
-#endif  // shadesmar_IPC_LOCK_H
+#endif // shadesmar_IPC_LOCK_H

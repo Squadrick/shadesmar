@@ -1,10 +1,10 @@
 //
 // Created by squadrick on 11/10/19.
 //
+#include <iostream>
 #include <shadesmar/message.h>
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
-#include <iostream>
 
 #define QUEUE_SIZE 16
 #define SECONDS 10
@@ -12,11 +12,12 @@
 #define REF true
 
 class BenchmarkMsg : public shm::BaseMsg {
- public:
+public:
   std::vector<uint8_t> arr;
   SHM_PACK(arr);
   explicit BenchmarkMsg(int n) {
-    for (int i = 0; i < n; ++i) arr.push_back(255);
+    for (int i = 0; i < n; ++i)
+      arr.push_back(255);
   }
 
   BenchmarkMsg() = default;
@@ -47,7 +48,8 @@ int main() {
         std::cout << "Number of messages sent: " << count << std::endl;
         std::cout << "Average Lag: " << lag_ << " s" << std::endl;
 
-        if (++seconds == SECONDS) break;
+        if (++seconds == SECONDS)
+          break;
         count = 0;
         lag = 0;
         start = std::chrono::system_clock::now();
@@ -67,7 +69,8 @@ int main() {
       pub.publish(msg);
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
-      if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT) break;
+      if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT)
+        break;
     }
   }
 }

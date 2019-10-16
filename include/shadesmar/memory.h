@@ -47,17 +47,17 @@ struct SharedQueue {
   void unlock_sharable(uint32_t idx) { queue_mutexes[idx].unlock_sharable(); }
 };
 
-template <uint32_t queue_size = 1>
-class Memory {
+template <uint32_t queue_size = 1> class Memory {
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
- public:
+public:
   explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 28))
       : topic_(topic) {
     // TODO: Has contention on sh_q_exists
     bool sh_q_exists = tmp::exists(topic);
-    if (!sh_q_exists) tmp::write_topic(topic);
+    if (!sh_q_exists)
+      tmp::write_topic(topic);
 
     auto shm_obj =
         shared_memory_object(open_or_create, topic.c_str(), read_write);
@@ -88,7 +88,7 @@ class Memory {
   }
 
   bool write(void *data, uint32_t pos, size_t size) {
-    pos &= queue_size - 1;  // modulo for power of 2
+    pos &= queue_size - 1; // modulo for power of 2
     sh_q_->lock(pos);
 
     if (size > raw_buf_->get_free_memory()) {
@@ -121,7 +121,8 @@ class Memory {
     sh_q_->lock_sharable(pos);
 
     auto idx = &(sh_q_->__array[pos]);
-    if (idx->empty) return false;
+    if (idx->empty)
+      return false;
 
     const char *dst = reinterpret_cast<const char *>(
         raw_buf_->get_address_from_handle(idx->addr_hdl));
@@ -139,7 +140,8 @@ class Memory {
     sh_q_->lock_sharable(pos);
 
     auto idx = &(sh_q_->__array[pos]);
-    if (idx->empty) return false;
+    if (idx->empty)
+      return false;
 
     void *dst = raw_buf_->get_address_from_handle(idx->addr_hdl);
     *src = malloc(idx->size);
@@ -159,7 +161,7 @@ class Memory {
     return sh_q_->counter.fetch_add(1);
   }
 
- private:
+private:
   std::string topic_;
 
   std::shared_ptr<mapped_region> region_;
@@ -167,5 +169,5 @@ class Memory {
 
   SharedQueue<queue_size> *sh_q_;
 };
-}  // namespace shm
-#endif  // shadesmar_MEMORY_H
+} // namespace shm
+#endif // shadesmar_MEMORY_H

@@ -19,19 +19,16 @@
 #include <shadesmar/message.h>
 
 namespace shm {
-template <typename msgT, uint32_t queue_size>
-class Subscriber {
+template <typename msgT, uint32_t queue_size> class Subscriber {
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
 
- public:
+public:
   Subscriber(std::string topic_name,
              const std::function<void(const std::shared_ptr<msgT> &)> &callback,
              bool reference_passing = false)
-      : topic_name_(std::move(topic_name)),
-        callback_(callback),
-        reference_passing_(reference_passing),
-        counter_(0) {
+      : topic_name_(std::move(topic_name)), callback_(callback),
+        reference_passing_(reference_passing), counter_(0) {
     // TODO: Fix contention
     std::this_thread::sleep_for(std::chrono::microseconds(2000));
     mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
@@ -86,7 +83,7 @@ class Subscriber {
     }
   }
 
- private:
+private:
   std::string topic_name_;
 
   std::unique_ptr<Memory<queue_size>> mem_;
@@ -96,5 +93,5 @@ class Subscriber {
 
   uint32_t counter_;
 };
-}  // namespace shm
-#endif  // shadesmar_SUBSCRIBER_H
+} // namespace shm
+#endif // shadesmar_SUBSCRIBER_H

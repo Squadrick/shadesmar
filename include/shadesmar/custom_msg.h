@@ -3,10 +3,9 @@
 //
 
 #include <shadesmar/message.h>
-#include <iostream>
 
 class InnerMessage : public shm::BaseMsg {
- public:
+public:
   int inner_val{};
   std::string inner_str{};
   SHM_PACK(inner_val, inner_str);
@@ -15,7 +14,7 @@ class InnerMessage : public shm::BaseMsg {
 };
 
 class CustomMessage : public shm::BaseMsg {
- public:
+public:
   int val{};
   std::vector<uint8_t> arr;
   InnerMessage im;

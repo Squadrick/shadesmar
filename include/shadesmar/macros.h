@@ -11,22 +11,22 @@
 #define TIMESCALE_COUNT 1e6
 
 #ifdef DEBUG_BUILD
-#define DEBUG(str)                 \
-  do {                             \
-    std::cout << str << std::endl; \
+#define DEBUG(str)                                                             \
+  do {                                                                         \
+    std::cout << str << std::endl;                                             \
   } while (0)
 
-#define TIMEIT(cmd, name)                                                 \
-  auto start = std::chrono::system_clock::now();                          \
-  cmd;                                                                    \
-  auto end = std::chrono::system_clock::now();                            \
-  auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count(); \
+#define TIMEIT(cmd, name)                                                      \
+  auto start = std::chrono::system_clock::now();                               \
+  cmd;                                                                         \
+  auto end = std::chrono::system_clock::now();                                 \
+  auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count();      \
   std::cout << "Time for " << name << ": " << diff << std::endl;
 
 #else
 
-#define DEBUG(str) \
-  do {             \
+#define DEBUG(str)                                                             \
+  do {                                                                         \
   } while (0)
 
 #define TIMEIT(cmd, name) cmd;
@@ -34,4 +34,4 @@
 
 #define INFO_INIT 1337
 
-#endif  // shadesmar_MACROS_H
+#endif // shadesmar_MACROS_H

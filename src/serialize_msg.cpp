@@ -1,9 +1,9 @@
 //
 // Created by squadrick on 10/10/19.
 //
-
-#include <shadesmar/custom_msg.h>
+#include <iostream>
 #include <msgpack.hpp>
+#include <shadesmar/custom_msg.h>
 
 int main() {
   CustomMessage cm(5);
@@ -33,6 +33,7 @@ int main() {
   std::cout << mc.im.inner_val << std::endl;
   std::cout << mc.im.inner_str << std::endl;
 
-  for (auto &x : mc.arr) std::cout << x << " ";
+  for (auto &x : mc.arr)
+    std::cout << x << " ";
   std::cout << std::endl;
 }

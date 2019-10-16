@@ -21,7 +21,7 @@ namespace shm {
 enum TimeType { ROS, ROS2, SYSTEM };
 
 class BaseMsg {
- public:
+public:
   uint32_t seq{};
   uint64_t timestamp{};
   std::string frame_id{};
@@ -41,6 +41,6 @@ class BaseMsg {
     }
   }
 };
-}  // namespace shm
+} // namespace shm
 
-#endif  // shadesmar_MESSAGE_H
+#endif // shadesmar_MESSAGE_H

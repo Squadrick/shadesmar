@@ -79,5 +79,5 @@ bool exists(const std::string &topic) {
 }
 
 void delete_topics() { std::experimental::filesystem::remove_all(tmp_prefix); }
-}  // namespace shm::tmp
-#endif  // shadesmar_TMP_H
+} // namespace shm::tmp
+#endif // shadesmar_TMP_H

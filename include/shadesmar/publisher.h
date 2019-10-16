@@ -17,12 +17,11 @@
 #include <shadesmar/memory.h>
 
 namespace shm {
-template <typename msgT, uint32_t queue_size>
-class Publisher {
+template <typename msgT, uint32_t queue_size> class Publisher {
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
 
- public:
+public:
   explicit Publisher(std::string topic_name) : topic_name_(topic_name) {
     mem_ = std::make_shared<Memory<queue_size>>(topic_name);
   }
@@ -45,10 +44,10 @@ class Publisher {
     return success;
   }
 
- private:
+private:
   std::string topic_name_;
 
   std::shared_ptr<Memory<queue_size>> mem_;
 };
-}  // namespace shm
-#endif  // shadesmar_PUBLISHER_H
+} // namespace shm
+#endif // shadesmar_PUBLISHER_H

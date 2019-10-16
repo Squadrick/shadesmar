@@ -4,9 +4,10 @@
 
 #include <iostream>
 
-#include <shadesmar/tmp.h>
-#include <boost/interprocess/managed_shared_memory.hpp>
 #include <boost/interprocess/shared_memory_object.hpp>
+
+#include <shadesmar/tmp.h>
+
 using namespace boost::interprocess;
 void flush(std::string const &topic) {
   std::cout << "Flushing " << topic << std::endl;

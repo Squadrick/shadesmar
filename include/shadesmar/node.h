@@ -13,8 +13,8 @@
 
 namespace shm {
 class Node {
- public:
+public:
   Node() {}
 };
-}  // namespace shm
-#endif  // shadesmar_NODE_H
+} // namespace shm
+#endif // shadesmar_NODE_H
