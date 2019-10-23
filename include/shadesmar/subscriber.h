@@ -46,6 +46,7 @@ public:
 
     int pub_counter = mem_->counter();
     if (pub_counter > counter_) {
+      // TODO: Find a better policy
       // pub_counter must be strictly greater than counter_
       // if they're equal, there have been no new writes
       // if pub_counter to too far ahead, we need to catch up
@@ -55,30 +56,29 @@ public:
         // element in the queue
         counter_ = pub_counter - queue_size + 1;
       }
+
       msgpack::object_handle oh;
-      std::shared_ptr<msgT> msg = std::make_shared<msgT>();
+
       if (reference_passing_) {
         void *raw_msg;
         uint32_t size;
-
-        TIMEIT(
-            {
-              mem_->read(&raw_msg, size, counter_);
-              oh = msgpack::unpack(reinterpret_cast<const char *>(raw_msg),
-                                   size);
-              free(raw_msg);
-            },
-            "RefPass Sub");
+        if (mem_->read(&raw_msg, size, counter_)) {
+          try {
+            oh = msgpack::unpack(reinterpret_cast<const char *>(raw_msg), size);
+            free(raw_msg);
+          } catch (...) {
+            free(raw_msg);
+            return;
+          }
+        }
       } else {
-        TIMEIT(mem_->read(oh, counter_), "NonRefPass Sub");
+        if (!mem_->read(oh, counter_))
+          return;
       }
 
-      TIMEIT(
-          {
-            oh.get().convert(*msg);
-            callback_(msg);
-          },
-          "Callback");
+      std::shared_ptr<msgT> msg = std::make_shared<msgT>();
+      oh.get().convert(*msg);
+      callback_(msg);
       counter_++;
     }
   }

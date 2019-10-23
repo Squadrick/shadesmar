@@ -21,8 +21,9 @@ std::string const default_chars =
 
 std::string const tmp_prefix = "/tmp/shm/";
 
-std::string random_string(size_t len = 15,
-                          std::string const &allowed_chars = default_chars) {
+inline std::string
+random_string(size_t len = 15,
+              std::string const &allowed_chars = default_chars) {
   std::mt19937_64 gen{std::random_device()()};
   std::uniform_int_distribution<size_t> dist{0, allowed_chars.length() - 1};
   std::string ret;
@@ -37,7 +38,7 @@ inline bool file_exists(const std::string &file_name) {
   return (stat(file_name.c_str(), &buffer) == 0);
 }
 
-void write_topic(const std::string &topic) {
+inline void write_topic(const std::string &topic) {
   if (!file_exists(tmp_prefix)) {
     std::experimental::filesystem::create_directories(tmp_prefix);
   }
@@ -50,7 +51,7 @@ void write_topic(const std::string &topic) {
   file.close();
 }
 
-std::vector<std::string> get_topics() {
+inline std::vector<std::string> get_topics() {
   std::vector<std::string> topic_names;
   if (!file_exists(tmp_prefix)) {
     return topic_names;
@@ -68,7 +69,7 @@ std::vector<std::string> get_topics() {
   return topic_names;
 }
 
-bool exists(const std::string &topic) {
+inline bool exists(const std::string &topic) {
   auto existing_topics = get_topics();
   for (auto &existing_topic : existing_topics) {
     if (existing_topic == topic) {
@@ -78,6 +79,8 @@ bool exists(const std::string &topic) {
   return false;
 }
 
-void delete_topics() { std::experimental::filesystem::remove_all(tmp_prefix); }
+inline void delete_topics() {
+  std::experimental::filesystem::remove_all(tmp_prefix);
+}
 } // namespace shm::tmp
 #endif // shadesmar_TMP_H

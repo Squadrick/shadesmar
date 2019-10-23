@@ -33,15 +33,13 @@ public:
   bool publish(msgT *msg) {
     uint32_t seq = mem_->fetch_inc_counter();
     msg->seq = seq;
-    bool success;
-    TIMEIT(
-        {
-          msgpack::sbuffer buf;
-          msgpack::pack(buf, *msg);
-          success = mem_->write(buf.data(), seq, buf.size());
-        },
-        "PubWrite");
-    return success;
+    msgpack::sbuffer buf;
+    try {
+      msgpack::pack(buf, *msg);
+    } catch (...) {
+      return false;
+    }
+    return mem_->write(buf.data(), seq, buf.size());
   }
 
 private:

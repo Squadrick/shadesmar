@@ -68,7 +68,7 @@ public:
   std::atomic_uint32_t __array[size]{};
 };
 
-bool proc_exists(__pid_t proc) {
+inline bool proc_exists(__pid_t proc) {
   std::string pid_path = "/proc/" + std::to_string(proc);
   struct stat sts {};
   return !(stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);

@@ -126,7 +126,11 @@ public:
 
     const char *dst = reinterpret_cast<const char *>(
         raw_buf_->get_address_from_handle(idx->addr_hdl));
-    oh = msgpack::unpack(dst, idx->size);
+    try {
+      oh = msgpack::unpack(dst, idx->size);
+    } catch (...) {
+      return false;
+    }
 
     sh_q_->unlock_sharable(pos);
     return true;
