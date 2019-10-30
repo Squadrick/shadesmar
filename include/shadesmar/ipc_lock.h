@@ -16,17 +16,15 @@
 
 using namespace boost::interprocess;
 
-#define MAX_SHARED_OWNERS 64
+#define MAX_SHARED_OWNERS 16
 
-template <uint32_t size,
-          std::memory_order mem_order = std::memory_order_relaxed>
-class IPC_Set {
+template <uint32_t size> class IPC_Set {
 public:
   IPC_Set() { std::memset(__array, 0, size); }
 
-  void insert(uint32_t elem) {
+  bool insert(uint32_t elem) {
     for (uint32_t idx = 0; idx < size; ++idx) {
-      auto probedElem = __array[idx].load(mem_order);
+      auto probedElem = __array[idx].load();
 
       if (probedElem != elem) {
         // The entry is either free or contains another key
@@ -36,25 +34,25 @@ public:
         // Entry is free, time for CAS
         // probedKey or __array[idx] is expected to be zero
         uint32_t exp = 0;
-        if (__array[idx].compare_exchange_strong(exp, elem, mem_order)) {
+        if (__array[idx].compare_exchange_strong(exp, elem)) {
           // successfully insert the element
-          break;
+          return true;
         } else {
           // some other proc got to it before us, continue searching
           // to know which elem was written to __array[idx], look at exp
           continue;
         }
       }
-      return;
+      return false;
     }
   }
 
   bool remove(uint32_t elem) {
     for (uint32_t idx = 0; idx < size; ++idx) {
-      auto probedElem = __array[idx].load(mem_order);
+      auto probedElem = __array[idx].load();
 
       if (probedElem == elem) {
-        return __array[idx].compare_exchange_strong(elem, 0, mem_order);
+        return __array[idx].compare_exchange_strong(elem, 0);
         // if true, we successfully do a CAS and the element was deleted by this
         // proc if false, some other proc deleted the element instead
       }
@@ -68,10 +66,13 @@ public:
   std::atomic_uint32_t __array[size]{};
 };
 
-inline bool proc_exists(__pid_t proc) {
+inline bool proc_dead(__pid_t proc) {
+  if (proc == 0) {
+    return false;
+  }
   std::string pid_path = "/proc/" + std::to_string(proc);
   struct stat sts {};
-  return !(stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
+  return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
 
 class IPC_Lock {
@@ -86,26 +87,30 @@ public:
       if (exclusive_owner != 0) {
         // exclusive_owner is not default value, some other proc
         // has access already
-        if (!proc_exists(exclusive_owner)) {
-          // proc is fucked, we don't unlock
-          // we just assume that this proc has the lock
-          // relinquish control
-          // and we return to the caller
-          break;
+        auto ex_proc = exclusive_owner.load();
+        if (proc_dead(ex_proc)) {
+          // proc is fucked, we unlock
+          // and continue immediately to next loop
+          if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+            mutex_.unlock();
+            continue;
+          }
         }
       } else {
         // exclusive_owner = 0, so the writers are blocking us
         prune_sharable_procs();
       }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(2000));
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
     exclusive_owner = getpid();
   }
 
   void unlock() {
-    exclusive_owner = 0;
-    mutex_.unlock();
+    __pid_t current_pid = getpid();
+    if (exclusive_owner.compare_exchange_strong(current_pid, 0)) {
+      mutex_.unlock();
+    }
   }
 
   void lock_sharable() {
@@ -113,18 +118,19 @@ public:
     while (!mutex_.try_lock_sharable()) {
       // only reason for failure is that exclusive lock is held
       if (exclusive_owner != 0) {
-        if (!proc_exists(exclusive_owner)) {
+        auto ex_proc = exclusive_owner.load();
+        if (proc_dead(ex_proc)) {
           // exclusive_owner is dead
-          exclusive_owner = 0;
-          mutex_.unlock();
+          if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+            exclusive_owner = 0;
+            mutex_.unlock();
+          }
         }
       }
-
       // TODO: Maybe prune_sharable_procs()?
-
-      std::this_thread::sleep_for(std::chrono::microseconds(2000));
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
-    shared_owners.insert(getpid());
+    while(!shared_owners.insert(getpid()));
   }
 
   void unlock_sharable() {
@@ -140,11 +146,10 @@ private:
 
       if (shared_owner == 0)
         continue;
-      if (!proc_exists(shared_owner)) {
+      if (proc_dead(shared_owner)) {
         if (shared_owners.remove(shared_owner)) {
           // removal of element was a success
           // this ensures no over-pruning or duplicate deletion
-          // TODO: Verify no contention
           mutex_.unlock_sharable();
         }
       }
