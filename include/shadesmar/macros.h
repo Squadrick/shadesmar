@@ -9,6 +9,7 @@
 
 #define TIMESCALE std::chrono::microseconds
 #define TIMESCALE_COUNT 1e6
+#define TIMESCALE_NAME "microseconds"
 
 #ifdef DEBUG_BUILD
 #define DEBUG(str)                                                             \

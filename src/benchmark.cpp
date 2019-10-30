@@ -8,7 +8,7 @@
 
 #define QUEUE_SIZE 16
 #define SECONDS 10
-#define VECTOR_SIZE (1280 * 720 * 16)
+#define VECTOR_SIZE (1000000)
 #define REF true
 
 class BenchmarkMsg : public shm::BaseMsg {
@@ -45,8 +45,8 @@ int main() {
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_ = lag / (count * TIMESCALE_COUNT);
-        std::cout << "Number of messages sent: " << count << std::endl;
-        std::cout << "Average Lag: " << lag_ << " s" << std::endl;
+        std::cout << "Number of messages sent: " << count << "/s" << std::endl;
+        std::cout << "Average Lag: " << lag_ << TIMESCALE_NAME << std::endl;
 
         if (++seconds == SECONDS)
           break;
