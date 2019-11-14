@@ -28,19 +28,23 @@ public:
 
   BaseMsg() = default;
 
-  inline void init_time(TimeType tt = SYSTEM) {
-    if (tt == ROS) {
-      //      auto ros_time = ros::Time::now();
-      //      timestamp = ros_time.sec * 1000000000 + ros_time.nsec;
-    } else if (tt == ROS2) {
-      timestamp = 0;
-    } else if (tt == SYSTEM) {
-      timestamp = std::chrono::duration_cast<TIMESCALE>(
-                      std::chrono::system_clock::now().time_since_epoch())
-                      .count();
-    }
-  }
+  void init_time(TimeType tt = SYSTEM);
 };
+
+void BaseMsg::init_time(TimeType tt) {
+  if (tt == ROS) {
+    //      auto ros_time = ros::Time::now();
+    //      timestamp = ros_time.sec * 1000000000 + ros_time.nsec;
+    timestamp = 0;
+  } else if (tt == ROS2) {
+    // TODO: Find work around that doesn't need a ROS2 node
+    timestamp = 0;
+  } else if (tt == SYSTEM) {
+    timestamp = std::chrono::duration_cast<TIMESCALE>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+  }
+}
 } // namespace shm
 
 #endif // shadesmar_MESSAGE_H

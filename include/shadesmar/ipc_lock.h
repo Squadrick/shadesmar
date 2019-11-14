@@ -130,7 +130,8 @@ public:
       // TODO: Maybe prune_sharable_procs()?
       std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
-    while(!shared_owners.insert(getpid()));
+    while (!shared_owners.insert(getpid()))
+      ;
   }
 
   void unlock_sharable() {
