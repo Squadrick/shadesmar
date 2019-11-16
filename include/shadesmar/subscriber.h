@@ -84,6 +84,7 @@ void Subscriber<msgT, queue_size>::spinOnce() {
     msgpack::object_handle oh;
 
     if (reference_passing_) {
+      // faster for small (<1MB) messages
       void *raw_msg;
       uint32_t size;
       if (mem_->read(&raw_msg, size, counter_)) {
@@ -96,6 +97,7 @@ void Subscriber<msgT, queue_size>::spinOnce() {
         }
       }
     } else {
+      // faster for bigger message (>1MB)
       if (!mem_->read(oh, counter_))
         return;
     }
