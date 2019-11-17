@@ -73,83 +73,82 @@ template <uint32_t queue_size = 1> class Memory {
 public:
   explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 28))
       : topic_(topic) {
-    // TODO: Has contention on sh_q_exists
-    bool sh_q_exists = tmp::exists(topic);
-    if (!sh_q_exists)
+    // TODO: Has contention on shared_queue_exists
+    bool shared_queue_exists = tmp::exists(topic);
+    if (!shared_queue_exists)
       tmp::write_topic(topic);
 
-    int fd;
     auto *base_addr =
-        create_memory_segment(topic, fd, sizeof(SharedQueue<queue_size>));
+        create_memory_segment(topic, fd_, sizeof(SharedQueue<queue_size>));
 
     raw_buf_ = std::make_shared<managed_shared_memory>(
         open_or_create, (topic + "Raw").c_str(), max_buffer_size);
 
-    if (!sh_q_exists) {
-      sh_q_ = new (base_addr) SharedQueue<queue_size>();
+    if (!shared_queue_exists) {
+      shared_queue_ = new (base_addr) SharedQueue<queue_size>();
       init_info();
     } else {
-      sh_q_ = reinterpret_cast<SharedQueue<queue_size> *>(base_addr);
+      shared_queue_ = reinterpret_cast<SharedQueue<queue_size> *>(base_addr);
     }
   }
 
   ~Memory() = default;
 
   void init_info() {
-    sh_q_->info_mutex.lock();
-    if (sh_q_->init != INFO_INIT) {
-      sh_q_->init = INFO_INIT;
-      sh_q_->counter = 0;
+    shared_queue_->info_mutex.lock();
+    if (shared_queue_->init != INFO_INIT) {
+      shared_queue_->init = INFO_INIT;
+      shared_queue_->counter = 0;
     }
-    sh_q_->info_mutex.unlock();
+    shared_queue_->info_mutex.unlock();
   }
 
   bool write(void *data, uint32_t pos, size_t size) {
     pos &= queue_size - 1; // modulo for power of 2
-    sh_q_->lock(pos);
+    shared_queue_->lock(pos);
 
     if (size > raw_buf_->get_free_memory()) {
       std::cout << "Increase max_buffer_size" << std::endl;
       exit(0);
     }
-    auto idx = &(sh_q_->__array[pos]);
-    void *addr = raw_buf_->get_address_from_handle(idx->addr_hdl);
+    auto elem = &(shared_queue_->__array[pos]);
+    void *addr = raw_buf_->get_address_from_handle(elem->addr_hdl);
 
-    if (!idx->empty) {
+    if (!elem->empty) {
       raw_buf_->deallocate(addr);
     }
 
     void *new_addr = raw_buf_->allocate(size);
 
     std::memcpy(new_addr, data, size);
-    idx->addr_hdl = raw_buf_->get_handle_from_address(new_addr);
-    idx->size = size;
-    idx->empty = false;
+    elem->addr_hdl = raw_buf_->get_handle_from_address(new_addr);
+    elem->size = size;
+    elem->empty = false;
 
-    sh_q_->unlock(pos);
+    shared_queue_->unlock(pos);
     return true;
   }
 
-  bool read_non_copy(msgpack::object_handle &oh, uint32_t pos) {
+  bool read_without_copy(msgpack::object_handle &oh, uint32_t pos) {
     // We deserialize directly from shared memory to local memory
     // Faster for large messages
     pos &= queue_size - 1;
 
-    sh_q_->lock_sharable(pos);
+    shared_queue_->lock_sharable(pos);
 
-    auto idx = &(sh_q_->__array[pos]);
-    if (idx->empty)
+    auto elem = &(shared_queue_->__array[pos]);
+    if (elem->empty)
       return false;
 
     const char *dst = reinterpret_cast<const char *>(
-        raw_buf_->get_address_from_handle(idx->addr_hdl));
+        raw_buf_->get_address_from_handle(elem->addr_hdl));
     try {
-      oh = msgpack::unpack(dst, idx->size);
+      oh = msgpack::unpack(dst, elem->size);
     } catch (...) {
       return false;
     }
 
-    sh_q_->unlock_sharable(pos);
+    shared_queue_->unlock_sharable(pos);
     return true;
   }
 
@@ -158,37 +157,35 @@ public:
     // Faster for small messages
     pos &= queue_size - 1;
 
-    sh_q_->lock_sharable(pos);
+    shared_queue_->lock_sharable(pos);
 
-    auto idx = &(sh_q_->__array[pos]);
-    if (idx->empty)
+    auto elem = &(shared_queue_->__array[pos]);
+    if (elem->empty)
       return false;
 
-    void *dst = raw_buf_->get_address_from_handle(idx->addr_hdl);
-    *src = malloc(idx->size);
-    std::memcpy(*src, dst, idx->size);
-    size = idx->size;
+    void *dst = raw_buf_->get_address_from_handle(elem->addr_hdl);
+    *src = malloc(elem->size);
+    std::memcpy(*src, dst, elem->size);
+    size = elem->size;
 
-    sh_q_->unlock_sharable(pos);
+    shared_queue_->unlock_sharable(pos);
 
     return true;
   }
 
   inline __attribute__((always_inline)) uint32_t counter() {
-    return sh_q_->counter.load();
+    return shared_queue_->counter.load();
   }
 
   inline __attribute__((always_inline)) uint32_t fetch_inc_counter() {
-    return sh_q_->counter.fetch_add(1);
+    return shared_queue_->counter.fetch_add(1);
   }
 
 private:
+  int fd_;
   std::string topic_;
-
-  std::shared_ptr<mapped_region> region_;
   std::shared_ptr<managed_shared_memory> raw_buf_;
-
-  SharedQueue<queue_size> *sh_q_;
+  SharedQueue<queue_size> *shared_queue_;
 };
 } // namespace shm
 #endif // shadesmar_MEMORY_H

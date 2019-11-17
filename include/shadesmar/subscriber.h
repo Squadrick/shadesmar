@@ -98,7 +98,7 @@ void Subscriber<msgT, queue_size>::spinOnce() {
       }
     } else {
       // faster for bigger message (>1MB)
-      if (!mem_->read_non_copy(oh, counter_))
+      if (!mem_->read_without_copy(oh, counter_))
         return;
     }
 
