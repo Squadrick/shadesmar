@@ -24,9 +24,28 @@
 using namespace boost::interprocess;
 namespace shm {
 
-template <uint32_t queue_size>
+uint8_t *create_memory_segment(const std::string &topic, int &fd, size_t size) {
+  while (true) {
+    fd = shm_open(topic.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
+    if (fd >= 0) {
+      fchmod(fd, 0644);
+    }
+    if (errno == EEXIST) {
+      fd = shm_open(topic.c_str(), O_RDWR, 0644);
+      if (fd < 0 && errno == ENOENT) {
+        continue;
+      }
+    }
+    break;
+  }
+  ftruncate(fd, size);
+  auto *ptr = static_cast<uint8_t *>(
+      mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
 
-struct SharedQueue {
+  return ptr;
+}
+
+template <uint32_t queue_size> struct SharedQueue {
   struct Element {
     managed_shared_memory::handle_t addr_hdl{};
     size_t size{};
@@ -59,11 +78,9 @@ public:
     if (!sh_q_exists)
       tmp::write_topic(topic);
 
-    auto shm_obj =
-        shared_memory_object(open_or_create, topic.c_str(), read_write);
-    shm_obj.truncate(sizeof(SharedQueue<queue_size>));
-    region_ = std::make_shared<mapped_region>(shm_obj, read_write);
-    auto *base_addr = reinterpret_cast<uint8_t *>(region_->get_address());
+    int fd;
+    auto *base_addr =
+        create_memory_segment(topic, fd, sizeof(SharedQueue<queue_size>));
 
     raw_buf_ = std::make_shared<managed_shared_memory>(
         open_or_create, (topic + "Raw").c_str(), max_buffer_size);
