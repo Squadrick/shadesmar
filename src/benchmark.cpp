@@ -6,10 +6,10 @@
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
 
-#define QUEUE_SIZE 16
-#define SECONDS 10
-#define VECTOR_SIZE ( 1024 * 1024)
-#define REF false
+const int QUEUE_SIZE = 16;
+const int SECONDS = 10;
+const int VECTOR_SIZE = 10 * 1024 * 1024;
+const bool REF = false;
 
 class BenchmarkMsg : public shm::BaseMsg {
 public:
@@ -43,8 +43,9 @@ int main() {
       sub.spinOnce();
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
+
       if (diff.count() > TIMESCALE_COUNT) {
-        double lag_ = (double) lag / count;
+        double lag_ = (double)lag / count;
         std::cout << "Number of messages sent: " << count << "/s" << std::endl;
         std::cout << "Average Lag: " << lag_ << TIMESCALE_NAME << std::endl;
 
@@ -55,7 +56,6 @@ int main() {
         start = std::chrono::system_clock::now();
       }
     }
-
   } else {
     shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub("benchmark");
     BenchmarkMsg msg(VECTOR_SIZE);
