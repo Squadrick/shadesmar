@@ -9,7 +9,7 @@
 
 #define TIMESCALE std::chrono::microseconds
 #define TIMESCALE_COUNT 1e6
-#define TIMESCALE_NAME "microseconds"
+#define TIMESCALE_NAME "us"
 
 #ifdef DEBUG_BUILD
 #define DEBUG_IMPL(str, eol)                                                   \
@@ -23,7 +23,7 @@
     cmd;                                                                       \
     auto end = std::chrono::system_clock::now();                               \
     auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count();    \
-    DEBUG("Time for " << name << ": " << diff);                                \
+    DEBUG("Time for " << name << ": " << diff << TIMESCALE_NAME);              \
   } while (0);
 
 #else
