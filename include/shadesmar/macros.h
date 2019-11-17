@@ -12,10 +12,10 @@
 #define TIMESCALE_NAME "microseconds"
 
 #ifdef DEBUG_BUILD
-#define DEBUG(str)                                                             \
+#define DEBUG_IMPL(str, eol)                                                   \
   do {                                                                         \
-    std::cout << str << std::endl;                                             \
-  } while (0)
+    std::cout << str << eol;                                                   \
+  } while (0);
 
 #define TIMEIT(cmd, name)                                                      \
   do {                                                                         \
@@ -23,18 +23,19 @@
     cmd;                                                                       \
     auto end = std::chrono::system_clock::now();                               \
     auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count();    \
-    std::cout << "Time for " << name << ": " << diff << std::endl;             \
+    DEBUG("Time for " << name << ": " << diff);                                \
   } while (0);
 
 #else
 
-#define DEBUG(str)                                                             \
+#define DEBUG_IMPL(str, eol)                                                   \
   do {                                                                         \
   } while (0)
 
 #define TIMEIT(cmd, name) cmd;
 #endif
 
+#define DEBUG(str) DEBUG_IMPL(str, "\n");
 #define INFO_INIT 1337
 
 #endif // shadesmar_MACROS_H

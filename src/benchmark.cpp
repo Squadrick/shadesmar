@@ -47,8 +47,8 @@ int main() {
 
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_ = (double)lag / count;
-        std::cout << "Number of messages sent: " << count << "/s" << std::endl;
-        std::cout << "Average Lag: " << lag_ << TIMESCALE_NAME << std::endl;
+        DEBUG("Number of messages sent: " << count << "/s");
+        DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
 
         if (++seconds == SECONDS)
           break;
@@ -62,7 +62,7 @@ int main() {
     BenchmarkMsg msg(VECTOR_SIZE);
     msgpack::sbuffer buf;
     msgpack::pack(buf, msg);
-    std::cout << "Number of bytes = " << buf.size() << std::endl;
+    DEBUG("Number of bytes = " << buf.size());
     auto start = std::chrono::system_clock::now();
 
     while (true) {
