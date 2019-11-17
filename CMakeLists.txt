@@ -25,3 +25,6 @@ target_link_libraries(serialize_msg ${Boost_LIBRARIES} rt stdc++fs)
 
 add_executable(benchmark src/benchmark.cpp)
 target_link_libraries(benchmark ${Boost_LIBRARIES} rt stdc++fs)
+
+add_executable(micro_bench src/micro_bench.cpp)
+target_link_libraries(micro_bench ${Boost_LIBRARIES} rt stdc++fs)
