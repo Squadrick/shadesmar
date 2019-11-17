@@ -113,7 +113,7 @@ public:
     return true;
   }
 
-  bool read(msgpack::object_handle &oh, uint32_t pos) {
+  bool read_non_copy(msgpack::object_handle &oh, uint32_t pos) {
     // We deserialize directly from shared memory to local memory
     // Faster for large messages
     pos &= queue_size - 1;
@@ -136,7 +136,7 @@ public:
     return true;
   }
 
-  bool read(void **src, uint32_t &size, uint32_t pos) {
+  bool read_with_copy(void **src, uint32_t &size, uint32_t pos) {
     // We copy from shared memory to local memory, and then deserialize it
     // Faster for small messages
     pos &= queue_size - 1;

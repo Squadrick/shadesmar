@@ -24,7 +24,7 @@ template <typename msgT, uint32_t queue_size> class Subscriber {
 public:
   Subscriber(std::string topic_name,
              const std::function<void(const std::shared_ptr<msgT> &)> &callback,
-             bool reference_passing = false);
+             bool extra_copy = false);
 
   void spin();
   void spinOnce();
@@ -35,7 +35,7 @@ private:
   std::unique_ptr<Memory<queue_size>> mem_;
   std::function<void(const std::shared_ptr<msgT> &)> callback_;
 
-  bool reference_passing_;
+  bool extra_copy_;
 
   uint32_t counter_;
 };
@@ -44,9 +44,9 @@ template <typename msgT, uint32_t queue_size>
 Subscriber<msgT, queue_size>::Subscriber(
     std::string topic_name,
     const std::function<void(const std::shared_ptr<msgT> &)> &callback,
-    bool reference_passing)
+    bool extra_copy)
     : topic_name_(std::move(topic_name)), callback_(callback),
-      reference_passing_(reference_passing), counter_(0) {
+      extra_copy_(extra_copy), counter_(0) {
 
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
@@ -83,11 +83,11 @@ void Subscriber<msgT, queue_size>::spinOnce() {
 
     msgpack::object_handle oh;
 
-    if (reference_passing_) {
+    if (extra_copy_) {
       // faster for small (<1MB) messages
       void *raw_msg;
       uint32_t size;
-      if (mem_->read(&raw_msg, size, counter_)) {
+      if (mem_->read_with_copy(&raw_msg, size, counter_)) {
         try {
           oh = msgpack::unpack(reinterpret_cast<const char *>(raw_msg), size);
           free(raw_msg);
@@ -98,7 +98,7 @@ void Subscriber<msgT, queue_size>::spinOnce() {
       }
     } else {
       // faster for bigger message (>1MB)
-      if (!mem_->read(oh, counter_))
+      if (!mem_->read_non_copy(oh, counter_))
         return;
     }
 
