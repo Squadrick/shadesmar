@@ -16,7 +16,7 @@
 
 using namespace boost::interprocess;
 
-#define MAX_SHARED_OWNERS 16
+const int MAX_SHARED_OWNERS = 16;
 
 template <uint32_t size> class IPC_Set {
 public:
