@@ -18,11 +18,13 @@
   } while (0)
 
 #define TIMEIT(cmd, name)                                                      \
-  auto start = std::chrono::system_clock::now();                               \
-  cmd;                                                                         \
-  auto end = std::chrono::system_clock::now();                                 \
-  auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count();      \
-  std::cout << "Time for " << name << ": " << diff << std::endl;
+  do {                                                                         \
+    auto start = std::chrono::system_clock::now();                             \
+    cmd;                                                                       \
+    auto end = std::chrono::system_clock::now();                               \
+    auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count();    \
+    std::cout << "Time for " << name << ": " << diff << std::endl;             \
+  } while (0);
 
 #else
 
