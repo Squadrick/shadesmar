@@ -18,6 +18,8 @@ using namespace boost::interprocess;
 
 const int MAX_SHARED_OWNERS = 16;
 
+namespace shm {
+
 template <uint32_t size> class IPC_Set {
 public:
   IPC_Set() { std::memset(__array, 0, size); }
@@ -161,5 +163,5 @@ private:
   std::atomic<__pid_t> exclusive_owner{0};
   IPC_Set<MAX_SHARED_OWNERS> shared_owners;
 };
-
+} // namespace shm
 #endif // shadesmar_IPC_LOCK_H
