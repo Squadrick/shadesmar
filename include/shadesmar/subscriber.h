@@ -23,20 +23,20 @@ namespace shm {
 template <uint32_t queue_size> class SubscriberBin {
 public:
   SubscriberBin(std::string topic_name,
-                const std::function<void(void *, uint32_t)> &callback);
+                const std::function<void(void *, size_t)> &callback);
   void spinOnce();
 
 private:
   std::string topic_name_;
   std::unique_ptr<Memory<queue_size>> mem_;
-  const std::function<void(void *, uint32_t)> callback_;
+  const std::function<void(void *, size_t)> callback_;
   uint32_t counter_;
 };
 
 template <uint32_t queue_size>
 SubscriberBin<queue_size>::SubscriberBin(
     std::string topic_name,
-    const std::function<void(void *, uint32_t)> &callback)
+    const std::function<void(void *, size_t)> &callback)
     : topic_name_(std::move(topic_name)), counter_(0), callback_(callback) {
   mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
 }
