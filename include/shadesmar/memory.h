@@ -23,6 +23,8 @@
 using namespace boost::interprocess;
 namespace shm {
 
+static size_t max_buffer_size = (1U << 28);
+
 uint8_t *create_memory_segment(const std::string &topic, int &fd, size_t size) {
   while (true) {
     fd = shm_open(topic.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
@@ -67,8 +69,7 @@ template <uint32_t queue_size = 1> class Memory {
                 "queue_size must be power of two");
 
 public:
-  explicit Memory(const std::string &topic, size_t max_buffer_size = (1U << 28))
-      : topic_(topic) {
+  explicit Memory(const std::string &topic) : topic_(topic) {
     // TODO: Has contention on shared_queue_exists
     bool shared_queue_exists = tmp::exists(topic);
     if (!shared_queue_exists)
