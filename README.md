@@ -6,7 +6,29 @@ The library was built to be used within [Project MANAS](www.projectmanas.in).
 
 Required packages: Boost, Msgpack
 
-#### Usage
+
+#### Features
+
+* Multiple subscribers and publishers.
+
+* Faster than using the network stack like in the case with ROS.
+
+* Read and write directly from GPU memory to shared memory.
+
+* Subscribers can operate directly on messages in shared memory without making copies.
+
+* Uses a circular buffer to pass messages between publishers and subscribers.
+
+* Minimal usage of locks, and uses sharable locks where possible. 
+
+* Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
+
+* Allows for both serialized message passing (using `msgpack`) and to 
+pass raw bytes.
+
+---
+
+#### Usage (serialized messages)
 
 Message Definition (`custom_message.h`):
 ```c++
@@ -76,24 +98,62 @@ int main() {
     while(true) {
         sub.spinOnce();
     }
-
+    // OR
     // Using `spin`
-    spin();
+    sub.spin();
 }
 ```
 
-#### Features
+---
 
-* Multiple subscribers and publishers
+#### Usage (raw bytes)
 
-* Faster than using the network stack like in the case with ROS
+Publisher:
+```c++
+#include <shadesmar/publisher.h>
 
-* Read and write directly from GPU memory to shared memory
+int main() {
+    shm::PublisherBin<16 /* buffer size */ > pub("topic_name");
+    const uint32_t data_size = 1024;
+    void *data = malloc(data_size);
+    
+    for (int i = 0; i < 1000; ++i) {
+        p.publish(msg, data_size);
+    }
+}  
+```
 
-* Subscribers can operate directly on messages in shared memory without making copies
+Subscriber:
+```c++
+#include <shadesmar/subscriber.h>
 
-* Uses a circular buffer to pass messages between publishers and subscribers
+void callback(void *data, size_t data_size) {
+  // use `data` here
 
-* Minimal usage of locks, and uses sharable locks where possible
+  // `data` is interally malloc'd and must be free'd to prevent
+  // data leaks.
+  free(data); 
+}
 
-* Decentralized, without resource starvation
+int main() {
+    shm::SubscriberBin<16 /* buffer size */ > sub("topic_name", callback);
+    
+    // Using `spinOnce` with a manual loop
+    while(true) {
+        sub.spinOnce();
+    }
+    // OR
+    // Using `spin`
+    sub.spin();
+}
+```
+
+---
+
+**Note**: 
+
+* `shm::Subscriber` has a boolean parameter called `extra_copy`. `extra_copy=true` is faster for smaller (<1MB) messages, and `extra_copy=false` is faster for larger (>1MB) messages. For message of 10MB, the throughput for `extra_copy=false` is nearly 50% more than `extra_copy=true`. See `read_with_copy()` and `read_without_copy()` in `include/shadesmar/memory.h` for more information.
+
+* `queue_size` must be powers of 2. This is due to the underlying shared memory allocator which uses a red-black tree. See `include/shadesmar/allocator.h` for more information.
+
+* You may get this error while publishing: `Increase max_buffer_size`. This occurs when the default memory allocated to the topic buffer cannot store all the messages. The default buffer size for every topic is 256MB. You can access and modify `shm::max_buffer_size`. The value must be set before creating a publisher.
