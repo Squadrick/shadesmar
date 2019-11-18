@@ -28,3 +28,6 @@ target_link_libraries(benchmark ${Boost_LIBRARIES} rt stdc++fs)
 
 add_executable(micro_bench src/micro_bench.cpp)
 target_link_libraries(micro_bench ${Boost_LIBRARIES} rt stdc++fs)
+
+add_executable(raw_benchmark src/raw_benchmark.cpp)
+target_link_libraries(raw_benchmark ${Boost_LIBRARIES} rt stdc++fs)

@@ -52,16 +52,13 @@ template <uint32_t queue_size> struct SharedQueue {
   };
   std::atomic_uint32_t init{}, counter{};
 
-  Element __array[queue_size]{};
+  Element elements[queue_size]{};
   IPC_Lock info_mutex;
   IPC_Lock queue_mutexes[queue_size];
 
   void lock(uint32_t idx) { queue_mutexes[idx].lock(); }
-
   void unlock(uint32_t idx) { queue_mutexes[idx].unlock(); }
-
   void lock_sharable(uint32_t idx) { queue_mutexes[idx].lock_sharable(); }
-
   void unlock_sharable(uint32_t idx) { queue_mutexes[idx].unlock_sharable(); }
 };
 
@@ -107,10 +104,10 @@ public:
     shared_queue_->lock(pos);
 
     if (size > raw_buf_->get_free_memory()) {
-      std::cout << "Increase max_buffer_size" << std::endl;
-      exit(0);
+      std::cerr << "Increase max_buffer_size" << std::endl;
+      return false;
     }
-    auto elem = &(shared_queue_->__array[pos]);
+    auto elem = &(shared_queue_->elements[pos]);
     void *addr = raw_buf_->get_address_from_handle(elem->addr_hdl);
 
     if (!elem->empty) {
@@ -129,18 +126,15 @@ public:
   }
 
   bool read_without_copy(msgpack::object_handle &oh, uint32_t pos) {
-    // We deserialize directly from shared memory to local memory
-    // Faster for large messages
     pos &= queue_size - 1;
-
     shared_queue_->lock_sharable(pos);
-
-    auto elem = &(shared_queue_->__array[pos]);
+    auto elem = &(shared_queue_->elements[pos]);
     if (elem->empty)
       return false;
 
     const char *dst = reinterpret_cast<const char *>(
         raw_buf_->get_address_from_handle(elem->addr_hdl));
+
     try {
       oh = msgpack::unpack(dst, elem->size);
     } catch (...) {
@@ -151,21 +145,42 @@ public:
     return true;
   }
 
-  bool read_with_copy(void **src, uint32_t &size, uint32_t pos) {
-    // We copy from shared memory to local memory, and then deserialize it
-    // Faster for small messages
+  bool read_with_copy(msgpack::object_handle &oh, uint32_t pos) {
     pos &= queue_size - 1;
-
     shared_queue_->lock_sharable(pos);
-
-    auto elem = &(shared_queue_->__array[pos]);
+    auto elem = &(shared_queue_->elements[pos]);
     if (elem->empty)
       return false;
 
-    void *dst = raw_buf_->get_address_from_handle(elem->addr_hdl);
-    *src = malloc(elem->size);
-    std::memcpy(*src, dst, elem->size);
+    auto size = elem->size;
+    auto *src = malloc(elem->size);
+    auto *dst = raw_buf_->get_address_from_handle(elem->addr_hdl);
+    std::memcpy(src, dst, elem->size);
+
+    shared_queue_->unlock_sharable(pos);
+
+    try {
+      oh = msgpack::unpack(reinterpret_cast<const char *>(src), size);
+      free(src);
+    } catch (...) {
+      free(src);
+      return false;
+    }
+
+    return true;
+  }
+
+  bool read_raw(void **msg, size_t &size, uint32_t pos) {
+    pos &= queue_size - 1;
+    shared_queue_->lock_sharable(pos);
+    auto elem = &(shared_queue_->elements[pos]);
+    if (elem->empty)
+      return false;
+
     size = elem->size;
+    *msg = malloc(elem->size);
+    auto *dst = raw_buf_->get_address_from_handle(elem->addr_hdl);
+    std::memcpy(*msg, dst, elem->size);
 
     shared_queue_->unlock_sharable(pos);
 
