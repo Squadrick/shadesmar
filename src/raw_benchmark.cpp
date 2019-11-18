@@ -19,7 +19,7 @@ struct Message {
   void *data;
 };
 
-void callback(void *data, uint32_t) {
+void callback(void *data, uint32_t size) {
   Message *msg = static_cast<Message *>(data);
   ++count;
   lag += std::chrono::duration_cast<TIMESCALE>(
