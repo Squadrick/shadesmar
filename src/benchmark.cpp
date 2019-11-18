@@ -9,7 +9,7 @@
 const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
-const bool EXT_CPY = false;
+const bool EXTRA_COPY = false;
 
 class BenchmarkMsg : public shm::BaseMsg {
 public:
@@ -37,7 +37,7 @@ int main() {
   if (fork() == 0) {
     sleep(1);
     shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub("benchmark", callback,
-                                                  EXT_CPY);
+                                                  EXTRA_COPY);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
