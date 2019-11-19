@@ -11,6 +11,7 @@
 void flush(std::string const &topic) {
   std::cout << "Flushing " << topic << std::endl;
   shm_unlink(topic.c_str());
+  shm_unlink((topic + "Raw").c_str());
 }
 
 int main(int argc, char **argv) {
