@@ -37,7 +37,6 @@ template <uint32_t queue_size>
 bool PublisherBin<queue_size>::publish(void *data, size_t size) {
   return mem_.write(data, size);
 }
-// namespace shm
 
 template <typename msgT, uint32_t queue_size> class Publisher {
 public:
