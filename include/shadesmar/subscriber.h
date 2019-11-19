@@ -20,131 +20,116 @@
 
 namespace shm {
 
-template <uint32_t queue_size> class SubscriberBin {
+template <uint32_t queue_size> class SubscriberBase {
 public:
-  SubscriberBin(std::string topic_name,
-                const std::function<void(void *, size_t)> &callback);
   void spinOnce();
+  void spin();
 
-private:
+  virtual void _subscribe() = 0;
+
+protected:
+  SubscriberBase(std::string topic_name);
   std::string topic_name_;
-  std::unique_ptr<Memory<queue_size>> mem_;
-  const std::function<void(void *, size_t)> callback_;
-  uint32_t counter_;
+  std::unique_ptr<Memory<queue_size>> topic;
+  uint32_t counter{};
 };
 
 template <uint32_t queue_size>
-SubscriberBin<queue_size>::SubscriberBin(
-    std::string topic_name, const std::function<void(void *, size_t)> &callback)
-    : topic_name_(std::move(topic_name)), callback_(callback) {
+class SubscriberBin : public SubscriberBase<queue_size> {
+public:
+  SubscriberBin(std::string topic_name,
+                const std::function<void(void *, size_t)> &callback)
+      : SubscriberBase<queue_size>(topic_name), callback_(callback) {}
+
+private:
+  const std::function<void(void *, size_t)> callback_;
+  void _subscribe();
+};
+
+template <typename msgT, uint32_t queue_size>
+class Subscriber : public SubscriberBase<queue_size> {
+
+  static_assert(std::is_base_of<BaseMsg, msgT>::value,
+                "msgT must derive from BaseMsg");
+
+public:
+  Subscriber(std::string topic_name,
+             const std::function<void(const std::shared_ptr<msgT> &)> &callback,
+             bool extra_copy = false)
+      : SubscriberBase<queue_size>(topic_name), callback_(callback),
+        extra_copy_(extra_copy) {}
+
+private:
+  std::function<void(const std::shared_ptr<msgT> &)> callback_;
+  bool extra_copy_;
+
+  void _subscribe();
+};
+
+template <uint32_t queue_size>
+SubscriberBase<queue_size>::SubscriberBase(std::string topic_name)
+    : topic_name_(topic_name) {
   std::this_thread::sleep_for(std::chrono::microseconds(2000));
-  mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
-  counter_ = mem_->counter();
+  topic = std::make_unique<Memory<queue_size>>(topic_name_);
+  counter = topic->counter();
 }
 
-template <uint32_t queue_size> void SubscriberBin<queue_size>::spinOnce() {
-
-  if (mem_->counter() <= counter_) {
+template <uint32_t queue_size> void SubscriberBase<queue_size>::spinOnce() {
+  if (topic->counter() <= counter) {
     // no new messages
     return;
   }
 
   // TODO: Find a better policy
-  // pub_counter must be strictly greater than counter_.
+  // pub_counter must be strictly greater than counter.
   // If they're equal, there have been no new writes.
   // If pub_counter to too far ahead, we need to catch up.
-  if (mem_->counter() - counter_ >= queue_size) {
+  if (topic->counter() - counter >= queue_size) {
     // If we have fallen behind by the size of the queue
     // in the case of lapping, we go to last existing
     // element in the queue.
-    counter_ = mem_->counter() - queue_size + 1;
+    counter = topic->counter() - queue_size + 1;
   }
 
-  void *msg = nullptr;
-  size_t size = 0;
-  bool write_success = mem_->read_raw(&msg, size, counter_);
-  if (!write_success)
-    return;
-
-  callback_(msg, size);
-  counter_++;
+  _subscribe();
+  counter++;
 }
 
-template <typename msgT, uint32_t queue_size> class Subscriber {
-public:
-  Subscriber(std::string topic_name,
-             const std::function<void(const std::shared_ptr<msgT> &)> &callback,
-             bool extra_copy = false);
-  void spin();
-  void spinOnce();
-
-private:
-  std::string topic_name_;
-  std::unique_ptr<Memory<queue_size>> mem_;
-  std::function<void(const std::shared_ptr<msgT> &)> callback_;
-  bool extra_copy_;
-  uint32_t counter_;
-};
-
-template <typename msgT, uint32_t queue_size>
-Subscriber<msgT, queue_size>::Subscriber(
-    std::string topic_name,
-    const std::function<void(const std::shared_ptr<msgT> &)> &callback,
-    bool extra_copy)
-    : topic_name_(std::move(topic_name)), callback_(callback),
-      extra_copy_(extra_copy) {
-
-  static_assert(std::is_base_of<BaseMsg, msgT>::value,
-                "msgT must derive from BaseMsg");
-
-  // TODO: Fix contention of creating the shared memory segment
-  std::this_thread::sleep_for(std::chrono::microseconds(2000));
-  mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
-  counter_ = mem_->counter();
-}
-
-template <typename msgT, uint32_t queue_size>
-void Subscriber<msgT, queue_size>::spin() {
-  // TODO: spin on a separate thread
+template <uint32_t queue_size> void SubscriberBase<queue_size>::spin() {
   while (true) {
     spinOnce();
   }
 }
 
+template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
+  void *msg = nullptr;
+  size_t size = 0;
+
+  bool write_success = this->topic->read_raw(&msg, size, this->counter);
+  if (!write_success)
+    return;
+
+  callback_(msg, size);
+}
+
 template <typename msgT, uint32_t queue_size>
-void Subscriber<msgT, queue_size>::spinOnce() {
-  // poll the buffer once
+void Subscriber<msgT, queue_size>::_subscribe() {
 
-  int pub_counter = mem_->counter();
-  if (pub_counter > counter_) {
-    // TODO: Find a better policy
-    // pub_counter must be strictly greater than counter_.
-    // If they're equal, there have been no new writes.
-    // If pub_counter to too far ahead, we need to catch up.
-    if (pub_counter - counter_ >= queue_size) {
-      // If we have fallen behind by the size of the queue
-      // in the case of lapping, we go to last existing
-      // element in the queue.
-      counter_ = pub_counter - queue_size + 1;
-    }
+  msgpack::object_handle oh;
+  bool write_success;
 
-    msgpack::object_handle oh;
-    bool write_success;
-
-    if (extra_copy_) {
-      write_success = mem_->read_with_copy(oh, counter_);
-    } else {
-      write_success = mem_->read_without_copy(oh, counter_);
-    }
-
-    if (!write_success)
-      return;
-
-    std::shared_ptr<msgT> msg = std::make_shared<msgT>();
-    oh.get().convert(*msg);
-    callback_(msg);
-    counter_++;
+  if (extra_copy_) {
+    write_success = this->topic->read_with_copy(oh, this->counter);
+  } else {
+    write_success = this->topic->read_without_copy(oh, this->counter);
   }
+
+  if (!write_success)
+    return;
+
+  std::shared_ptr<msgT> msg = std::make_shared<msgT>();
+  oh.get().convert(*msg);
+  callback_(msg);
 }
 
 } // namespace shm
