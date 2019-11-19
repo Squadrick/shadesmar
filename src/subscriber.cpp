@@ -8,10 +8,12 @@
 #include <shadesmar/subscriber.h>
 
 void callback(const std::shared_ptr<CustomMessage> &msg) {
-  auto timestamp = std::chrono::duration_cast<TIMESCALE>(
-                       std::chrono::system_clock::now().time_since_epoch())
-                       .count();
-  std::cout << "Avg lag: " << timestamp - msg->timestamp << std::endl;
+  DEBUG_IMPL(msg->seq, "\t");
+  auto lag = std::chrono::duration_cast<TIMESCALE>(
+                 std::chrono::system_clock::now().time_since_epoch())
+                 .count() -
+             msg->timestamp;
+  DEBUG("Avg lag: " << lag << TIMESCALE_NAME);
 }
 
 int main() {
