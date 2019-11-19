@@ -35,8 +35,7 @@ PublisherBin<queue_size>::PublisherBin(std::string topic_name)
 
 template <uint32_t queue_size>
 bool PublisherBin<queue_size>::publish(void *data, size_t size) {
-  uint32_t seq = mem_.fetch_inc_counter();
-  return mem_.write(data, seq, size);
+  return mem_.write(data, size);
 }
 // namespace shm
 
@@ -71,15 +70,14 @@ bool Publisher<msgT, queue_size>::publish(msgT &msg) {
 
 template <typename msgT, uint32_t queue_size>
 bool Publisher<msgT, queue_size>::publish(msgT *msg) {
-  uint32_t seq = mem_.fetch_inc_counter();
-  msg->seq = seq;
+  msg->seq = mem_.counter();
   msgpack::sbuffer buf;
   try {
     msgpack::pack(buf, *msg);
   } catch (...) {
     return false;
   }
-  return mem_.write(buf.data(), seq, buf.size());
+  return mem_.write(buf.data(), buf.size());
 }
 
 } // namespace shm

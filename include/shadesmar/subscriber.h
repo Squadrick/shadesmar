@@ -36,34 +36,38 @@ private:
 template <uint32_t queue_size>
 SubscriberBin<queue_size>::SubscriberBin(
     std::string topic_name, const std::function<void(void *, size_t)> &callback)
-    : topic_name_(std::move(topic_name)), counter_(0), callback_(callback) {
+    : topic_name_(std::move(topic_name)), callback_(callback) {
+  std::this_thread::sleep_for(std::chrono::microseconds(2000));
   mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
+  counter_ = mem_->counter();
 }
 
 template <uint32_t queue_size> void SubscriberBin<queue_size>::spinOnce() {
 
-  int pub_counter = mem_->counter();
-  if (pub_counter > counter_) {
-    // TODO: Find a better policy
-    // pub_counter must be strictly greater than counter_.
-    // If they're equal, there have been no new writes.
-    // If pub_counter to too far ahead, we need to catch up.
-    if (pub_counter - counter_ >= queue_size) {
-      // If we have fallen behind by the size of the queue
-      // in the case of lapping, we go to last existing
-      // element in the queue.
-      counter_ = pub_counter - queue_size + 1;
-    }
-
-    void *msg = nullptr;
-    size_t size = 0;
-    bool write_success = mem_->read_raw(&msg, size, counter_);
-    if (!write_success)
-      return;
-
-    callback_(msg, size);
-    counter_++;
+  if (mem_->counter() <= counter_) {
+    // no new messages
+    return;
   }
+
+  // TODO: Find a better policy
+  // pub_counter must be strictly greater than counter_.
+  // If they're equal, there have been no new writes.
+  // If pub_counter to too far ahead, we need to catch up.
+  if (mem_->counter() - counter_ >= queue_size) {
+    // If we have fallen behind by the size of the queue
+    // in the case of lapping, we go to last existing
+    // element in the queue.
+    counter_ = mem_->counter() - queue_size + 1;
+  }
+
+  void *msg = nullptr;
+  size_t size = 0;
+  bool write_success = mem_->read_raw(&msg, size, counter_);
+  if (!write_success)
+    return;
+
+  callback_(msg, size);
+  counter_++;
 }
 
 template <typename msgT, uint32_t queue_size> class Subscriber {
@@ -88,14 +92,15 @@ Subscriber<msgT, queue_size>::Subscriber(
     const std::function<void(const std::shared_ptr<msgT> &)> &callback,
     bool extra_copy)
     : topic_name_(std::move(topic_name)), callback_(callback),
-      extra_copy_(extra_copy), counter_(0) {
+      extra_copy_(extra_copy) {
 
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
 
-  // TODO: Fix contention
+  // TODO: Fix contention of creating the shared memory segment
   std::this_thread::sleep_for(std::chrono::microseconds(2000));
   mem_ = std::make_unique<Memory<queue_size>>(topic_name_);
+  counter_ = mem_->counter();
 }
 
 template <typename msgT, uint32_t queue_size>

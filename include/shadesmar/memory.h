@@ -100,8 +100,8 @@ public:
     shared_queue_->info_mutex.unlock();
   }
 
-  bool write(void *data, uint32_t pos, size_t size) {
-    pos &= queue_size - 1; // modulo for power of 2
+  bool write(void *data, size_t size) {
+    uint32_t pos = counter() & (queue_size - 1); // modulo for power of 2
     shared_queue_->lock(pos);
 
     if (size > raw_buf_->get_free_memory()) {
@@ -122,6 +122,7 @@ public:
     elem->size = size;
     elem->empty = false;
 
+    inc_counter();
     shared_queue_->unlock(pos);
     return true;
   }
@@ -188,12 +189,13 @@ public:
     return true;
   }
 
+  // TODO: `counter` out of sync when number of pubs > 1.
   inline __attribute__((always_inline)) uint32_t counter() {
     return shared_queue_->counter.load();
   }
 
-  inline __attribute__((always_inline)) uint32_t fetch_inc_counter() {
-    return shared_queue_->counter.fetch_add(1);
+  inline __attribute__((always_inline)) void inc_counter() {
+    shared_queue_->counter += 1;
   }
 
 private:
