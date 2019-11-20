@@ -6,6 +6,8 @@
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
 
+const std::string topic = "bench";
+
 const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
@@ -36,7 +38,7 @@ void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
 int main() {
   if (fork() == 0) {
     sleep(1);
-    shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub("benchmark", callback,
+    shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback,
                                                   EXTRA_COPY);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
@@ -58,7 +60,7 @@ int main() {
       }
     }
   } else {
-    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub("benchmark");
+    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
     BenchmarkMsg msg(VECTOR_SIZE);
     msgpack::sbuffer buf;
     msgpack::pack(buf, msg);
