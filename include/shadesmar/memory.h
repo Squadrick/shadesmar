@@ -16,6 +16,7 @@
 
 #include <msgpack.hpp>
 
+#include <shadesmar/allocator.h>
 #include <shadesmar/ipc_lock.h>
 #include <shadesmar/macros.h>
 #include <shadesmar/tmp.h>
