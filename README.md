@@ -127,12 +127,12 @@ Subscriber:
 ```c++
 #include <shadesmar/subscriber.h>
 
-void callback(void *data, size_t data_size) {
+void callback(std::unique_ptr<uint8_t[]>& data, size_t data_size) {
   // use `data` here
 
-  // `data` is interally malloc'd and must be free'd to prevent
-  // data leaks.
-  free(data); 
+  // to get the raw underlying pointer, use data.get()
+  // the memory will be free'd at the end of this callback
+  // copy to another memory location if you want to persist the data
 }
 
 int main() {
