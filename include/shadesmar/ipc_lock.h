@@ -47,6 +47,7 @@ public:
       }
       return false;
     }
+    return true;
   }
 
   bool remove(uint32_t elem) {

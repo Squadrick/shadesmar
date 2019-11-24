@@ -156,24 +156,22 @@ public:
       return false;
 
     auto size = elem->size;
-    auto *src = malloc(elem->size);
+    auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
     auto *dst = raw_buf_->get_address_from_handle(elem->addr_hdl);
-    std::memcpy(src, dst, elem->size);
+    std::memcpy(src.get(), dst, elem->size);
 
     shared_queue_->unlock_sharable(pos);
 
     try {
-      oh = msgpack::unpack(reinterpret_cast<const char *>(src), size);
-      free(src);
+      oh = msgpack::unpack(reinterpret_cast<const char *>(src.get()), size);
     } catch (...) {
-      free(src);
       return false;
     }
 
     return true;
   }
 
-  bool read_raw(void **msg, size_t &size, uint32_t pos) {
+  bool read_raw(std::unique_ptr<uint8_t[]> &msg, size_t &size, uint32_t pos) {
     pos &= queue_size - 1;
     shared_queue_->lock_sharable(pos);
     auto elem = &(shared_queue_->elements[pos]);
@@ -181,9 +179,9 @@ public:
       return false;
 
     size = elem->size;
-    *msg = malloc(elem->size);
+    msg = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
     auto *dst = raw_buf_->get_address_from_handle(elem->addr_hdl);
-    std::memcpy(*msg, dst, elem->size);
+    std::memcpy(msg.get(), dst, elem->size);
 
     shared_queue_->unlock_sharable(pos);
 

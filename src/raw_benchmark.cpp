@@ -19,14 +19,13 @@ struct Message {
   void *data;
 };
 
-void callback(void *data, uint32_t size) {
-  Message *msg = static_cast<Message *>(data);
+void callback(std::unique_ptr<uint8_t[]> &data, uint32_t size) {
+  Message *msg = reinterpret_cast<Message *>(data.get());
   ++count;
   lag += std::chrono::duration_cast<TIMESCALE>(
              std::chrono::system_clock::now().time_since_epoch())
              .count() -
          msg->timestamp;
-  free(data);
 }
 
 int main() {

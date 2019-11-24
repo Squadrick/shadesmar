@@ -37,12 +37,13 @@ protected:
 template <uint32_t queue_size>
 class SubscriberBin : public SubscriberBase<queue_size> {
 public:
-  SubscriberBin(std::string topic_name,
-                const std::function<void(void *, size_t)> &callback)
+  SubscriberBin(
+      std::string topic_name,
+      const std::function<void(std::unique_ptr<uint8_t[]>&, size_t)> &callback)
       : SubscriberBase<queue_size>(topic_name), callback_(callback) {}
 
 private:
-  const std::function<void(void *, size_t)> callback_;
+  const std::function<void(std::unique_ptr<uint8_t[]>&, size_t)> callback_;
   void _subscribe();
 };
 
@@ -102,10 +103,10 @@ template <uint32_t queue_size> void SubscriberBase<queue_size>::spin() {
 }
 
 template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
-  void *msg = nullptr;
+  std::unique_ptr<uint8_t[]> msg;
   size_t size = 0;
 
-  bool write_success = this->topic->read_raw(&msg, size, this->counter);
+  bool write_success = this->topic->read_raw(msg, size, this->counter);
   if (!write_success)
     return;
 
