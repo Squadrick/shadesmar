@@ -71,7 +71,13 @@ template <uint32_t queue_size>
 SubscriberBase<queue_size>::SubscriberBase(std::string topic_name)
     : topic_name_(topic_name) {
   std::this_thread::sleep_for(std::chrono::microseconds(2000));
-  topic = std::make_unique<Memory<queue_size>>(topic_name_);
+
+  #if __cplusplus >= 201703L
+    topic = std::make_unique<Memory<queue_size>>(topic_name_);
+  #else
+    topic = std::unique_ptr<Memory<queue_size>>(new Memory<queue_size>(std::forward<std::string>(topic_name_)));
+  #endif
+
   counter = topic->counter();
 }
 
