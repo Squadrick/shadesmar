@@ -40,7 +40,10 @@ uint8_t *create_memory_segment(const std::string &topic, int &fd, size_t size) {
     }
     break;
   }
-  ftruncate(fd, size);
+  int result = ftruncate(fd, size);
+  if (result == EINVAL) {
+    return nullptr;
+  }
   auto *ptr = static_cast<uint8_t *>(
       mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0));
 
@@ -78,6 +81,10 @@ public:
 
     auto *base_addr =
         create_memory_segment(topic, fd_, sizeof(SharedQueue<queue_size>));
+
+    if (base_addr == nullptr) {
+      std::cerr << "Could not create shared memory buffer" << std::endl;
+    }
 
     raw_buf_ = std::make_shared<managed_shared_memory>(
         open_or_create, (topic + "Raw").c_str(), max_buffer_size);
