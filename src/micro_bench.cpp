@@ -64,7 +64,7 @@ void bench_memcpy() {
 
   TIMEIT({ std::memcpy(shm_mem, obj, mem_size); }, "obj->shm_mem");
 
-  TIMEIT({ std::memcpy(obj, shm_mem, mem_size); }, "obj->shm_mem");
+  TIMEIT({ std::memcpy(obj, shm_mem, mem_size); }, "shm_mem->obj");
 }
 
 void bench_lock() {
