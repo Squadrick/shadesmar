@@ -15,8 +15,8 @@
 #include <thread>
 #include <utility>
 
-#include <shadesmar/memory.h>
 #include <shadesmar/message.h>
+#include <shadesmar/topic.h>
 
 namespace shm {
 
@@ -30,7 +30,7 @@ public:
 protected:
   SubscriberBase(std::string topic_name);
   std::string topic_name_;
-  std::unique_ptr<Memory<queue_size>> topic;
+  std::unique_ptr<Topic<queue_size>> topic;
   uint32_t counter{};
 };
 
@@ -73,10 +73,10 @@ SubscriberBase<queue_size>::SubscriberBase(std::string topic_name)
   std::this_thread::sleep_for(std::chrono::microseconds(2000));
 
 #if __cplusplus >= 201703L
-  topic = std::make_unique<Memory<queue_size>>(topic_name_);
+  topic = std::make_unique<Topic<queue_size>>(topic_name_);
 #else
-  topic = std::unique_ptr<Memory<queue_size>>(
-      new Memory<queue_size>(std::forward<std::string>(topic_name_)));
+  topic = std::unique_ptr<Topic<queue_size>>(
+      new Topic<queue_size>(std::forward<std::string>(topic_name_)));
 #endif
 
   counter = topic->counter();
