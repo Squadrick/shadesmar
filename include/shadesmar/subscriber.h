@@ -31,7 +31,7 @@ protected:
   SubscriberBase(std::string topic_name);
   std::string topic_name_;
   std::unique_ptr<Topic<queue_size>> topic;
-  uint32_t counter{};
+  std::atomic<uint32_t> counter{};
 };
 
 template <uint32_t queue_size>
@@ -113,8 +113,8 @@ template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
   std::unique_ptr<uint8_t[]> msg;
   size_t size = 0;
 
-  bool write_success = this->topic->read_raw(msg, size, this->counter);
-  if (!write_success)
+  bool read_success = this->topic->read_raw(msg, size, this->counter);
+  if (!read_success)
     return;
 
   callback_(msg, size);
@@ -124,15 +124,15 @@ template <typename msgT, uint32_t queue_size>
 void Subscriber<msgT, queue_size>::_subscribe() {
 
   msgpack::object_handle oh;
-  bool write_success;
+  bool read_success;
 
   if (extra_copy_) {
-    write_success = this->topic->read_with_copy(oh, this->counter);
+    read_success = this->topic->read_with_copy(oh, this->counter);
   } else {
-    write_success = this->topic->read_without_copy(oh, this->counter);
+    read_success = this->topic->read_without_copy(oh, this->counter);
   }
 
-  if (!write_success)
+  if (!read_success)
     return;
 
   std::shared_ptr<msgT> msg = std::make_shared<msgT>();
