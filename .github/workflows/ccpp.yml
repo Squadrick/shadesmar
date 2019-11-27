@@ -1,0 +1,21 @@
+name: C/C++ CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: dependencies
+      run: |
+        git clone https://github.com/msgpack/msgpack-c.git
+        cd msgpack-c
+        cmake -DMSGPACK_CXX17=ON .
+        sudo make install
+    - name: configure
+      run: ./configure
+    - name: make
+      run: make

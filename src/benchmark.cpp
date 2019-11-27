@@ -38,8 +38,7 @@ void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
 int main() {
   if (fork() == 0) {
     sleep(1);
-    shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback,
-                                                  EXTRA_COPY);
+    shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback, EXTRA_COPY);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
