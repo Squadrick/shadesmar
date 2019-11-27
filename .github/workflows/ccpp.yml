@@ -3,19 +3,28 @@ name: C/C++ CI
 on: [push, pull_request]
 
 jobs:
-  build:
+  build-ubuntu:
 
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v1
     - name: dependencies
-      run: |
-        git clone https://github.com/msgpack/msgpack-c.git
-        cd msgpack-c
-        cmake -DMSGPACK_CXX17=ON .
-        sudo make install
+      run: sudo apt update && sudo apt install libboost-all-dev libmsgpack-dev
     - name: configure
       run: ./configure
-    - name: make
-      run: make
+    - name: build
+      run: cmake --build build
+
+  build-macos:
+
+        runs-on: macOS-latest
+
+        steps:
+        - uses: actions/checkout@v1
+        - name: dependencies
+          run: brew update && brew install boost msgpack
+        - name: configure
+          run: ./configure
+        - name: build
+          run: cmake --build build
