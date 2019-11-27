@@ -14,17 +14,17 @@
 #include <string>
 
 #if __cplusplus >= 201703L
-  #ifdef __cpp_lib_filesystem
-    #include <filesystem>
-  #else
-    #include <experimental/filesystem>
-    namespace std {
-        namespace filesystem = experimental::filesystem;
-    }
-  #endif
+#ifdef __cpp_lib_filesystem
+#include <filesystem>
 #else
-  #include <stdlib.h>
-  #include <dirent.h>
+#include <experimental/filesystem>
+namespace std {
+namespace filesystem = experimental::filesystem;
+}
+#endif
+#else
+#include <dirent.h>
+#include <stdlib.h>
 #endif
 
 namespace shm::tmp {
@@ -52,12 +52,12 @@ inline bool file_exists(const std::string &file_name) {
 
 inline void write_topic(const std::string &topic) {
   if (!file_exists(tmp_prefix)) {
-    #if __cplusplus >= 201703L
-      std::filesystem::create_directories(tmp_prefix);
-    #else
-      auto opts = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
-      mkdir(tmp_prefix.c_str(), opts);
-    #endif
+#if __cplusplus >= 201703L
+    std::filesystem::create_directories(tmp_prefix);
+#else
+    auto opts = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    mkdir(tmp_prefix.c_str(), opts);
+#endif
   }
   std::fstream file;
   std::string file_name = tmp_prefix + random_string();
@@ -73,30 +73,29 @@ inline std::vector<std::string> get_topics() {
     return topic_names;
   }
 
-  #if __cplusplus >= 201703L
-    for (const auto &entry :
-         std::filesystem::directory_iterator(tmp_prefix)) {
+#if __cplusplus >= 201703L
+  for (const auto &entry : std::filesystem::directory_iterator(tmp_prefix)) {
+    std::fstream file;
+    file.open(entry.path().generic_string(), std::ios::in);
+    std::string topic_name;
+    file >> topic_name;
+    topic_names.push_back(topic_name);
+  }
+#else
+  struct dirent *entry = nullptr;
+  DIR *dp = nullptr;
+  dp = opendir(tmp_prefix.c_str());
+  if (dp != nullptr) {
+    while ((entry = readdir(dp))) {
       std::fstream file;
-      file.open(entry.path().generic_string(), std::ios::in);
+      file.open(tmp_prefix + entry->d_name, std::ios::in);
       std::string topic_name;
       file >> topic_name;
       topic_names.push_back(topic_name);
     }
-  #else
-    struct dirent *entry = nullptr;
-    DIR *dp = nullptr;
-    dp = opendir(tmp_prefix.c_str());
-    if (dp != nullptr) {
-       while ((entry = readdir(dp))) {
-          std::fstream file;
-          file.open(tmp_prefix + entry->d_name , std::ios::in);
-          std::string topic_name;
-          file >> topic_name;
-          topic_names.push_back(topic_name);
-        }
-    }
-    closedir(dp);
-  #endif
+  }
+  closedir(dp);
+#endif
 
   return topic_names;
 }
@@ -112,11 +111,11 @@ inline bool exists(const std::string &topic) {
 }
 
 inline void delete_topics() {
-  #if __cplusplus >= 201703L
-    std::filesystem::remove_all(tmp_prefix);
-  #else
-    system(("rm -rf " + tmp_prefix).c_str());
-  #endif
+#if __cplusplus >= 201703L
+  std::filesystem::remove_all(tmp_prefix);
+#else
+  system(("rm -rf " + tmp_prefix).c_str());
+#endif
 }
 } // namespace shm::tmp
 #endif // shadesmar_TMP_H

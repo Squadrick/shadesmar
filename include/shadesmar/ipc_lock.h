@@ -6,7 +6,7 @@
 #define shadesmar_IPC_LOCK_H
 
 #ifdef __APPLE__
-  #define __pid_t __darwin_pid_t
+#define __pid_t __darwin_pid_t
 #endif
 
 #include <sys/stat.h>
