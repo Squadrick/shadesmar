@@ -6,7 +6,9 @@ jobs:
   build-ubuntu:
 
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        compiler: [g++, clang++]
     steps:
     - uses: actions/checkout@v1
     - name: dependencies
@@ -14,6 +16,8 @@ jobs:
     - name: configure
       run: ./configure
     - name: build
+      env:
+        CXX: ${{ matrix.compiler }}
       run: cmake --build build
 
   build-macos:
