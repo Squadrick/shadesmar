@@ -240,7 +240,7 @@ void New_IPC_Lock::consistency_handler(pthread_mutex_t *mutex, int result) {
   }
 }
 
-#ifdef OLD_LOCK
+#ifdef __APPLE__
 typedef Old_IPC_Lock IPC_Lock;
 #else
 typedef New_IPC_Lock IPC_Lock;
