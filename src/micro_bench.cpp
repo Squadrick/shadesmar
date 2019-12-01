@@ -72,7 +72,7 @@ void bench_lock() {
    * All take ~1500ns
    * Peaks at ~100us when prune_sharable is called
    */
-  shm::Old_IPC_Lock lock;
+  shm::IPC_Lock lock;
 
   TIMEIT({ lock.lock(); }, "lock");
   TIMEIT({ lock.unlock(); }, "unlock");
@@ -84,7 +84,7 @@ void bench_new_lock() {
   /*
    * All take ~200ns
    */
-  shm::New_IPC_Lock lock;
+  shm::IPC_Lock lock;
 
   TIMEIT({ lock.lock(); }, "lock (new)");
   TIMEIT({ lock.unlock(); }, "unlock (new)");

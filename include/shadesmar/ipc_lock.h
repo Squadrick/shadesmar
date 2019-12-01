@@ -5,26 +5,25 @@
 #ifndef shadesmar_IPC_LOCK_H
 #define shadesmar_IPC_LOCK_H
 
-#ifdef __APPLE__
-#define __pid_t __darwin_pid_t
-#endif
-
 #include <sys/stat.h>
 
 #include <pthread.h>
 
+#include <atomic>
 #include <cstdint>
 #include <thread>
 
-#include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
-
 #include <shadesmar/macros.h>
 
-using namespace boost::interprocess;
-
-const int MAX_SHARED_OWNERS = 16;
-
 namespace shm {
+
+#ifdef __APPLE__
+#include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
+
+#define __pid_t __darwin_pid_t
+
+using namespace boost::interprocess;
+const int MAX_SHARED_OWNERS = 16;
 
 template <uint32_t size> class IPC_Set {
 public:
@@ -84,9 +83,9 @@ inline bool proc_dead(__pid_t proc) {
   return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
 
-class Old_IPC_Lock {
+class IPC_Lock {
 public:
-  Old_IPC_Lock() = default;
+  IPC_Lock() = default;
   void lock() {
     // TODO: use timed_lock instead of try_lock
     while (!mutex_.try_lock()) {
@@ -171,10 +170,12 @@ private:
   IPC_Set<MAX_SHARED_OWNERS> shared_owners;
 };
 
-class New_IPC_Lock {
+#else
+
+class IPC_Lock {
 public:
-  New_IPC_Lock();
-  ~New_IPC_Lock();
+  IPC_Lock();
+  ~IPC_Lock();
 
   void lock();
   void unlock();
@@ -188,7 +189,7 @@ private:
   std::atomic<uint32_t> counter;
 };
 
-New_IPC_Lock::New_IPC_Lock() {
+IPC_Lock::IPC_Lock() {
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
   pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
@@ -197,20 +198,20 @@ New_IPC_Lock::New_IPC_Lock() {
   pthread_mutex_init(&g, &attr);
 }
 
-New_IPC_Lock::~New_IPC_Lock() {
+IPC_Lock::~IPC_Lock() {
   pthread_mutexattr_destroy(&attr);
   pthread_mutex_destroy(&r);
   pthread_mutex_destroy(&g);
 }
 
-void New_IPC_Lock::lock() {
+void IPC_Lock::lock() {
   int res = pthread_mutex_lock(&g);
   consistency_handler(&g, res);
 }
 
-void New_IPC_Lock::unlock() { pthread_mutex_unlock(&g); }
+void IPC_Lock::unlock() { pthread_mutex_unlock(&g); }
 
-void New_IPC_Lock::lock_sharable() {
+void IPC_Lock::lock_sharable() {
   int res_r = pthread_mutex_lock(&r);
   consistency_handler(&r, res_r);
   counter.fetch_add(1);
@@ -221,7 +222,7 @@ void New_IPC_Lock::lock_sharable() {
   pthread_mutex_unlock(&r);
 }
 
-void New_IPC_Lock::unlock_sharable() {
+void IPC_Lock::unlock_sharable() {
   int res_r = pthread_mutex_lock(&r);
   consistency_handler(&r, res_r);
   counter.fetch_sub(1);
@@ -231,7 +232,7 @@ void New_IPC_Lock::unlock_sharable() {
   pthread_mutex_unlock(&r);
 }
 
-void New_IPC_Lock::consistency_handler(pthread_mutex_t *mutex, int result) {
+void IPC_Lock::consistency_handler(pthread_mutex_t *mutex, int result) {
   if (result == EOWNERDEAD) {
     pthread_mutex_consistent(mutex);
   } else if (result == ENOTRECOVERABLE) {
@@ -240,10 +241,6 @@ void New_IPC_Lock::consistency_handler(pthread_mutex_t *mutex, int result) {
   }
 }
 
-#ifdef __APPLE__
-typedef Old_IPC_Lock IPC_Lock;
-#else
-typedef New_IPC_Lock IPC_Lock;
 #endif
 
 } // namespace shm

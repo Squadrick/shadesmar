@@ -8,7 +8,7 @@
 #include <shadesmar/memory.h>
 #include <shadesmar/tmp.h>
 
-typedef shm::New_IPC_Lock LOCK;
+typedef shm::IPC_Lock LOCK;
 
 int main() {
   bool new_segment;
