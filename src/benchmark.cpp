@@ -15,11 +15,12 @@ const bool EXTRA_COPY = false;
 
 class BenchmarkMsg : public shm::BaseMsg {
 public:
+  int number;
   std::vector<uint8_t> arr;
-  SHM_PACK(arr);
-  explicit BenchmarkMsg(int n) {
-    for (int i = 0; i < n; ++i)
-      arr.push_back(255);
+  SHM_PACK(number, arr);
+  explicit BenchmarkMsg(int n) : number(n) {
+    for (int i = 0; i < VECTOR_SIZE; ++i)
+      arr.push_back(n);
   }
 
   BenchmarkMsg() = default;
@@ -33,6 +34,13 @@ void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
              std::chrono::system_clock::now().time_since_epoch())
              .count() -
          msg->timestamp;
+
+  for (auto i : msg->arr) {
+    if (i != msg->number) {
+      std::cerr << "Error on " << msg->number << std::endl;
+      return;
+    }
+  }
 }
 
 int main() {
@@ -59,14 +67,17 @@ int main() {
       }
     }
   } else {
-    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
-    BenchmarkMsg msg(VECTOR_SIZE);
     msgpack::sbuffer buf;
-    msgpack::pack(buf, msg);
+    msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
     DEBUG("Number of bytes = " << buf.size());
+
+    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
+
     auto start = std::chrono::system_clock::now();
 
+    int i = 0;
     while (true) {
+      BenchmarkMsg msg(++i);
       msg.init_time();
       pub.publish(msg);
       auto end = std::chrono::system_clock::now();
