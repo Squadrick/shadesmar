@@ -50,13 +50,11 @@ template <uint32_t queue_size = 1> class Topic {
 
 public:
   explicit Topic(const std::string &topic) : topic_(topic) {
-    // TODO: Has contention on shared_queue_exists
-    bool shared_queue_exists = tmp::exists(topic);
-    if (!shared_queue_exists)
-      tmp::write_topic(topic);
-
-    auto *base_addr =
-        create_memory_segment(topic, fd_, sizeof(SharedQueue<queue_size>));
+    // TODO: Shared memory might get deleted between `create_memory_segment` and
+    // `new SharedQueue`.
+    bool new_segment;
+    auto *base_addr = create_memory_segment(
+        topic, sizeof(SharedQueue<queue_size>), new_segment);
 
     if (base_addr == nullptr) {
       std::cerr << "Could not create shared memory buffer" << std::endl;
@@ -65,11 +63,13 @@ public:
     raw_buf_ = std::make_shared<managed_shared_memory>(
         open_or_create, (topic + "Raw").c_str(), max_buffer_size);
 
-    if (!shared_queue_exists) {
+    if (new_segment) {
       shared_queue_ = new (base_addr) SharedQueue<queue_size>();
       init_info();
     } else {
       shared_queue_ = reinterpret_cast<SharedQueue<queue_size> *>(base_addr);
+      while (shared_queue_->init != INFO_INIT)
+        ;
     }
   }
 
@@ -80,6 +80,7 @@ public:
     if (shared_queue_->init != INFO_INIT) {
       shared_queue_->init = INFO_INIT;
       shared_queue_->counter = 0;
+      tmp::write_topic(topic_);
     }
     shared_queue_->info_mutex.unlock();
   }
@@ -181,7 +182,6 @@ public:
   }
 
 private:
-  int fd_;
   std::string topic_;
   std::shared_ptr<managed_shared_memory> raw_buf_;
   SharedQueue<queue_size> *shared_queue_;

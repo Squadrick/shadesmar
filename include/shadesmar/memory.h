@@ -16,17 +16,22 @@
 
 namespace shm {
 
-uint8_t *create_memory_segment(const std::string &topic, int &fd, size_t size) {
+uint8_t *create_memory_segment(const std::string &name, size_t size,
+                               bool &new_segment) {
+  int fd;
   while (true) {
-    fd = shm_open(topic.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
+    new_segment = true;
+    fd = shm_open(name.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
     if (fd >= 0) {
       fchmod(fd, 0644);
     }
     if (errno == EEXIST) {
-      fd = shm_open(topic.c_str(), O_RDWR, 0644);
+      fd = shm_open(name.c_str(), O_RDWR, 0644);
       if (fd < 0 && errno == ENOENT) {
+        // the memory segment was deleted in the mean time
         continue;
       }
+      new_segment = false;
     }
     break;
   }
