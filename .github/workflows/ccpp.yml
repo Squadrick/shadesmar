@@ -12,10 +12,9 @@ jobs:
     - uses: actions/checkout@v1
     - name: dependencies
       run: sudo apt update && sudo apt install libboost-all-dev libmsgpack-dev
-    - name: compiler-config
+    - name: configure
       env:
         CXX: ${{ matrix.compiler }}
-    - name: configure
       run: ./configure
     - name: build
       run: cmake --build build
