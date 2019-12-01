@@ -57,8 +57,8 @@ void bench_memcpy() {
    * 10MB = 7ms, 6.5ms
    */
 
-  int fd;
-  void *shm_mem = shm::create_memory_segment("test", fd, mem_size);
+  bool new_segment;
+  void *shm_mem = shm::create_memory_segment("test", mem_size, new_segment);
 
   void *obj = malloc(mem_size);
 
