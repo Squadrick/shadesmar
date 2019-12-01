@@ -11,6 +11,8 @@
 
 #include <sys/stat.h>
 
+#include <pthread.h>
+
 #include <cstdint>
 #include <thread>
 
@@ -82,9 +84,9 @@ inline bool proc_dead(__pid_t proc) {
   return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
 
-class IPC_Lock {
+class Old_IPC_Lock {
 public:
-  IPC_Lock() = default;
+  Old_IPC_Lock() = default;
   void lock() {
     // TODO: use timed_lock instead of try_lock
     while (!mutex_.try_lock()) {
@@ -134,7 +136,7 @@ public:
           }
         }
       }
-      // TODO: Maybe prune_sharable_procs()?
+
       std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
     while (!shared_owners.insert(getpid()))
@@ -168,5 +170,81 @@ private:
   std::atomic<__pid_t> exclusive_owner{0};
   IPC_Set<MAX_SHARED_OWNERS> shared_owners;
 };
+
+class New_IPC_Lock {
+public:
+  New_IPC_Lock();
+  ~New_IPC_Lock();
+
+  void lock();
+  void unlock();
+  void lock_sharable();
+  void unlock_sharable();
+
+private:
+  void consistency_handler(pthread_mutex_t *mutex, int result);
+  pthread_mutex_t r, g;
+  pthread_mutexattr_t attr;
+  std::atomic<uint32_t> counter;
+};
+
+New_IPC_Lock::New_IPC_Lock() {
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+  pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+
+  pthread_mutex_init(&r, &attr);
+  pthread_mutex_init(&g, &attr);
+}
+
+New_IPC_Lock::~New_IPC_Lock() {
+  pthread_mutexattr_destroy(&attr);
+  pthread_mutex_destroy(&r);
+  pthread_mutex_destroy(&g);
+}
+
+void New_IPC_Lock::lock() {
+  int res = pthread_mutex_lock(&g);
+  consistency_handler(&g, res);
+}
+
+void New_IPC_Lock::unlock() { pthread_mutex_unlock(&g); }
+
+void New_IPC_Lock::lock_sharable() {
+  int res_r = pthread_mutex_lock(&r);
+  consistency_handler(&r, res_r);
+  counter.fetch_add(1);
+  if (counter == 1) {
+    int res_g = pthread_mutex_lock(&g);
+    consistency_handler(&g, res_g);
+  }
+  pthread_mutex_unlock(&r);
+}
+
+void New_IPC_Lock::unlock_sharable() {
+  int res_r = pthread_mutex_lock(&r);
+  consistency_handler(&r, res_r);
+  counter.fetch_sub(1);
+  if (counter == 0) {
+    pthread_mutex_unlock(&g);
+  }
+  pthread_mutex_unlock(&r);
+}
+
+void New_IPC_Lock::consistency_handler(pthread_mutex_t *mutex, int result) {
+  if (result == EOWNERDEAD) {
+    pthread_mutex_consistent(mutex);
+  } else if (result == ENOTRECOVERABLE) {
+    pthread_mutex_destroy(mutex);
+    pthread_mutex_init(mutex, &attr);
+  }
+}
+
+#ifdef OLD_LOCK
+typedef Old_IPC_Lock IPC_Lock;
+#else
+typedef New_IPC_Lock IPC_Lock;
+#endif
+
 } // namespace shm
 #endif // shadesmar_IPC_LOCK_H

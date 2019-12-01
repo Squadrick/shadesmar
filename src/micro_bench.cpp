@@ -69,16 +69,29 @@ void bench_memcpy() {
 
 void bench_lock() {
   /*
-   * All take ~1us
+   * All take ~1500ns
    * Peaks at ~100us when prune_sharable is called
    */
-  shm::IPC_Lock lock;
+  shm::Old_IPC_Lock lock;
 
   TIMEIT({ lock.lock(); }, "lock");
   TIMEIT({ lock.unlock(); }, "unlock");
   TIMEIT({ lock.lock_sharable(); }, "lock sharable");
   TIMEIT({ lock.unlock_sharable(); }, "unlock sharable");
 }
+
+void bench_new_lock() {
+  /*
+   * All take ~200ns
+   */
+  shm::New_IPC_Lock lock;
+
+  TIMEIT({ lock.lock(); }, "lock (new)");
+  TIMEIT({ lock.unlock(); }, "unlock (new)");
+  TIMEIT({ lock.lock_sharable(); }, "lock sharable (new)");
+  TIMEIT({ lock.unlock_sharable(); }, "unlock sharable (new)");
+}
+
 /*
  * Total time
  * 1kB = 6us, 18us
@@ -89,4 +102,5 @@ int main() {
   bench_msgpack();
   bench_memcpy();
   bench_lock();
+  bench_new_lock();
 }
