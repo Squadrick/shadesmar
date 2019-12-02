@@ -15,16 +15,16 @@ public:
 
 class CustomMessage : public shm::BaseMsg {
 public:
-  int val{};
+  uint8_t val{};
   std::vector<uint8_t> arr;
   InnerMessage im;
   SHM_PACK(val, arr, im);
 
-  explicit CustomMessage(int n) {
-    val = n;
-    for (int i = 0; i < n; ++i) {
-      arr.push_back(val);
-    }
+  explicit CustomMessage(int n) : arr(std::vector<uint8_t>(n)) {}
+
+  void fill(uint8_t fill_val) {
+    val = fill_val;
+    std::fill(arr.begin(), arr.end(), fill_val);
   }
 
   // MUST BE INCLUDED
