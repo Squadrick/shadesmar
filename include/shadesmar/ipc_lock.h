@@ -5,6 +5,11 @@
 #ifndef shadesmar_IPC_LOCK_H
 #define shadesmar_IPC_LOCK_H
 
+#ifdef __APPLE__
+#define __pid_t __darwin_pid_t
+#define OLD_LOCK
+#endif
+
 #include <sys/stat.h>
 
 #include <pthread.h>
@@ -13,14 +18,13 @@
 #include <cstdint>
 #include <thread>
 
+#include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
+
 #include <shadesmar/macros.h>
 
 namespace shm {
 
-#ifdef __APPLE__
-#include <boost/interprocess/sync/interprocess_upgradable_mutex.hpp>
-
-#define __pid_t __darwin_pid_t
+#ifdef OLD_LOCK
 
 using namespace boost::interprocess;
 const int MAX_SHARED_OWNERS = 16;
@@ -183,10 +187,10 @@ public:
   void unlock_sharable();
 
 private:
-  void consistency_handler(pthread_mutex_t *mutex, int result);
+  static void consistency_handler(pthread_mutex_t *mutex, int result);
   pthread_mutex_t r, g;
   pthread_mutexattr_t attr;
-  std::atomic<uint32_t> counter;
+  uint32_t counter;
 };
 
 IPC_Lock::IPC_Lock() {
@@ -206,7 +210,15 @@ IPC_Lock::~IPC_Lock() {
 
 void IPC_Lock::lock() {
   int res = pthread_mutex_lock(&g);
-  consistency_handler(&g, res);
+
+  pthread_mutex_trylock(&g);
+
+  if (res == EOWNERDEAD) {
+    // previous owner could be reader or writer
+    // if writer, no problem
+    // if reader, we might have other readers waiting as well
+    pthread_mutex_consistent(&g);
+  }
 }
 
 void IPC_Lock::unlock() { pthread_mutex_unlock(&g); }
@@ -214,7 +226,7 @@ void IPC_Lock::unlock() { pthread_mutex_unlock(&g); }
 void IPC_Lock::lock_sharable() {
   int res_r = pthread_mutex_lock(&r);
   consistency_handler(&r, res_r);
-  counter.fetch_add(1);
+  counter += 1;
   if (counter == 1) {
     int res_g = pthread_mutex_lock(&g);
     consistency_handler(&g, res_g);
@@ -225,7 +237,7 @@ void IPC_Lock::lock_sharable() {
 void IPC_Lock::unlock_sharable() {
   int res_r = pthread_mutex_lock(&r);
   consistency_handler(&r, res_r);
-  counter.fetch_sub(1);
+  counter -= 1;
   if (counter == 0) {
     pthread_mutex_unlock(&g);
   }
@@ -236,8 +248,8 @@ void IPC_Lock::consistency_handler(pthread_mutex_t *mutex, int result) {
   if (result == EOWNERDEAD) {
     pthread_mutex_consistent(mutex);
   } else if (result == ENOTRECOVERABLE) {
-    pthread_mutex_destroy(mutex);
-    pthread_mutex_init(mutex, &attr);
+    std::cerr << "Inconsistent mutex" << std::endl;
+    exit(0);
   }
 }
 

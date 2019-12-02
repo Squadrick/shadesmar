@@ -24,6 +24,7 @@ endif ()
 
 add_compile_options(-O2)
 add_compile_options(-DDEBUG_BUILD)
+#add_compile_options(-DOLD_LOCK)
 
 add_executable(publish src/publisher.cpp)
 target_link_libraries(publish ${libs})
