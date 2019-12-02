@@ -14,6 +14,13 @@ void callback(const std::shared_ptr<CustomMessage> &msg) {
                  .count() -
              msg->timestamp;
   DEBUG("Avg lag: " << lag << TIMESCALE_NAME);
+
+  for (auto i : msg->arr) {
+    if (i != msg->val) {
+      DEBUG("Pubsub error");
+      return;
+    }
+  }
 }
 
 int main() {
