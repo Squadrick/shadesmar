@@ -15,9 +15,10 @@ int main(int argc, char **argv) {
   }
 
   shm::Publisher<CustomMessage, 16> p("test");
-  CustomMessage msg(1280 * 720 * 16);
-  msg.frame_id = "test123";
+
   for (int i = 0;; ++i) {
+    CustomMessage msg(1280 * 720 * 16);
+    msg.frame_id = "test123";
     msg.fill(i % 256);
     msg.init_time(shm::SYSTEM);
     p.publish(msg);
