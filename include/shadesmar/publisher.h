@@ -76,7 +76,7 @@ bool Publisher<msgT, queue_size>::publish(msgT *msg) {
   } catch (...) {
     return false;
   }
-  return topic_.write(buf.data(), buf.size());
+  return topic_.write_rcu(buf.data(), buf.size());
 }
 
 } // namespace shm

@@ -24,7 +24,7 @@ void callback(const std::shared_ptr<CustomMessage> &msg) {
 }
 
 int main() {
-  shm::Subscriber<CustomMessage, 16> sub("test", callback, true);
+  shm::Subscriber<CustomMessage, 16> sub("test_ben1", callback, true);
 
   while (true) {
     sub.spinOnce();
