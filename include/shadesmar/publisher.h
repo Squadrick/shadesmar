@@ -69,7 +69,6 @@ bool Publisher<msgT, queue_size>::publish(msgT &msg) {
 
 template <typename msgT, uint32_t queue_size>
 bool Publisher<msgT, queue_size>::publish(msgT *msg) {
-  msg->seq = topic_.counter();
   msgpack::sbuffer buf;
   try {
     msgpack::pack(buf, *msg);
