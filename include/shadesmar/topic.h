@@ -170,8 +170,9 @@ public:
 
   bool read_without_copy(msgpack::object_handle &oh, uint32_t pos) {
     pos &= queue_size - 1;
-    shared_queue_->lock_sharable(pos);
     auto elem = &(shared_queue_->elements[pos]);
+
+    shared_queue_->lock_sharable(pos);
     if (elem->empty)
       return false;
 
@@ -190,8 +191,9 @@ public:
 
   bool read_with_copy(msgpack::object_handle &oh, uint32_t pos) {
     pos &= queue_size - 1;
-    shared_queue_->lock_sharable(pos);
     auto elem = &(shared_queue_->elements[pos]);
+
+    shared_queue_->lock_sharable(pos);
     if (elem->empty)
       return false;
 
