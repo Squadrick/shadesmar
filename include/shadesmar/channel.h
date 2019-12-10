@@ -14,9 +14,9 @@
 
 #include <msgpack.hpp>
 
-#include <shadesmar/ipc_lock.h>
 #include <shadesmar/macros.h>
 #include <shadesmar/memory.h>
+#include <shadesmar/robust_lock.h>
 #include <shadesmar/tmp.h>
 
 namespace shm {

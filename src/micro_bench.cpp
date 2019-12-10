@@ -9,7 +9,7 @@
 #include <shadesmar/memory.h>
 #include <shadesmar/message.h>
 
-#include <shadesmar/ipc_lock.h>
+#include <shadesmar/robust_lock.h>
 
 const size_t mem_size = 10 * 1024 * 1024;
 
@@ -79,7 +79,7 @@ void bench_lock() {
    * All take ~1500ns
    * Peaks at ~100us when prune_sharable is called
    */
-  shm::IPC_Lock lock;
+  shm::RobustLock lock;
 
   TIMEIT({ lock.lock(); }, "lock");
   TIMEIT({ lock.unlock(); }, "unlock");
@@ -91,7 +91,7 @@ void bench_new_lock() {
   /*
    * All take ~200ns
    */
-  shm::IPC_Lock lock;
+  shm::RobustLock lock;
 
   TIMEIT({ lock.lock(); }, "lock (new)");
   TIMEIT({ lock.unlock(); }, "unlock (new)");

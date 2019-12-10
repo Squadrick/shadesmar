@@ -4,11 +4,11 @@
 
 #include <iostream>
 
-#include <shadesmar/ipc_lock.h>
 #include <shadesmar/memory.h>
+#include <shadesmar/robust_lock.h>
 #include <shadesmar/tmp.h>
 
-typedef shm::IPC_Lock LOCK;
+typedef shm::RobustLock LOCK;
 
 int main() {
   bool new_segment;

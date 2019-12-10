@@ -16,9 +16,9 @@
 #include <msgpack.hpp>
 
 #include <shadesmar/allocator.h>
-#include <shadesmar/ipc_lock.h>
 #include <shadesmar/macros.h>
 #include <shadesmar/memory.h>
+#include <shadesmar/robust_lock.h>
 #include <shadesmar/tmp.h>
 
 using namespace boost::interprocess;
@@ -35,8 +35,8 @@ template <uint32_t queue_size> struct SharedQueue {
   std::atomic_uint32_t init{}, counter{};
 
   Element elements[queue_size]{};
-  IPC_Lock info_mutex;
-  IPC_Lock queue_mutexes[queue_size];
+  RobustLock info_mutex;
+  RobustLock queue_mutexes[queue_size];
 
   void lock(uint32_t idx) { queue_mutexes[idx].lock(); }
   void unlock(uint32_t idx) { queue_mutexes[idx].unlock(); }
