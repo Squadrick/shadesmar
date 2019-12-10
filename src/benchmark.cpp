@@ -6,9 +6,9 @@
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
 
-const std::string topic = "bench";
+const std::string topic = "bench_topic";
 
-const int QUEUE_SIZE = 16;
+const int QUEUE_SIZE = 4;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
 const bool EXTRA_COPY = false;
@@ -26,10 +26,11 @@ public:
   BenchmarkMsg() = default;
 };
 
-int count = 0;
+int count = 0, total_count = 0;
 uint64_t lag = 0;
 void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
   ++count;
+  ++total_count;
   lag += std::chrono::duration_cast<TIMESCALE>(
              std::chrono::system_clock::now().time_since_epoch())
              .count() -
@@ -56,8 +57,12 @@ int main() {
 
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_ = (double)lag / count;
-        DEBUG("Number of messages sent: " << count << "/s");
-        DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
+        if (count != 0) {
+          DEBUG("Number of messages sent: " << count << "/s");
+          DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
+        } else {
+          DEBUG("Number of message sent: <1/s");
+        }
 
         if (++seconds == SECONDS)
           break;
@@ -66,6 +71,7 @@ int main() {
         start = std::chrono::system_clock::now();
       }
     }
+    DEBUG("Total messages sent in 10 seconds: " << total_count);
   } else {
     msgpack::sbuffer buf;
     msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
@@ -82,7 +88,7 @@ int main() {
       pub.publish(msg);
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
-      if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT)
+      if (diff.count() > (SECONDS + 1) * TIMESCALE_COUNT)
         break;
     }
   }
