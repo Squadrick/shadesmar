@@ -7,24 +7,24 @@ find_package(msgpack REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if(Boost_FOUND)
+if (Boost_FOUND)
   set(libs ${Boost_LIBRARIES})
   include_directories(include ${Boost_INCLUDE_DIRS})
-endif()
+endif ()
 
 if (APPLE)
-  if("${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "10.14")
+  if ("${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "10.14")
     set(CMAKE_CXX_STANDARD 11)
-  endif()
-endif()
+  endif ()
+endif ()
 
-if(UNIX AND NOT APPLE)
-    list(APPEND libs rt pthread stdc++fs)# -fsanitize=thread -fsanitize=memory)
-endif()
+if (UNIX AND NOT APPLE)
+  list(APPEND libs rt pthread stdc++fs)# -fsanitize=thread -fsanitize=memory)
+endif ()
 
 add_compile_options(-O2)
 #add_compile_options(-fsanitize=thread -fsanitize=memory -g -fno-omit-frame-pointer)
-add_compile_options(-DDEBUG_BUILD)
+add_definitions(-DDEBUG_BUILD)
 
 add_executable(publish src/publisher.cpp)
 target_link_libraries(publish ${libs})
