@@ -14,10 +14,11 @@ int main(int argc, char **argv) {
     timeout = std::atoi(argv[1]);
   }
 
-  shm::Publisher<CustomMessage, 16> p("test");
-  CustomMessage msg(1280 * 720 * 16);
-  msg.frame_id = "test123";
+  shm::Publisher<CustomMessage, 16> p("test_ben1");
   for (int i = 0;; ++i) {
+    CustomMessage msg(1280 * 720 * 16);
+    msg.frame_id = "test123";
+    msg.fill(i % 256);
     msg.init_time(shm::SYSTEM);
     p.publish(msg);
     std::cout << "Publishing " << i << std::endl;

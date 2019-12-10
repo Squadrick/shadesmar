@@ -70,7 +70,6 @@ private:
 template <uint32_t queue_size>
 SubscriberBase<queue_size>::SubscriberBase(std::string topic_name)
     : topic_name_(topic_name) {
-  std::this_thread::sleep_for(std::chrono::microseconds(2000));
 
 #if __cplusplus >= 201703L
   topic = std::make_unique<Topic<queue_size>>(topic_name_);
@@ -137,6 +136,7 @@ void Subscriber<msgT, queue_size>::_subscribe() {
 
   std::shared_ptr<msgT> msg = std::make_shared<msgT>();
   oh.get().convert(*msg);
+  msg->seq = this->counter;
   callback_(msg);
 }
 

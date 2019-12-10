@@ -6,33 +6,42 @@
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
 
-const std::string topic = "bench";
+const std::string topic = "bench_topic";
 
-const int QUEUE_SIZE = 16;
+const int QUEUE_SIZE = 4;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
 const bool EXTRA_COPY = false;
 
 class BenchmarkMsg : public shm::BaseMsg {
 public:
+  int number;
   std::vector<uint8_t> arr;
-  SHM_PACK(arr);
-  explicit BenchmarkMsg(int n) {
-    for (int i = 0; i < n; ++i)
-      arr.push_back(255);
+  SHM_PACK(number, arr);
+  explicit BenchmarkMsg(int n) : number(n) {
+    for (int i = 0; i < VECTOR_SIZE; ++i)
+      arr.push_back(n);
   }
 
   BenchmarkMsg() = default;
 };
 
-int count = 0;
+int count = 0, total_count = 0;
 uint64_t lag = 0;
 void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
   ++count;
+  ++total_count;
   lag += std::chrono::duration_cast<TIMESCALE>(
              std::chrono::system_clock::now().time_since_epoch())
              .count() -
          msg->timestamp;
+
+  for (auto i : msg->arr) {
+    if (i != msg->number) {
+      std::cerr << "Error on " << msg->number << std::endl;
+      return;
+    }
+  }
 }
 
 int main() {
@@ -48,8 +57,12 @@ int main() {
 
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_ = (double)lag / count;
-        DEBUG("Number of messages sent: " << count << "/s");
-        DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
+        if (count != 0) {
+          DEBUG("Number of messages sent: " << count << "/s");
+          DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
+        } else {
+          DEBUG("Number of message sent: <1/s");
+        }
 
         if (++seconds == SECONDS)
           break;
@@ -58,20 +71,24 @@ int main() {
         start = std::chrono::system_clock::now();
       }
     }
+    DEBUG("Total messages sent in 10 seconds: " << total_count);
   } else {
-    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
-    BenchmarkMsg msg(VECTOR_SIZE);
     msgpack::sbuffer buf;
-    msgpack::pack(buf, msg);
+    msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
     DEBUG("Number of bytes = " << buf.size());
+
+    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
+
     auto start = std::chrono::system_clock::now();
 
+    int i = 0;
     while (true) {
+      BenchmarkMsg msg(++i);
       msg.init_time();
       pub.publish(msg);
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
-      if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT)
+      if (diff.count() > (SECONDS + 1) * TIMESCALE_COUNT)
         break;
     }
   }

@@ -28,7 +28,7 @@ static size_t max_buffer_size = (1U << 28);
 
 template <uint32_t queue_size> struct SharedQueue {
   struct Element {
-    managed_shared_memory::handle_t addr_hdl{};
+    std::atomic<managed_shared_memory::handle_t> addr_hdl{};
     size_t size{};
     bool empty = true;
   };
@@ -86,14 +86,14 @@ public:
   }
 
   bool write(void *data, size_t size) {
-    uint32_t pos = counter() & (queue_size - 1); // modulo for power of 2
-    shared_queue_->lock(pos);
-
     if (size > raw_buf_->get_free_memory()) {
       std::cerr << "Increase max_buffer_size" << std::endl;
       return false;
     }
+    uint32_t pos = fetch_add_counter() & (queue_size - 1); // mod queue_size
+
     auto elem = &(shared_queue_->elements[pos]);
+    shared_queue_->lock(pos);
     void *addr = raw_buf_->get_address_from_handle(elem->addr_hdl);
 
     if (!elem->empty) {
@@ -107,17 +107,76 @@ public:
     elem->size = size;
     elem->empty = false;
 
-    inc_counter();
     shared_queue_->unlock(pos);
     return true;
   }
 
+  bool write_rcu(void *data, size_t size) {
+    if (size > raw_buf_->get_free_memory()) {
+      std::cerr << "Increase max_buffer_size" << std::endl;
+      return false;
+    }
+    uint32_t pos = fetch_add_counter() & (queue_size - 1); // mod queue_size
+
+    void *new_addr = raw_buf_->allocate(size);
+    std::memcpy(new_addr, data, size);
+
+    auto elem = &(shared_queue_->elements[pos]);
+
+    shared_queue_->lock(pos);
+
+    void *addr = raw_buf_->get_address_from_handle(elem->addr_hdl);
+    bool prev_empty = elem->empty;
+    elem->addr_hdl = raw_buf_->get_handle_from_address(new_addr);
+    elem->size = size;
+    elem->empty = false;
+
+    if (!prev_empty) {
+      raw_buf_->deallocate(addr);
+    }
+
+    shared_queue_->unlock(pos);
+
+    return true;
+  }
+
+  bool write_atomic(void *data, size_t size) {
+    if (size > raw_buf_->get_free_memory()) {
+      std::cerr << "Increase max_buffer_size" << std::endl;
+      return false;
+    }
+    uint32_t pos = fetch_add_counter() & (queue_size - 1); // mod 2
+
+    auto elem = &(shared_queue_->elements[pos]);
+
+    auto old_handle = elem->addr_hdl.load();
+    void *old_addr = raw_buf_->get_address_from_handle(old_handle);
+
+    void *new_addr = raw_buf_->allocate(size);
+    auto new_handle = raw_buf_->get_handle_from_address(new_addr);
+
+    std::memcpy(new_addr, data, size);
+
+    if (elem->addr_hdl.compare_exchange_strong(old_handle, new_handle)) {
+      if (!elem->empty) {
+        raw_buf_->deallocate(old_addr);
+      }
+      elem->size = size;
+      elem->empty = false;
+      return true;
+    }
+    return false;
+  }
+
   bool read_without_copy(msgpack::object_handle &oh, uint32_t pos) {
     pos &= queue_size - 1;
-    shared_queue_->lock_sharable(pos);
     auto elem = &(shared_queue_->elements[pos]);
-    if (elem->empty)
+
+    if (elem->empty) {
       return false;
+    }
+
+    shared_queue_->lock_sharable(pos);
 
     const char *dst = reinterpret_cast<const char *>(
         raw_buf_->get_address_from_handle(elem->addr_hdl));
@@ -125,6 +184,7 @@ public:
     try {
       oh = msgpack::unpack(dst, elem->size);
     } catch (...) {
+      shared_queue_->unlock_sharable(pos);
       return false;
     }
 
@@ -134,10 +194,12 @@ public:
 
   bool read_with_copy(msgpack::object_handle &oh, uint32_t pos) {
     pos &= queue_size - 1;
-    shared_queue_->lock_sharable(pos);
     auto elem = &(shared_queue_->elements[pos]);
+
     if (elem->empty)
       return false;
+
+    shared_queue_->lock_sharable(pos);
 
     auto size = elem->size;
     auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
@@ -177,8 +239,8 @@ public:
     return shared_queue_->counter.load();
   }
 
-  inline __attribute__((always_inline)) void inc_counter() {
-    shared_queue_->counter += 1;
+  inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
+    return shared_queue_->counter.fetch_add(1);
   }
 
 private:
