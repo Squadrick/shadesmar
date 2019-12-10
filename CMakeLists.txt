@@ -19,10 +19,11 @@ if (APPLE)
 endif()
 
 if(UNIX AND NOT APPLE)
-    list(APPEND libs rt pthread stdc++fs)
+    list(APPEND libs rt pthread stdc++fs)# -fsanitize=thread -fsanitize=memory)
 endif()
 
 add_compile_options(-O2)
+#add_compile_options(-fsanitize=thread -fsanitize=memory -g -fno-omit-frame-pointer)
 add_compile_options(-DDEBUG_BUILD)
 
 add_executable(publish src/publisher.cpp)

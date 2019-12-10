@@ -90,7 +90,7 @@ public:
       std::cerr << "Increase max_buffer_size" << std::endl;
       return false;
     }
-    uint32_t pos = fetch_add_counter() & (queue_size - 1); // mod 2
+    uint32_t pos = fetch_add_counter() & (queue_size - 1); // mod queue_size
 
     auto elem = &(shared_queue_->elements[pos]);
     shared_queue_->lock(pos);
@@ -116,7 +116,7 @@ public:
       std::cerr << "Increase max_buffer_size" << std::endl;
       return false;
     }
-    uint32_t pos = fetch_add_counter() & (queue_size - 1);
+    uint32_t pos = fetch_add_counter() & (queue_size - 1); // mod queue_size
 
     void *new_addr = raw_buf_->allocate(size);
     std::memcpy(new_addr, data, size);
@@ -131,11 +131,11 @@ public:
     elem->size = size;
     elem->empty = false;
 
-    shared_queue_->unlock(pos);
-
     if (!prev_empty) {
       raw_buf_->deallocate(addr);
     }
+
+    shared_queue_->unlock(pos);
 
     return true;
   }
@@ -172,9 +172,11 @@ public:
     pos &= queue_size - 1;
     auto elem = &(shared_queue_->elements[pos]);
 
-    shared_queue_->lock_sharable(pos);
-    if (elem->empty)
+    if (elem->empty) {
       return false;
+    }
+
+    shared_queue_->lock_sharable(pos);
 
     const char *dst = reinterpret_cast<const char *>(
         raw_buf_->get_address_from_handle(elem->addr_hdl));
@@ -182,6 +184,7 @@ public:
     try {
       oh = msgpack::unpack(dst, elem->size);
     } catch (...) {
+      shared_queue_->unlock_sharable(pos);
       return false;
     }
 
@@ -193,9 +196,10 @@ public:
     pos &= queue_size - 1;
     auto elem = &(shared_queue_->elements[pos]);
 
-    shared_queue_->lock_sharable(pos);
     if (elem->empty)
       return false;
+
+    shared_queue_->lock_sharable(pos);
 
     auto size = elem->size;
     auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);

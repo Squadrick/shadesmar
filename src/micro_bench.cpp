@@ -58,13 +58,20 @@ void bench_memcpy() {
    */
 
   bool new_segment;
+
   void *shm_mem = shm::create_memory_segment("test", mem_size, new_segment);
-
   void *obj = malloc(mem_size);
-
   TIMEIT({ std::memcpy(shm_mem, obj, mem_size); }, "obj->shm_mem");
+  free(obj);
+  shm_unlink("test");
 
-  TIMEIT({ std::memcpy(obj, shm_mem, mem_size); }, "shm_mem->obj");
+  void *obj2 = malloc(mem_size);
+  void *shm_mem2 = shm::create_memory_segment("test2", mem_size, new_segment);
+  std::memset(shm_mem2, 0, mem_size);
+
+  TIMEIT({ std::memcpy(obj2, shm_mem2, mem_size); }, "shm_mem->obj");
+  free(obj2);
+  shm_unlink("test2");
 }
 
 void bench_lock() {
