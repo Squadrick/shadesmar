@@ -18,24 +18,23 @@ public:
   bool owns();
 
 private:
-  pthread_mutex_t *_mut;
+  pthread_mutex_t *mut_;
   int res;
 };
 
-MutexGuard::MutexGuard(pthread_mutex_t *mut, LockType type) {
+MutexGuard::MutexGuard(pthread_mutex_t *mut, LockType type) : mut_(mut) {
   if (type == LOCK) {
     res = pthread_mutex_lock(mut);
   } else if (type == TRY_LOCK) {
     res = pthread_mutex_trylock(mut);
   }
-  _mut = mut;
 }
 
 MutexGuard::~MutexGuard() {
   if (res == 0) {
-    pthread_mutex_unlock(_mut);
+    pthread_mutex_unlock(mut_);
   }
-  _mut = nullptr;
+  mut_ = nullptr;
 }
 
 bool MutexGuard::owns() { return res == 0; }
@@ -86,31 +85,28 @@ ReadWriteLock::~ReadWriteLock() {
 }
 
 void ReadWriteLock::lock() {
-  pthread_mutex_lock(&mut);
+  MutexGuard scope(&mut);
 
   while (rw_count != 0) {
     pthread_cond_wait(&write_condvar, &mut);
   }
 
   rw_count = -1;
-  pthread_mutex_unlock(&mut);
 }
 
 bool ReadWriteLock::try_lock() {
-  MutexGuard scope(&mut, MutexGuard::LOCK);
+  MutexGuard scope(&mut, MutexGuard::TRY_LOCK);
+
   if (!scope.owns() || rw_count != 0) {
     return false;
   }
 
   rw_count = -1;
-  pthread_mutex_unlock(&mut);
-
   return true;
 }
 
 void ReadWriteLock::unlock() {
-  pthread_mutex_lock(&mut);
-
+  MutexGuard scope(&mut);
   rw_count = 0;
 
   if (read_waiting) {
@@ -118,12 +114,10 @@ void ReadWriteLock::unlock() {
   } else {
     pthread_cond_signal(&write_condvar);
   }
-
-  pthread_mutex_unlock(&mut);
 }
 
 void ReadWriteLock::lock_sharable() {
-  pthread_mutex_lock(&mut);
+  MutexGuard scope(&mut);
   read_waiting = true;
 
   while (rw_count < 0) {
@@ -131,7 +125,6 @@ void ReadWriteLock::lock_sharable() {
   }
   read_waiting = false;
   ++rw_count;
-  pthread_mutex_unlock(&mut);
 }
 
 bool ReadWriteLock::try_lock_sharable() {
@@ -142,20 +135,17 @@ bool ReadWriteLock::try_lock_sharable() {
   }
   read_waiting = false;
   ++rw_count;
-  pthread_mutex_unlock(&mut);
 
   return true;
 }
 
 void ReadWriteLock::unlock_sharable() {
-  pthread_mutex_lock(&mut);
+  MutexGuard scope(&mut);
   --rw_count;
 
   if (rw_count == 0) {
     pthread_cond_signal(&write_condvar);
   }
-
-  pthread_mutex_unlock(&mut);
 }
 
 #endif // SHADESMAR_RW_LOCK_H
