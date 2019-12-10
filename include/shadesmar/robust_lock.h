@@ -142,15 +142,7 @@ RobustLock::~RobustLock() {
 
 void RobustLock::lock() {
   int res = pthread_mutex_lock(&g);
-
-  pthread_mutex_trylock(&g);
-
-  if (res == EOWNERDEAD) {
-    // previous owner could be reader or writer
-    // if writer, no problem
-    // if reader, we might have other readers waiting as well
-    pthread_mutex_consistent(&g);
-  }
+  consistency_handler(&g, res);
 }
 
 void RobustLock::unlock() { pthread_mutex_unlock(&g); }
