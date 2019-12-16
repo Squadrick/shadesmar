@@ -28,12 +28,14 @@
 
 #define DEBUG_IMPL(str, eol)                                                   \
   do {                                                                         \
-  } while (0)
+  } while (0);
 
 #define TIMEIT(cmd, name) cmd;
 #endif
 
 #define DEBUG(str) DEBUG_IMPL(str, "\n");
 #define INFO_INIT 1337
+
+const int MAX_SHARED_OWNERS = 16;
 
 #endif // shadesmar_MACROS_H
