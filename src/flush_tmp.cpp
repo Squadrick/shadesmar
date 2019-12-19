@@ -16,7 +16,7 @@ void flush(std::string const &topic) {
 
 int main(int argc, char **argv) {
   if (argc == 1) {
-    for (auto &topic : shm::tmp::get_topics()) {
+    for (auto &topic : shm::tmp::get_tmp_names()) {
       flush(topic);
     }
     shm::tmp::delete_topics();

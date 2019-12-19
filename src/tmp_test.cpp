@@ -8,10 +8,10 @@
 
 int main() {
   for (int i = 0; i < 10; ++i) {
-    shm::tmp::write_topic(shm::tmp::random_string(10));
+    shm::tmp::write(shm::tmp::random_string(10));
   }
 
-  for (const auto &topic : shm::tmp::get_topics()) {
+  for (const auto &topic : shm::tmp::get_tmp_names()) {
     std::cout << topic << std::endl;
   }
 

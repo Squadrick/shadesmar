@@ -33,8 +33,8 @@ target_link_libraries(publish ${libs})
 add_executable(subscribe src/subscriber.cpp)
 target_link_libraries(subscribe ${libs})
 
-add_executable(flush_topic src/flush_topic.cpp)
-target_link_libraries(flush_topic ${libs})
+add_executable(flush_tmp src/flush_tmp.cpp)
+target_link_libraries(flush_tmp ${libs})
 
 add_executable(serialize_msg src/serialize_msg.cpp)
 target_link_libraries(serialize_msg ${libs})
@@ -53,3 +53,6 @@ target_link_libraries(tmp_test ${libs})
 
 add_executable(lock_tester src/lock_tester.cpp)
 target_link_libraries(lock_tester ${libs})
+
+add_executable(rpc_test src/rpc_test.cpp)
+target_link_libraries(rpc_test ${libs})

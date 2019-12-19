@@ -28,7 +28,7 @@ public:
   virtual void _subscribe() = 0;
 
 protected:
-  SubscriberBase(std::string topic_name);
+  SubscriberBase(std::string topic_name, bool extra_copy);
   std::string topic_name_;
   std::unique_ptr<Topic<queue_size>> topic;
   std::atomic<uint32_t> counter{};
@@ -40,7 +40,7 @@ public:
   SubscriberBin(
       std::string topic_name,
       const std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> &callback)
-      : SubscriberBase<queue_size>(topic_name), callback_(callback) {}
+      : SubscriberBase<queue_size>(topic_name, false), callback_(callback) {}
 
 private:
   const std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback_;
@@ -57,25 +57,24 @@ public:
   Subscriber(std::string topic_name,
              const std::function<void(const std::shared_ptr<msgT> &)> &callback,
              bool extra_copy = false)
-      : SubscriberBase<queue_size>(topic_name), callback_(callback),
-        extra_copy_(extra_copy) {}
+      : SubscriberBase<queue_size>(topic_name, extra_copy),
+        callback_(callback) {}
 
 private:
   std::function<void(const std::shared_ptr<msgT> &)> callback_;
-  bool extra_copy_;
 
   void _subscribe();
 };
 
 template <uint32_t queue_size>
-SubscriberBase<queue_size>::SubscriberBase(std::string topic_name)
+SubscriberBase<queue_size>::SubscriberBase(std::string topic_name, bool extra_copy)
     : topic_name_(topic_name) {
 
 #if __cplusplus >= 201703L
-  topic = std::make_unique<Topic<queue_size>>(topic_name_);
+  topic = std::make_unique<Topic<queue_size>>(topic_name_, extra_copy);
 #else
   topic = std::unique_ptr<Topic<queue_size>>(
-      new Topic<queue_size>(std::forward<std::string>(topic_name_)));
+      new Topic<queue_size>(std::forward<std::string>(topic_name_, extra_copy)));
 #endif
 
   counter = topic->counter();
@@ -112,7 +111,7 @@ template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
   std::unique_ptr<uint8_t[]> msg;
   size_t size = 0;
 
-  bool read_success = this->topic->read_raw(msg, size, this->counter);
+  bool read_success = this->topic->read(msg, size, this->counter);
   if (!read_success)
     return;
 
@@ -125,11 +124,7 @@ void Subscriber<msgT, queue_size>::_subscribe() {
   msgpack::object_handle oh;
   bool read_success;
 
-  if (extra_copy_) {
-    read_success = this->topic->read_with_copy(oh, this->counter);
-  } else {
-    read_success = this->topic->read_without_copy(oh, this->counter);
-  }
+  read_success = this->topic->read(oh, this->counter);
 
   if (!read_success)
     return;

@@ -50,7 +50,7 @@ inline bool file_exists(const std::string &file_name) {
   return (stat(file_name.c_str(), &buffer) == 0);
 }
 
-inline void write_topic(const std::string &topic) {
+inline void write(const std::string &name) {
   if (!file_exists(tmp_prefix)) {
 #if __cplusplus >= 201703L
     std::filesystem::create_directories(tmp_prefix);
@@ -63,23 +63,23 @@ inline void write_topic(const std::string &topic) {
   std::string file_name = tmp_prefix + random_string();
   file.open(file_name, std::ios::out);
 
-  file << topic.c_str() << std::endl;
+  file << name.c_str() << std::endl;
   file.close();
 }
 
-inline std::vector<std::string> get_topics() {
-  std::vector<std::string> topic_names;
+inline std::vector<std::string> get_tmp_names() {
+  std::vector<std::string> names{};
   if (!file_exists(tmp_prefix)) {
-    return topic_names;
+    return names;
   }
 
 #if __cplusplus >= 201703L
   for (const auto &entry : std::filesystem::directory_iterator(tmp_prefix)) {
     std::fstream file;
     file.open(entry.path().generic_string(), std::ios::in);
-    std::string topic_name;
-    file >> topic_name;
-    topic_names.push_back(topic_name);
+    std::string name;
+    file >> name;
+    names.push_back(name);
   }
 #else
   struct dirent *entry = nullptr;
@@ -89,21 +89,21 @@ inline std::vector<std::string> get_topics() {
     while ((entry = readdir(dp))) {
       std::fstream file;
       file.open(tmp_prefix + entry->d_name, std::ios::in);
-      std::string topic_name;
-      file >> topic_name;
-      topic_names.push_back(topic_name);
+      std::string name;
+      file >> name;
+      names.push_back(name);
     }
   }
   closedir(dp);
 #endif
 
-  return topic_names;
+  return names;
 }
 
-inline bool exists(const std::string &topic) {
-  auto existing_topics = get_topics();
-  for (auto &existing_topic : existing_topics) {
-    if (existing_topic == topic) {
+inline bool exists(const std::string &name) {
+  auto existing_names = get_tmp_names();
+  for (auto &existing_name : existing_names) {
+    if (existing_name == name) {
       return true;
     }
   }

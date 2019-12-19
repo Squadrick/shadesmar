@@ -19,7 +19,7 @@ int main() {
   if (new_segment) {
     std::cout << "Creating new lock" << std::endl;
     lock = new (buff) LOCK;
-    shm::tmp::write_topic("lock_buffer");
+    shm::tmp::write("lock_buffer");
   } else {
     lock = reinterpret_cast<LOCK *>(buff);
   }
