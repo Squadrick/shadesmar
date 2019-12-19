@@ -25,6 +25,7 @@ endif ()
 add_compile_options(-O2)
 #add_compile_options(-fsanitize=thread -fsanitize=memory -g -fno-omit-frame-pointer)
 add_definitions(-DDEBUG_BUILD)
+#add_definitions(-DOLD_LOCK)
 
 add_executable(publish src/publisher.cpp)
 target_link_libraries(publish ${libs})
@@ -49,3 +50,6 @@ target_link_libraries(raw_benchmark ${libs})
 
 add_executable(tmp_test src/tmp_test.cpp)
 target_link_libraries(tmp_test ${libs})
+
+add_executable(lock_tester src/lock_tester.cpp)
+target_link_libraries(lock_tester ${libs})
