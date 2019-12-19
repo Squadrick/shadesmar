@@ -35,12 +35,13 @@ public:
     }
     uint32_t pos =
         this->fetch_add_counter() & (queue_size - 1); // mod queue_size
-    return _write_rcu(data, size, pos);
+    auto elem = &(this->shared_queue_->elements[pos]);
+    return _write_rcu(data, size, elem);
   }
 
-  bool _write(void *data, size_t size, uint32_t pos) {
-    auto elem = &(this->shared_queue_->elements[pos]);
-    this->shared_queue_->lock(pos);
+  bool _write(void *data, size_t size, Element *elem) {
+    ScopeGuard _(&elem->mutex);
+
     void *addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
 
     if (!elem->empty) {
@@ -54,17 +55,14 @@ public:
     elem->size = size;
     elem->empty = false;
 
-    this->shared_queue_->unlock(pos);
     return true;
   }
 
-  bool _write_rcu(void *data, size_t size, uint32_t pos) {
+  bool _write_rcu(void *data, size_t size, Element *elem) {
     void *new_addr = this->raw_buf_->allocate(size);
     std::memcpy(new_addr, data, size);
 
-    auto elem = &(this->shared_queue_->elements[pos]);
-
-    this->shared_queue_->lock(pos);
+    ScopeGuard _(&elem->mutex);
 
     void *addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
     bool prev_empty = elem->empty;
@@ -76,18 +74,10 @@ public:
       this->raw_buf_->deallocate(addr);
     }
 
-    this->shared_queue_->unlock(pos);
     return true;
   }
 
   bool read(msgpack::object_handle &oh, uint32_t pos) {
-    if (extra_copy_)
-      return _read_with_copy(oh, pos);
-    else
-      return _read_without_copy(oh, pos);
-  }
-
-  bool _read_without_copy(msgpack::object_handle &oh, uint32_t pos) {
     pos &= queue_size - 1;
     auto elem = &(this->shared_queue_->elements[pos]);
 
@@ -95,7 +85,19 @@ public:
       return false;
     }
 
-    this->shared_queue_->lock_sharable(pos);
+    if (extra_copy_)
+      return _read_with_copy(oh, elem);
+    else
+      return _read_without_copy(oh, elem);
+  }
+
+  bool read(std::unique_ptr<uint8_t[]> &msg, size_t &size, uint32_t pos) {
+    auto elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
+    return _read_bin(msg, size, elem);
+  }
+
+  bool _read_without_copy(msgpack::object_handle &oh, Element *elem) {
+    ScopeGuard _(&elem->mutex, ScopeGuard::SHARED);
 
     const char *dst = reinterpret_cast<const char *>(
         this->raw_buf_->get_address_from_handle(elem->addr_hdl));
@@ -103,30 +105,19 @@ public:
     try {
       oh = msgpack::unpack(dst, elem->size);
     } catch (...) {
-      this->shared_queue_->unlock_sharable(pos);
       return false;
     }
 
-    this->shared_queue_->unlock_sharable(pos);
     return true;
   }
 
-  bool _read_with_copy(msgpack::object_handle &oh, uint32_t pos) {
-    pos &= queue_size - 1;
-    auto elem = &(this->shared_queue_->elements[pos]);
+  bool _read_with_copy(msgpack::object_handle &oh, Element *elem) {
+    auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
+    size_t size;
 
-    if (elem->empty) {
+    if (!_read_bin(src, size, elem)) {
       return false;
     }
-
-    this->shared_queue_->lock_sharable(pos);
-
-    auto size = elem->size;
-    auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
-    auto *dst = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
-    std::memcpy(src.get(), dst, elem->size);
-
-    this->shared_queue_->unlock_sharable(pos);
 
     try {
       oh = msgpack::unpack(reinterpret_cast<const char *>(src.get()), size);
@@ -137,10 +128,9 @@ public:
     return true;
   }
 
-  bool read(std::unique_ptr<uint8_t[]> &msg, size_t &size, uint32_t pos) {
-    pos &= queue_size - 1;
-    this->shared_queue_->lock_sharable(pos);
-    auto elem = &(this->shared_queue_->elements[pos]);
+  bool _read_bin(std::unique_ptr<uint8_t[]> &msg, size_t &size, Element *elem) {
+    ScopeGuard _(&elem->mutex, ScopeGuard::SHARED);
+
     if (elem->empty)
       return false;
 
@@ -148,8 +138,6 @@ public:
     msg = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
     auto *dst = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
     std::memcpy(msg.get(), dst, elem->size);
-
-    this->shared_queue_->unlock_sharable(pos);
 
     return true;
   }

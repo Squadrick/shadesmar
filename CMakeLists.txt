@@ -25,7 +25,7 @@ endif ()
 add_compile_options(-O2)
 #add_compile_options(-fsanitize=thread -fsanitize=memory -g -fno-omit-frame-pointer)
 add_definitions(-DDEBUG_BUILD)
-#add_definitions(-DOLD_LOCK)
+add_definitions(-DOLD_LOCK)
 
 add_executable(publish src/publisher.cpp)
 target_link_libraries(publish ${libs})

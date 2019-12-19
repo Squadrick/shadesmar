@@ -60,6 +60,8 @@ uint8_t *Allocator::malloc(size_t size) {
     idx_.fetch_add(1);
   } else {
   }
+
+  return nullptr;
 }
 
 void Allocator::free(uint8_t *ptr) { return; }

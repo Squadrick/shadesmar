@@ -14,13 +14,14 @@
 
 #include <thread>
 
+#include <shadesmar/lock.h>
 #include <shadesmar/lockless_set.h>
 #include <shadesmar/macros.h>
 #include <shadesmar/rw_lock.h>
 
 namespace shm {
 
-class RobustLock {
+class RobustLock : public LockInterface {
 public:
   RobustLock();
   ~RobustLock();
@@ -29,12 +30,14 @@ public:
   void unlock();
   void lock_sharable();
   void unlock_sharable();
+  bool try_lock() { return true; }
+  bool try_lock_sharable() { return true; }
 
 private:
 #ifdef OLD_LOCK
   void prune_sharable_procs();
   ReadWriteLock mutex_;
-  std::atomic<__pid_t> exclusive_owner{0};
+  std::atomic<__pid_t> exclusive_owner = {0};
   LocklessSet shared_owners;
 #else
   static void consistency_handler(pthread_mutex_t *mutex, int result);

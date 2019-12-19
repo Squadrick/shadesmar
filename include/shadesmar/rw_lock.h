@@ -6,14 +6,15 @@
 #define SHADESMAR_RW_LOCK_H
 
 #include <pthread.h>
+#include <shadesmar/lock.h>
 #include <shadesmar/macros.h>
 
-class MutexGuard {
+class PthreadGuard {
 
 public:
   enum LockType { LOCK, TRY_LOCK };
-  MutexGuard(pthread_mutex_t *mut, LockType type = LOCK);
-  ~MutexGuard();
+  PthreadGuard(pthread_mutex_t *mut, LockType type = LOCK);
+  ~PthreadGuard();
 
   bool owns();
 
@@ -22,7 +23,7 @@ private:
   int res;
 };
 
-MutexGuard::MutexGuard(pthread_mutex_t *mut, LockType type) : mut_(mut) {
+PthreadGuard::PthreadGuard(pthread_mutex_t *mut, LockType type) : mut_(mut) {
   if (type == LOCK) {
     res = pthread_mutex_lock(mut);
   } else if (type == TRY_LOCK) {
@@ -30,16 +31,16 @@ MutexGuard::MutexGuard(pthread_mutex_t *mut, LockType type) : mut_(mut) {
   }
 }
 
-MutexGuard::~MutexGuard() {
+PthreadGuard::~PthreadGuard() {
   if (res == 0) {
     pthread_mutex_unlock(mut_);
   }
   mut_ = nullptr;
 }
 
-bool MutexGuard::owns() { return res == 0; }
+bool PthreadGuard::owns() { return res == 0; }
 
-class ReadWriteLock {
+class ReadWriteLock : public LockInterface {
 public:
   ReadWriteLock();
   ~ReadWriteLock();
@@ -85,7 +86,7 @@ ReadWriteLock::~ReadWriteLock() {
 }
 
 void ReadWriteLock::lock() {
-  MutexGuard scope(&mut);
+  PthreadGuard scope(&mut);
 
   while (rw_count != 0) {
     pthread_cond_wait(&write_condvar, &mut);
@@ -95,7 +96,7 @@ void ReadWriteLock::lock() {
 }
 
 bool ReadWriteLock::try_lock() {
-  MutexGuard scope(&mut, MutexGuard::TRY_LOCK);
+  PthreadGuard scope(&mut, PthreadGuard::TRY_LOCK);
 
   if (!scope.owns() || rw_count != 0) {
     return false;
@@ -106,7 +107,7 @@ bool ReadWriteLock::try_lock() {
 }
 
 void ReadWriteLock::unlock() {
-  MutexGuard scope(&mut);
+  PthreadGuard scope(&mut);
   rw_count = 0;
 
   if (read_waiting) {
@@ -117,7 +118,7 @@ void ReadWriteLock::unlock() {
 }
 
 void ReadWriteLock::lock_sharable() {
-  MutexGuard scope(&mut);
+  PthreadGuard scope(&mut);
   read_waiting = true;
 
   while (rw_count < 0) {
@@ -128,7 +129,7 @@ void ReadWriteLock::lock_sharable() {
 }
 
 bool ReadWriteLock::try_lock_sharable() {
-  MutexGuard scope(&mut, MutexGuard::TRY_LOCK);
+  PthreadGuard scope(&mut, PthreadGuard::TRY_LOCK);
 
   if (!scope.owns() || rw_count < 0) {
     return false;
@@ -140,7 +141,7 @@ bool ReadWriteLock::try_lock_sharable() {
 }
 
 void ReadWriteLock::unlock_sharable() {
-  MutexGuard scope(&mut);
+  PthreadGuard scope(&mut);
   --rw_count;
 
   if (rw_count == 0) {

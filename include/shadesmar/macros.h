@@ -36,6 +36,6 @@
 #define DEBUG(str) DEBUG_IMPL(str, "\n");
 #define INFO_INIT 1337
 
-const int MAX_SHARED_OWNERS = 16;
+const int MAX_SHARED_OWNERS = 4;
 
 #endif // shadesmar_MACROS_H

@@ -58,16 +58,23 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
   return ptr;
 }
 
-template <uint32_t queue_size> struct SharedQueue {
-  struct Element {
-    size_t size{};
-    bool empty = true;
-    RobustLock mutex;
-    managed_shared_memory::handle_t addr_hdl{0};
-  };
-  std::atomic_uint32_t init{}, counter{};
+struct Element {
+  size_t size;
+  bool empty;
+  RobustLock mutex = {};
+  managed_shared_memory::handle_t addr_hdl;
 
-  Element elements[queue_size]{};
+  Element() {
+    empty = true;
+    addr_hdl = 0;
+    size = 0;
+  }
+};
+
+template <uint32_t queue_size> class SharedQueue {
+public:
+  std::atomic_uint32_t init{}, counter{};
+  std::array<Element, queue_size> elements;
   RobustLock info_mutex;
 
   void lock(uint32_t idx) { elements[idx].mutex.lock(); }

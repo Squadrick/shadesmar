@@ -5,6 +5,7 @@
 #ifndef SHADESMAR_LOCKLESS_SET_H
 #define SHADESMAR_LOCKLESS_SET_H
 
+#include <array>
 #include <atomic>
 #include <cstring>
 
@@ -21,10 +22,10 @@ public:
   bool insert(uint32_t elem);
   bool remove(uint32_t elem);
 
-  std::atomic_uint32_t __array[MAX_SHARED_OWNERS]{};
+  std::array<std::atomic_uint32_t, MAX_SHARED_OWNERS> __array = {};
 };
 
-LocklessSet::LocklessSet() { std::memset(__array, 0, MAX_SHARED_OWNERS); }
+LocklessSet::LocklessSet() {}
 
 bool LocklessSet::insert(uint32_t elem) {
   for (uint32_t idx = 0; idx < MAX_SHARED_OWNERS; ++idx) {
@@ -43,7 +44,7 @@ bool LocklessSet::insert(uint32_t elem) {
     }
     return false;
   }
-  return true;
+  return false;
 }
 
 bool LocklessSet::remove(uint32_t elem) {

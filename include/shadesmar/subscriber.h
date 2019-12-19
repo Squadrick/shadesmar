@@ -67,14 +67,15 @@ private:
 };
 
 template <uint32_t queue_size>
-SubscriberBase<queue_size>::SubscriberBase(std::string topic_name, bool extra_copy)
+SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
+                                           bool extra_copy)
     : topic_name_(topic_name) {
 
 #if __cplusplus >= 201703L
   topic = std::make_unique<Topic<queue_size>>(topic_name_, extra_copy);
 #else
-  topic = std::unique_ptr<Topic<queue_size>>(
-      new Topic<queue_size>(std::forward<std::string>(topic_name_, extra_copy)));
+  topic = std::unique_ptr<Topic<queue_size>>(new Topic<queue_size>(
+      std::forward<std::string>(topic_name_, extra_copy)));
 #endif
 
   counter = topic->counter();
