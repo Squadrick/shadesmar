@@ -60,12 +60,12 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
 
 struct Element {
   size_t size;
-  bool empty;
+  std::atomic<bool> empty = {true};
+  std::atomic<bool> ready = {false};
   RobustLock mutex = {};
   managed_shared_memory::handle_t addr_hdl;
 
   Element() {
-    empty = true;
     addr_hdl = 0;
     size = 0;
   }
@@ -73,7 +73,7 @@ struct Element {
 
 template <uint32_t queue_size> class SharedQueue {
 public:
-  std::atomic_uint32_t init{}, counter{};
+  std::atomic_uint32_t init{}, counter{0};
   std::array<Element, queue_size> elements;
   RobustLock info_mutex;
 
@@ -131,9 +131,8 @@ public:
   virtual bool read(msgpack::object_handle &oh, uint32_t pos) = 0;
 
   virtual bool read(std::unique_ptr<uint8_t[]> &msg, size_t &size,
-                    uint32_t pos) = 0;
+                    uint32_t pos);
 
-  // TODO: `counter` out of sync when number of pubs > 1.
   inline __attribute__((always_inline)) uint32_t counter() {
     return shared_queue_->counter.load();
   }
@@ -142,10 +141,19 @@ public:
     return shared_queue_->counter.fetch_add(1);
   }
 
+  inline __attribute__((always_inline)) void inc_counter() {
+    shared_queue_->counter.fetch_add(1);
+  }
+
   std::string name_;
   std::shared_ptr<managed_shared_memory> raw_buf_;
   SharedQueue<queue_size> *shared_queue_;
 };
+template <uint32_t queue_size>
+bool Memory<queue_size>::read(std::unique_ptr<uint8_t[]> &msg, size_t &size,
+                              uint32_t pos) {
+  return false;
+}
 
 } // namespace shm
 

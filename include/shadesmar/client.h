@@ -10,28 +10,43 @@
 
 #include <msgpack.hpp>
 
+#include <shadesmar/channel.h>
 #include <shadesmar/template_magic.h>
 
 namespace shm::rpc {
-class Client {
+class FunctionCaller {
 public:
-  Client();
+  FunctionCaller(const std::string &name);
 
-  template <typename... Args>
-  msgpack::sbuffer call(const std::string &, Args... args);
+  template <typename... Args> msgpack::object operator()(Args... args);
+
+private:
+  Channel channel_;
 };
 
+FunctionCaller::FunctionCaller(const std::string &name)
+    : channel_(Channel(name, true)) {}
+
 template <typename... Args>
-msgpack::sbuffer Client::call(const std::string &, Args... args) {
+msgpack::object FunctionCaller::operator()(Args... args) {
   msgpack::sbuffer buf;
+  msgpack::object_handle reply_oh;
   std::tuple<Args...> data_tuple(args...);
 
   msgpack::pack(buf, data_tuple);
-  std::cout << buf.data() << std::endl;
 
-  return buf;
+  DEBUG("C: Starting write");
+  while (!channel_.write(buf.data(), buf.size()))
+    ;
+
+  DEBUG("C: Waiting read @ " << channel_.idx_);
+  while (!channel_.read(reply_oh, channel_.idx_))
+    ;
+
+  DEBUG("C: Done read");
+  auto reply_obj = reply_oh.get();
+  return reply_obj;
 }
 
-Client::Client() {}
 } // namespace shm::rpc
 #endif // SHADESMAR_CLIENT_H

@@ -4,23 +4,23 @@
 
 #include <shadesmar/client.h>
 #include <shadesmar/server.h>
-#include <shadesmar/template_magic.h>
 
-#include <any>
+int fn(int a, int b) { return a + b; }
 
-using namespace shm;
-int fn(int a) { return a + 1; }
-
-template <class... Params>
-std::tuple<Params...> get_tuple(template_magic::types<Params...>) {
-  std::tuple<Params...> arr;
-  return arr;
+void call_run() {
+  shm::rpc::FunctionCaller rpc_fn("inc");
+  for (int i = 0; true; ++i) {
+    std::cout << rpc_fn(i, i).as<int>() << std::endl;
+  }
 }
 
 int main() {
-  shm::rpc::Client client;
-  auto buf = client.call("dec", "tset", 3);
-
-  shm::rpc::Function<int(int)> inc("inc", fn);
-  std::cout << inc.serveOnce(buf) << std::endl;
+  if (fork() != 0) {
+    shm::rpc::Function<int(int, int)> rpc_fn("inc", fn);
+    while (true)
+      rpc_fn.serveOnce();
+  } else {
+    //    fork();
+    call_run();
+  }
 }
