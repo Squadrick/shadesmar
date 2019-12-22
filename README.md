@@ -1,7 +1,7 @@
 ### Shadesmar
 
 An IPC library that uses the system's shared memory to pass messages. 
-The communication paradigm is publish-subscibe similar to ROS and ROS2.
+The communication paradigm is either publish-subscibe or RPC similar to ROS and ROS2.
 The library was built to be used within [Project MANAS](www.projectmanas.in).
 
 Required packages: Boost, Msgpack
@@ -14,8 +14,6 @@ Required packages: Boost, Msgpack
 * Faster than using the network stack like in the case with ROS.
 
 * Read and write directly from GPU memory to shared memory.
-
-* Subscribers can operate directly on messages in shared memory without making copies.
 
 * Uses a circular buffer to pass messages between publishers and subscribers.
 
