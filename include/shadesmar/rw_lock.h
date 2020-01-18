@@ -9,38 +9,9 @@
 #include <shadesmar/lock.h>
 #include <shadesmar/macros.h>
 
-class PthreadGuard {
+namespace shm {
 
-public:
-  enum LockType { LOCK, TRY_LOCK };
-  PthreadGuard(pthread_mutex_t *mut, LockType type = LOCK);
-  ~PthreadGuard();
-
-  bool owns();
-
-private:
-  pthread_mutex_t *mut_;
-  int res;
-};
-
-PthreadGuard::PthreadGuard(pthread_mutex_t *mut, LockType type) : mut_(mut) {
-  if (type == LOCK) {
-    res = pthread_mutex_lock(mut);
-  } else if (type == TRY_LOCK) {
-    res = pthread_mutex_trylock(mut);
-  }
-}
-
-PthreadGuard::~PthreadGuard() {
-  if (res == 0) {
-    pthread_mutex_unlock(mut_);
-  }
-  mut_ = nullptr;
-}
-
-bool PthreadGuard::owns() { return res == 0; }
-
-class ReadWriteLock : public LockInterface {
+class ReadWriteLock {
 public:
   ReadWriteLock();
   ~ReadWriteLock();
@@ -149,4 +120,42 @@ void ReadWriteLock::unlock_sharable() {
   }
 }
 
+class PthreadReadWriteLock {
+public:
+  PthreadReadWriteLock();
+  ~PthreadReadWriteLock();
+
+  void lock();
+  bool try_lock();
+  void unlock();
+  void lock_sharable();
+  bool try_lock_sharable();
+  void unlock_sharable();
+
+private:
+  pthread_rwlock_t rwlock;
+  pthread_rwlockattr_t attr;
+};
+
+PthreadReadWriteLock::PthreadReadWriteLock() {
+  pthread_rwlockattr_init(&attr);
+  pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+  pthread_rwlock_init(&rwlock, &attr);
+}
+PthreadReadWriteLock::~PthreadReadWriteLock() {
+  pthread_rwlockattr_destroy(&attr);
+  pthread_rwlock_destroy(&rwlock);
+}
+void PthreadReadWriteLock::lock() { pthread_rwlock_wrlock(&rwlock); }
+bool PthreadReadWriteLock::try_lock() {
+  return (!pthread_rwlock_trywrlock(&rwlock));
+}
+void PthreadReadWriteLock::unlock() { pthread_rwlock_unlock(&rwlock); }
+void PthreadReadWriteLock::lock_sharable() { pthread_rwlock_rdlock(&rwlock); }
+bool PthreadReadWriteLock::try_lock_sharable() {
+  return (!pthread_rwlock_tryrdlock(&rwlock));
+}
+void PthreadReadWriteLock::unlock_sharable() { pthread_rwlock_unlock(&rwlock); }
+
+} // namespace shm
 #endif // SHADESMAR_RW_LOCK_H

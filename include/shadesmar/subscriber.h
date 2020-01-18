@@ -121,7 +121,6 @@ template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
 
 template <typename msgT, uint32_t queue_size>
 void Subscriber<msgT, queue_size>::_subscribe() {
-
   msgpack::object_handle oh;
   bool read_success;
 

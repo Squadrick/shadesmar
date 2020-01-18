@@ -21,7 +21,7 @@
 
 namespace shm {
 
-class RobustLock : public LockInterface {
+class RobustLock {
 public:
   RobustLock();
   ~RobustLock();
@@ -30,13 +30,11 @@ public:
   void unlock();
   void lock_sharable();
   void unlock_sharable();
-  bool try_lock() { return true; }
-  bool try_lock_sharable() { return true; }
 
 private:
 #ifdef OLD_LOCK
   void prune_sharable_procs();
-  ReadWriteLock mutex_;
+  PthreadReadWriteLock mutex_;
   std::atomic<__pid_t> exclusive_owner = {0};
   LocklessSet shared_owners;
 #else

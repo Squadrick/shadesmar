@@ -40,7 +40,7 @@ public:
   }
 
   bool _write(void *data, size_t size, Element *elem) {
-    ScopeGuard _(&elem->mutex);
+    ScopeGuard<RobustLock> _(&(elem->mutex));
 
     void *addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
 
@@ -62,7 +62,7 @@ public:
     void *new_addr = this->raw_buf_->allocate(size);
     std::memcpy(new_addr, data, size);
 
-    ScopeGuard _(&elem->mutex);
+    ScopeGuard<RobustLock> _(&(elem->mutex));
 
     void *addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
     bool prev_empty = elem->empty;
@@ -97,7 +97,7 @@ public:
   }
 
   bool _read_without_copy(msgpack::object_handle &oh, Element *elem) {
-    ScopeGuard _(&elem->mutex, ScopeGuard::SHARED);
+    ScopeGuard<RobustLock> _(&elem->mutex, ScopeGuard<RobustLock>::SHARED);
 
     const char *dst = reinterpret_cast<const char *>(
         this->raw_buf_->get_address_from_handle(elem->addr_hdl));
@@ -129,7 +129,7 @@ public:
   }
 
   bool _read_bin(std::unique_ptr<uint8_t[]> &msg, size_t &size, Element *elem) {
-    ScopeGuard _(&elem->mutex, ScopeGuard::SHARED);
+    ScopeGuard<RobustLock> _(&(elem->mutex), ScopeGuard<RobustLock>::SHARED);
 
     if (elem->empty)
       return false;
