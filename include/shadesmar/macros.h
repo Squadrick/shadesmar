@@ -5,6 +5,9 @@
 #ifndef shadesmar_MACROS_H
 #define shadesmar_MACROS_H
 
+#include <iostream>
+#include <chrono>
+
 #define TIMESCALE std::chrono::microseconds
 #define TIMESCALE_COUNT 1e6
 #define TIMESCALE_NAME "us"

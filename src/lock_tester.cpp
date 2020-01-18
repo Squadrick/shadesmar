@@ -6,11 +6,13 @@
 
 #include <shadesmar/memory.h>
 #include <shadesmar/robust_lock.h>
+#include <shadesmar/rw_lock.h>
 #include <shadesmar/tmp.h>
 
-typedef shm::RobustLock LOCK;
+typedef shm::PthreadReadWriteLock LOCK;
 
 int main() {
+  std::cout << "Size of lock = " << sizeof(LOCK) << std::endl;
   bool new_segment;
   uint8_t *buff =
       shm::create_memory_segment("lock_buffer", sizeof(LOCK), new_segment);
@@ -21,9 +23,11 @@ int main() {
     lock = new (buff) LOCK;
     shm::tmp::write("lock_buffer");
   } else {
+    std::cout << "Using older segment" << std::endl;
     lock = reinterpret_cast<LOCK *>(buff);
   }
 
+  DEBUG(lock);
   std::cout << "WL: Writer lock" << std::endl;
   std::cout << "WU: Writer unlock" << std::endl;
   std::cout << "RL: Reader lock" << std::endl;

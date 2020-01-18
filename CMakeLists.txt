@@ -56,3 +56,6 @@ target_link_libraries(lock_tester ${libs})
 
 add_executable(rpc_test src/rpc_test.cpp)
 target_link_libraries(rpc_test ${libs})
+
+add_executable(tester src/tester.cpp)
+target_link_libraries(tester ${libs})
