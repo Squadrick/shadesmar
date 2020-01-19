@@ -41,8 +41,8 @@ int main() {
 
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_ = (double)lag / count;
-        DEBUG("Number of messages sent: " << count << "/s");
-        DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
+        std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
+        std::cout << "Average Lag: " << lag_ << TIMESCALE_NAME << std::endl;
 
         if (++seconds == SECONDS)
           break;
@@ -54,7 +54,7 @@ int main() {
   } else {
     shm::PublisherBin<QUEUE_SIZE> pub("benchmark_bin");
     Message *msg = (Message *)malloc(VECTOR_SIZE);
-    DEBUG("Number of bytes = " << VECTOR_SIZE);
+    std::cout << "Number of bytes = " << VECTOR_SIZE << std::endl;
     auto start = std::chrono::system_clock::now();
 
     while (true) {

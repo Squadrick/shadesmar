@@ -8,16 +8,16 @@
 #include <shadesmar/subscriber.h>
 
 void callback(const std::shared_ptr<CustomMessage> &msg) {
-  DEBUG_IMPL(msg->seq, "\t");
+  std::cout << msg->seq << "\t";
   auto lag = std::chrono::duration_cast<TIMESCALE>(
                  std::chrono::system_clock::now().time_since_epoch())
                  .count() -
              msg->timestamp;
-  DEBUG("Avg lag: " << lag << TIMESCALE_NAME);
+  std::cout << "Avg lag: " << lag << TIMESCALE_NAME << std::endl;
 
   for (auto i : msg->arr) {
     if (i != msg->val) {
-      DEBUG("Pubsub error");
+      std::cerr << "Pubsub error" << std::endl;
       return;
     }
   }

@@ -12,7 +12,7 @@ int main() {
 
   if (creat) {
     shm::tmp::write("test_shm");
-    DEBUG("Writing");
+    std::cout << "Writing" << std::endl;
     for (int i = 0; i < 100; ++i) {
       ptr[i] = i;
     }
@@ -20,8 +20,8 @@ int main() {
     while (true)
       ;
   } else {
-    DEBUG("Reading")
+    std::cout << "Reading" << std::endl;
     for (int i = 0; i < 100; ++i)
-      DEBUG(ptr[i]);
+      std::cout << ptr[i] << std::endl;
   }
 }

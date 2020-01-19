@@ -58,10 +58,10 @@ int main() {
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_ = (double)lag / count;
         if (count != 0) {
-          DEBUG("Number of messages sent: " << count << "/s");
-          DEBUG("Average Lag: " << lag_ << TIMESCALE_NAME);
+          std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
+          std::cout << "Average Lag: " << lag_ << TIMESCALE_NAME << std::endl;
         } else {
-          DEBUG("Number of message sent: <1/s");
+          std::cout << "Number of message sent: <1/s" << std::endl;
         }
 
         if (++seconds == SECONDS)
@@ -71,11 +71,11 @@ int main() {
         start = std::chrono::system_clock::now();
       }
     }
-    DEBUG("Total messages sent in 10 seconds: " << total_count);
+    std::cout << "Total msgs sent in 10 seconds: " << total_count << std::endl;
   } else {
     msgpack::sbuffer buf;
     msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
-    DEBUG("Number of bytes = " << buf.size());
+    std::cout << "Number of bytes = " << buf.size() << std::endl;
 
     shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
 

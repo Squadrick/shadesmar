@@ -27,7 +27,6 @@ int main() {
     lock = reinterpret_cast<LOCK *>(buff);
   }
 
-  DEBUG(lock);
   std::cout << "WL: Writer lock" << std::endl;
   std::cout << "WU: Writer unlock" << std::endl;
   std::cout << "RL: Reader lock" << std::endl;

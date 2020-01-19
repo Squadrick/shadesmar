@@ -27,13 +27,13 @@ int main() {
   CustomMessage mc;
   obj.convert(mc);
 
-  DEBUG(mc.seq);
-  DEBUG(mc.frame_id);
-  DEBUG(mc.timestamp);
-  DEBUG(mc.im.inner_val);
-  DEBUG(mc.im.inner_str);
+  std::cout << mc.seq << std::endl;
+  std::cout << mc.frame_id << std::endl;
+  std::cout << mc.timestamp << std::endl;
+  std::cout << mc.im.inner_val << std::endl;
+  std::cout << mc.im.inner_str << std::endl;
 
   for (auto &x : mc.arr)
-    DEBUG_IMPL(x, " ");
-  DEBUG("");
+    std::cout << x << " ";
+  std::cout << std::endl;
 }
