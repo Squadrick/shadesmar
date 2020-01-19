@@ -22,7 +22,7 @@ if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)# -fsanitize=thread -fsanitize=memory)
 endif ()
 
-add_compile_options(-O2)
+add_compile_options(-O3)
 #add_compile_options(-fsanitize=thread -fsanitize=memory -g -fno-omit-frame-pointer)
 add_definitions(-DDEBUG_BUILD)
 add_definitions(-DOLD_LOCK)
@@ -59,3 +59,9 @@ target_link_libraries(rpc_test ${libs})
 
 add_executable(tester src/tester.cpp)
 target_link_libraries(tester ${libs})
+
+add_executable(rpc_server src/rpc_server.cpp)
+target_link_libraries(rpc_server ${libs})
+
+add_executable(rpc_client src/rpc_client.cpp)
+target_link_libraries(rpc_client ${libs})
