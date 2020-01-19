@@ -30,7 +30,7 @@ void callback(std::unique_ptr<uint8_t[]> &data, uint32_t size) {
 
 int main() {
   if (fork() == 0) {
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     shm::SubscriberBin<QUEUE_SIZE> sub("benchmark_bin", callback);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
