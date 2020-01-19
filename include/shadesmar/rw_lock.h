@@ -146,6 +146,7 @@ PthreadReadWriteLock::~PthreadReadWriteLock() {
   pthread_rwlockattr_destroy(&attr);
   pthread_rwlock_destroy(&rwlock);
 }
+
 void PthreadReadWriteLock::lock() { pthread_rwlock_wrlock(&rwlock); }
 bool PthreadReadWriteLock::try_lock() {
   return (!pthread_rwlock_trywrlock(&rwlock));

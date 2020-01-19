@@ -9,7 +9,7 @@
 #include <shadesmar/rw_lock.h>
 #include <shadesmar/tmp.h>
 
-typedef shm::RobustLock LOCK;
+typedef shm::PthreadReadWriteLock LOCK;
 
 int main() {
   std::cout << "Size of lock = " << sizeof(LOCK) << std::endl;
