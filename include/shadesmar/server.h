@@ -23,7 +23,6 @@ public:
       : channel_(Channel(fn_name, false)), fn_(fn) {}
 
   bool serveOnce() {
-    // check for new message
     int32_t cc = channel_.counter();
     if (cc <= channel_.idx_) {
       return false;
@@ -33,7 +32,6 @@ public:
     msgpack::sbuffer buf;
     std::tuple<Args...> args;
 
-    DEBUG("S: Input found @ " << channel_.idx_);
     if (!channel_.read(oh, channel_.idx_)) {
       return false;
     }
@@ -41,22 +39,17 @@ public:
     try {
       oh.get().convert(args);
     } catch (...) {
-      // TODO: We cycle around the queue, and read the older results
       return false;
     }
-    DEBUG("S: Function Call");
-    auto result = std::apply(fn_, args);
 
+    auto result = std::apply(fn_, args);
     msgpack::pack(buf, result);
 
-    DEBUG("S: Writing output");
     if (!channel_.write(buf.data(), buf.size())) {
       return false;
     }
 
-    DEBUG("S: RPC success");
     channel_.idx_++;
-
     return true;
   }
 

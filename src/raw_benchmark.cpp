@@ -66,7 +66,6 @@ int main() {
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
       if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT)
         break;
-      //      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     free(msg);
   }
