@@ -82,7 +82,6 @@ bool Channel::_write_server(void *data, size_t size) {
 }
 
 void Channel::_write(Element *elem, void *data, size_t size) {
-
   void *new_addr = this->raw_buf_->allocate(size);
   std::memcpy(new_addr, data, size);
   elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
@@ -99,7 +98,6 @@ bool Channel::read(msgpack::object_handle &oh, uint32_t pos) {
       return false;
     }
   }
-  //  DEBUG(caller_);
 
   ScopeGuard _(&elem->mutex);
 

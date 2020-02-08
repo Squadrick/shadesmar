@@ -20,6 +20,7 @@
 #include <msgpack.hpp>
 
 #include <shadesmar/allocator.h>
+#include <shadesmar/dragons.h>
 #include <shadesmar/macros.h>
 #include <shadesmar/memory.h>
 #include <shadesmar/robust_lock.h>
