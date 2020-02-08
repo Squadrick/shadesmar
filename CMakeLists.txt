@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
+
 project(shadesmar)
-SET(CMAKE_VERBOSE_MAKEFILE 1)
 
 find_package(Boost REQUIRED)
 find_package(msgpack REQUIRED)
@@ -22,10 +22,11 @@ if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)# -fsanitize=thread -fsanitize=memory)
 endif ()
 
-add_compile_options(-O3)
-#add_compile_options(-fsanitize=thread -fsanitize=memory -g -fno-omit-frame-pointer)
+#add_compile_options(-fsanitize=thread -fsanitize=memory -fno-omit-frame-pointer)
+add_compile_options(-march=native)
 add_definitions(-DDEBUG_BUILD)
 add_definitions(-DOLD_LOCK)
+#add_definitions(-DREP_MOVSB)
 
 add_executable(publish src/publisher.cpp)
 target_link_libraries(publish ${libs})

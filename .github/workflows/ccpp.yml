@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: dependencies
-      run: sudo apt update && sudo apt install libboost-all-dev libmsgpack-dev
+      run: sudo apt update && sudo apt install libboost-all-dev libmsgpack-dev ninja-build
     - name: configure
       env:
         CXX: ${{ matrix.compiler }}
@@ -24,7 +24,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: dependencies
-      run: brew update && brew install boost msgpack
+      run: brew update && brew install boost msgpack ninja
     - name: configure
       run: ./configure
     - name: build
