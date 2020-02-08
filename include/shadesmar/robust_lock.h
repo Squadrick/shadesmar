@@ -5,10 +5,6 @@
 #ifndef shadesmar_ROBUST_LOCK_H
 #define shadesmar_ROBUST_LOCK_H
 
-#ifdef __APPLE__
-#define OLD_LOCK
-#endif
-
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -32,17 +28,10 @@ public:
   void unlock_sharable();
 
 private:
-#ifdef OLD_LOCK
   void prune_sharable_procs();
   PthreadReadWriteLock mutex_;
   std::atomic<__pid_t> exclusive_owner = {0};
   LocklessSet shared_owners;
-#else
-  static void consistency_handler(pthread_mutex_t *mutex, int result);
-  pthread_mutex_t r, g;
-  pthread_mutexattr_t attr;
-  uint32_t counter;
-#endif
 };
 
 inline bool proc_dead(__pid_t proc) {
@@ -53,8 +42,6 @@ inline bool proc_dead(__pid_t proc) {
   struct stat sts {};
   return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
-
-#ifdef OLD_LOCK
 
 RobustLock::RobustLock() = default;
 
@@ -123,62 +110,6 @@ void RobustLock::prune_sharable_procs() {
     }
   }
 }
-
-#else
-
-RobustLock::RobustLock() {
-  pthread_mutexattr_init(&attr);
-  pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-  pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
-
-  pthread_mutex_init(&r, &attr);
-  pthread_mutex_init(&g, &attr);
-}
-
-RobustLock::~RobustLock() {
-  pthread_mutexattr_destroy(&attr);
-  pthread_mutex_destroy(&r);
-  pthread_mutex_destroy(&g);
-}
-
-void RobustLock::lock() {
-  int res = pthread_mutex_lock(&g);
-  consistency_handler(&g, res);
-}
-
-void RobustLock::unlock() { pthread_mutex_unlock(&g); }
-
-void RobustLock::lock_sharable() {
-  int res_r = pthread_mutex_lock(&r);
-  consistency_handler(&r, res_r);
-  counter += 1;
-  if (counter == 1) {
-    int res_g = pthread_mutex_lock(&g);
-    consistency_handler(&g, res_g);
-  }
-  pthread_mutex_unlock(&r);
-}
-
-void RobustLock::unlock_sharable() {
-  int res_r = pthread_mutex_lock(&r);
-  consistency_handler(&r, res_r);
-  counter -= 1;
-  if (counter == 0) {
-    pthread_mutex_unlock(&g);
-  }
-  pthread_mutex_unlock(&r);
-}
-
-void RobustLock::consistency_handler(pthread_mutex_t *mutex, int result) {
-  if (result == EOWNERDEAD) {
-    pthread_mutex_consistent(mutex);
-  } else if (result == ENOTRECOVERABLE) {
-    std::cerr << "Inconsistent mutex" << std::endl;
-    exit(0);
-  }
-}
-
-#endif
 
 } // namespace shm
 #endif // shadesmar_ROBUST_LOCK_H

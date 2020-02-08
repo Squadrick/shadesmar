@@ -25,7 +25,6 @@ endif ()
 #add_compile_options(-fsanitize=thread -fsanitize=memory -fno-omit-frame-pointer)
 add_compile_options(-march=native)
 add_definitions(-DDEBUG_BUILD)
-add_definitions(-DOLD_LOCK)
 #add_definitions(-DREP_MOVSB)
 
 add_executable(publish src/publisher.cpp)
