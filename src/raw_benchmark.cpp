@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <numeric>
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
 
@@ -19,6 +20,24 @@ struct Message {
   void *data;
 };
 
+template <typename T> double get_mean(const std::vector<T> &v) {
+  double sum = std::accumulate(v.begin(), v.end(), 0.0);
+  double mean = sum / v.size();
+  return mean;
+}
+
+template <typename T> double get_stddev(const std::vector<T> &v) {
+  double mean = get_mean(v);
+  std::vector<double> diff(v.size());
+  std::transform(v.begin(), v.end(), diff.begin(),
+                 [mean](double x) { return x - mean; });
+  double sq_sum =
+      std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+
+  double stddev = std::sqrt(sq_sum / v.size());
+  return stddev;
+}
+
 void callback(std::unique_ptr<uint8_t[]> &data, uint32_t size) {
   Message *msg = reinterpret_cast<Message *>(data.get());
   ++count;
@@ -30,6 +49,8 @@ void callback(std::unique_ptr<uint8_t[]> &data, uint32_t size) {
 
 int main() {
   if (fork() == 0) {
+    std::vector<int> counts;
+    std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
     shm::SubscriberBin<QUEUE_SIZE> sub("benchmark_bin", callback);
     auto start = std::chrono::system_clock::now();
@@ -40,9 +61,13 @@ int main() {
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
 
       if (diff.count() > TIMESCALE_COUNT) {
-        double lag_ = (double)lag / count;
+        double lag_per_msg = (double)lag / count;
         std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
-        std::cout << "Average Lag: " << lag_ << TIMESCALE_NAME << std::endl;
+        std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
+                  << std::endl;
+
+        counts.push_back(count);
+        lags.push_back(lag_per_msg);
 
         if (++seconds == SECONDS)
           break;
@@ -51,6 +76,15 @@ int main() {
         start = std::chrono::system_clock::now();
       }
     }
+
+    auto mean_count = get_mean(counts);
+    auto stdd_count = get_stddev(counts);
+    auto mean_lag = get_mean(lags);
+    auto stdd_lag = get_stddev(lags);
+
+    std::cout << "Msg: " << mean_count << " ± " << stdd_count << std::endl;
+    std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
+              << std::endl;
   } else {
     shm::PublisherBin<QUEUE_SIZE> pub("benchmark_bin");
     Message *msg = (Message *)malloc(VECTOR_SIZE);
