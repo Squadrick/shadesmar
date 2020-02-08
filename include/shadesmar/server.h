@@ -32,7 +32,7 @@ public:
     msgpack::sbuffer buf;
     std::tuple<Args...> args;
 
-    if (!channel_.read(oh, channel_.idx_)) {
+    if (!channel_.read(oh)) {
       return false;
     }
 

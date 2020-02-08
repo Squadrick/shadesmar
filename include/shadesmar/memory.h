@@ -62,7 +62,7 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
 struct Element {
   size_t size;
   std::atomic<bool> empty = {true};
-  std::atomic<bool> ready = {false};
+  std::atomic<bool> ready = {false}; // used for RPC
   RobustLock mutex = {};
   managed_shared_memory::handle_t addr_hdl;
 
@@ -92,8 +92,6 @@ template <uint32_t queue_size = 1> class Memory {
 
 public:
   explicit Memory(const std::string &name) : name_(name) {
-    // TODO: Shared memory might get deleted between `create_memory_segment` and
-    // `new SharedQueue`.
     bool new_segment;
     auto *base_addr = create_memory_segment(
         name, sizeof(SharedQueue<queue_size>), new_segment);
@@ -127,13 +125,6 @@ public:
     shared_queue_->info_mutex.unlock();
   }
 
-  virtual bool write(void *data, size_t size) = 0;
-
-  virtual bool read(msgpack::object_handle &oh, uint32_t pos) = 0;
-
-  virtual bool read(std::unique_ptr<uint8_t[]> &msg, size_t &size,
-                    uint32_t pos);
-
   inline __attribute__((always_inline)) uint32_t counter() {
     return shared_queue_->counter.load();
   }
@@ -150,11 +141,6 @@ public:
   std::shared_ptr<managed_shared_memory> raw_buf_;
   SharedQueue<queue_size> *shared_queue_;
 };
-template <uint32_t queue_size>
-bool Memory<queue_size>::read(std::unique_ptr<uint8_t[]> &msg, size_t &size,
-                              uint32_t pos) {
-  return false;
-}
 
 } // namespace shm
 

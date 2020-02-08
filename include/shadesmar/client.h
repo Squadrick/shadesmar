@@ -40,7 +40,7 @@ msgpack::object FunctionCaller::operator()(Args... args) {
     ;
 
   DEBUG("C: Waiting read @ " << channel_.idx_);
-  while (!channel_.read(reply_oh, channel_.idx_))
+  while (!channel_.read(reply_oh))
     ;
 
   DEBUG("C: Done read");

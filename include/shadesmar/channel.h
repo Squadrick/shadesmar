@@ -25,7 +25,7 @@ public:
       : Memory<RPC_QUEUE_SIZE>(name), caller_(caller), idx_(0) {}
 
   bool write(void *data, size_t size);
-  bool read(msgpack::object_handle &oh, uint32_t pos);
+  bool read(msgpack::object_handle &oh);
 
   bool _write_caller(void *data, size_t size);
   bool _write_server(void *data, size_t size);
@@ -88,8 +88,8 @@ void Channel::_write(Element *elem, void *data, size_t size) {
   elem->size = size;
 }
 
-bool Channel::read(msgpack::object_handle &oh, uint32_t pos) {
-  pos &= RPC_QUEUE_SIZE - 1;
+bool Channel::read(msgpack::object_handle &oh) {
+  uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
   auto elem = &(this->shared_queue_->elements[pos]);
 
   if (caller_) {
