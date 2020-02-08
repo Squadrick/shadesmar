@@ -8,11 +8,12 @@
 #include <shadesmar/publisher.h>
 #include <shadesmar/subscriber.h>
 
+const std::string topic = "raw_benchmark_topic";
 const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
 
-int count = 0;
+int count = 0, total_count = 0;
 uint64_t lag = 0;
 
 struct Message {
@@ -41,6 +42,7 @@ template <typename T> double get_stddev(const std::vector<T> &v) {
 void callback(std::unique_ptr<uint8_t[]> &data, uint32_t size) {
   Message *msg = reinterpret_cast<Message *>(data.get());
   ++count;
+  ++total_count;
   lag += std::chrono::duration_cast<TIMESCALE>(
              std::chrono::system_clock::now().time_since_epoch())
              .count() -
@@ -52,7 +54,7 @@ int main() {
     std::vector<int> counts;
     std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    shm::SubscriberBin<QUEUE_SIZE> sub("benchmark_bin", callback);
+    shm::SubscriberBin<QUEUE_SIZE> sub(topic, callback);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
@@ -62,12 +64,16 @@ int main() {
 
       if (diff.count() > TIMESCALE_COUNT) {
         double lag_per_msg = (double)lag / count;
-        std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
-        std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
-                  << std::endl;
+        if (count != 0) {
+          std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
+          std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
+                    << std::endl;
 
-        counts.push_back(count);
-        lags.push_back(lag_per_msg);
+          counts.push_back(count);
+          lags.push_back(lag_per_msg);
+        } else {
+          std::cout << "Number of message sent: <1/s" << std::endl;
+        }
 
         if (++seconds == SECONDS)
           break;
@@ -77,20 +83,24 @@ int main() {
       }
     }
 
+    std::cout << "Total msgs sent in 10 seconds: " << total_count << std::endl;
+
     auto mean_count = get_mean(counts);
     auto stdd_count = get_stddev(counts);
+    std::cout << "Msg: " << mean_count << " ± " << stdd_count << std::endl;
+
     auto mean_lag = get_mean(lags);
     auto stdd_lag = get_stddev(lags);
-
-    std::cout << "Msg: " << mean_count << " ± " << stdd_count << std::endl;
     std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
               << std::endl;
   } else {
-    shm::PublisherBin<QUEUE_SIZE> pub("benchmark_bin");
-    Message *msg = (Message *)malloc(VECTOR_SIZE);
-    std::cout << "Number of bytes = " << VECTOR_SIZE << std::endl;
-    auto start = std::chrono::system_clock::now();
+    shm::PublisherBin<QUEUE_SIZE> pub(topic);
 
+    Message *msg = (Message *)malloc(VECTOR_SIZE);
+
+    std::cout << "Number of bytes = " << VECTOR_SIZE << std::endl;
+
+    auto start = std::chrono::system_clock::now();
     while (true) {
       msg->timestamp = std::chrono::duration_cast<TIMESCALE>(
                            std::chrono::system_clock::now().time_since_epoch())
