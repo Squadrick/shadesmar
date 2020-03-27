@@ -5,10 +5,14 @@
 #ifndef SHADESMAR_LOCK_H
 #define SHADESMAR_LOCK_H
 
+namespace shm {
+enum ExlOrShr { EXCLUSIVE, SHARED };
+enum LckOrTry { DO_LOCK, TRY_LOCK };
+
 template <typename LockT> class ScopeGuard {
 public:
-  enum LockType { EXCLUSIVE, SHARED };
-  ScopeGuard(LockT *lck, LockType type = EXCLUSIVE) : lck_(lck), type_(type) {
+  explicit ScopeGuard(LockT *lck, ExlOrShr type = EXCLUSIVE)
+      : lck_(lck), type_(type) {
     if (type_ == SHARED) {
       lck_->lock_sharable();
     } else {
@@ -26,14 +30,13 @@ public:
 
 private:
   LockT *lck_;
-  LockType type_;
+  ExlOrShr type_;
 };
 
 class PthreadGuard {
 
 public:
-  enum LockType { LOCK, TRY_LOCK };
-  PthreadGuard(pthread_mutex_t *mut, LockType type = LOCK);
+  explicit PthreadGuard(pthread_mutex_t *mut, LckOrTry type = DO_LOCK);
   ~PthreadGuard();
 
   bool owns();
@@ -43,8 +46,8 @@ private:
   int res;
 };
 
-PthreadGuard::PthreadGuard(pthread_mutex_t *mut, LockType type) : mut_(mut) {
-  if (type == LOCK) {
+PthreadGuard::PthreadGuard(pthread_mutex_t *mut, LckOrTry type) : mut_(mut) {
+  if (type == DO_LOCK) {
     res = pthread_mutex_lock(mut);
   } else if (type == TRY_LOCK) {
     res = pthread_mutex_trylock(mut);
@@ -60,4 +63,5 @@ PthreadGuard::~PthreadGuard() {
 
 bool PthreadGuard::owns() { return res == 0; }
 
+} // namespace shm
 #endif // SHADESMAR_LOCK_H

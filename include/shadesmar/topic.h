@@ -62,13 +62,19 @@ public:
     void *new_addr = this->raw_buf_->allocate(size);
     std::memcpy(new_addr, data, size);
 
-    ScopeGuard<RobustLock> _(&(elem->mutex));
 
-    void *addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
-    bool prev_empty = elem->empty;
-    elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
-    elem->size = size;
-    elem->empty = false;
+    void *addr = nullptr;
+    bool prev_empty;
+
+    {
+      ScopeGuard<RobustLock> _(&(elem->mutex));
+      addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
+      prev_empty = elem->empty;
+      elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
+      elem->size = size;
+      elem->empty = false;
+    }
+
 
     if (!prev_empty) {
       this->raw_buf_->deallocate(addr);
@@ -97,17 +103,12 @@ public:
   }
 
   bool _read_without_copy(msgpack::object_handle &oh, Element *elem) {
-    ScopeGuard<RobustLock> _(&elem->mutex, ScopeGuard<RobustLock>::SHARED);
+    ScopeGuard<RobustLock> _(&elem->mutex, SHARED);
 
     const char *dst = reinterpret_cast<const char *>(
         this->raw_buf_->get_address_from_handle(elem->addr_hdl));
 
-    try {
-      oh = msgpack::unpack(dst, elem->size);
-    } catch (...) {
-      return false;
-    }
-
+    oh = msgpack::unpack(dst, elem->size);
     return true;
   }
 
@@ -115,21 +116,15 @@ public:
     auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
     size_t size;
 
-    if (!_read_bin(src, size, elem)) {
-      return false;
-    }
-
-    try {
+    if (_read_bin(src, size, elem)) {
       oh = msgpack::unpack(reinterpret_cast<const char *>(src.get()), size);
-    } catch (...) {
-      return false;
+      return true;
     }
-
-    return true;
+    return false;
   }
 
   bool _read_bin(std::unique_ptr<uint8_t[]> &msg, size_t &size, Element *elem) {
-    ScopeGuard<RobustLock> _(&(elem->mutex), ScopeGuard<RobustLock>::SHARED);
+    ScopeGuard<RobustLock> _(&(elem->mutex), SHARED);
 
     if (elem->empty)
       return false;

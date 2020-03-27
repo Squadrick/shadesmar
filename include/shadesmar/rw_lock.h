@@ -67,7 +67,7 @@ void ReadWriteLock::lock() {
 }
 
 bool ReadWriteLock::try_lock() {
-  PthreadGuard scope(&mut, PthreadGuard::TRY_LOCK);
+  PthreadGuard scope(&mut, TRY_LOCK);
 
   if (!scope.owns() || rw_count != 0) {
     return false;
@@ -100,7 +100,7 @@ void ReadWriteLock::lock_sharable() {
 }
 
 bool ReadWriteLock::try_lock_sharable() {
-  PthreadGuard scope(&mut, PthreadGuard::TRY_LOCK);
+  PthreadGuard scope(&mut, TRY_LOCK);
 
   if (!scope.owns() || rw_count < 0) {
     return false;
