@@ -23,6 +23,7 @@ public:
   ~RobustLock();
 
   void lock();
+  bool try_lock();
   void unlock();
   void lock_sharable();
   void unlock_sharable();
@@ -64,6 +65,14 @@ void RobustLock::lock() {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
   exclusive_owner = getpid();
+}
+
+bool RobustLock::try_lock() {
+  bool acquired = mutex_.try_lock();
+  if(acquired) {
+    exclusive_owner = getpid();
+  }
+  return acquired;
 }
 
 void RobustLock::unlock() {
