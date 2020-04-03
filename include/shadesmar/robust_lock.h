@@ -26,6 +26,7 @@ public:
   bool try_lock();
   void unlock();
   void lock_sharable();
+  bool try_lock_sharable();
   void unlock_sharable();
 
 private:
@@ -98,6 +99,15 @@ void RobustLock::lock_sharable() {
   }
   while (!shared_owners.insert(getpid()))
     ;
+}
+
+bool RobustLock::try_lock_sharable() {
+  bool acquired = mutex_.try_lock_sharable();
+  if(acquired) {
+    while (!shared_owners.insert(getpid()))
+      ;
+  }
+  return acquired;
 }
 
 void RobustLock::unlock_sharable() {
