@@ -69,11 +69,23 @@ void RobustLock::lock() {
 }
 
 bool RobustLock::try_lock() {
-  bool acquired = mutex_.try_lock();
-  if(acquired) {
-    exclusive_owner = getpid();
+  if (exclusive_owner != 0) {
+    auto ex_proc = exclusive_owner.load();
+    if (proc_dead(ex_proc)) {
+      if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+        mutex_.unlock();
+      }
+    }
+  } else {
+    prune_sharable_procs();
   }
-  return acquired;
+
+  if(mutex_.try_lock()) {
+    exclusive_owner = getpid();
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void RobustLock::unlock() {
@@ -102,12 +114,23 @@ void RobustLock::lock_sharable() {
 }
 
 bool RobustLock::try_lock_sharable() {
-  bool acquired = mutex_.try_lock_sharable();
-  if(acquired) {
+  if (exclusive_owner != 0) {
+    auto ex_proc = exclusive_owner.load();
+    if (proc_dead(ex_proc)) {
+      if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+        exclusive_owner = 0;
+        mutex_.unlock();
+      }
+    }
+  }
+
+  if(mutex_.try_lock_sharable()) {
     while (!shared_owners.insert(getpid()))
       ;
+    return true;
+  } else {
+    return false;
   }
-  return acquired;
 }
 
 void RobustLock::unlock_sharable() {
