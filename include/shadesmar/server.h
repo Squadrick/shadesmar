@@ -22,9 +22,8 @@ public:
   Function(const std::string &fn_name, std::function<R(Args...)> fn)
       : channel_(Channel(fn_name, false)), fn_(fn) {}
 
-  bool serveOnce() {
-    int32_t cc = channel_.counter();
-    if (cc <= channel_.idx_) {
+  bool serve_once() {
+    if (channel_.counter() <= channel_.idx_) {
       return false;
     }
 
@@ -36,21 +35,12 @@ public:
       return false;
     }
 
-    try {
-      oh.get().convert(args);
-    } catch (...) {
-      return false;
-    }
+    oh.get().convert(args);
 
     auto result = std::apply(fn_, args);
     msgpack::pack(buf, result);
 
-    if (!channel_.write(buf.data(), buf.size())) {
-      return false;
-    }
-
-    channel_.idx_++;
-    return true;
+    return channel_.write(buf.data(), buf.size());
   }
 
 private:

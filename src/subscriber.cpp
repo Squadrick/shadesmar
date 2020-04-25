@@ -27,6 +27,6 @@ int main() {
   shm::Subscriber<CustomMessage, 16> sub("benchmark_topic", callback, true);
 
   while (true) {
-    sub.spinOnce();
+    sub.spin_once();
   }
 }

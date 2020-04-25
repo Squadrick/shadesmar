@@ -10,6 +10,6 @@ int main() {
   shm::rpc::Function<float(float, float, float)> fmadd_rpc("fmadd", fmadd);
 
   while (true) {
-    fmadd_rpc.serveOnce();
+    fmadd_rpc.serve_once();
   }
 }

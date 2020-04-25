@@ -27,8 +27,8 @@ static inline void *_avx_async_cpy(void *d, const void *s, size_t n) {
   //   d, s -> 32 byte aligned
   //   n -> multiple of 32
 
-  __m256i *dVec = reinterpret_cast<__m256i *>(d);
-  const __m256i *sVec = reinterpret_cast<const __m256i *>(s);
+  auto *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
   size_t nVec = n / sizeof(__m256i);
   for (; nVec > 0; nVec--, sVec++, dVec++) {
     const __m256i temp = _mm256_stream_load_si256(sVec);
@@ -50,8 +50,8 @@ void *_multithread_avx_async_cpy(void *d, const void *s, size_t n) {
   std::vector<std::thread> threads;
   threads.reserve(maxThreads);
 
-  const __m256i *sVec = reinterpret_cast<const __m256i *>(s);
-  __m256i *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
+  auto *dVec = reinterpret_cast<__m256i *>(d);
   size_t nVec = n / sizeof(__m256i);
 
   lldiv_t perWorker = div((long long)nVec, maxThreads);

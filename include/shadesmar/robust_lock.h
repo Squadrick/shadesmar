@@ -20,6 +20,7 @@ namespace shm {
 class RobustLock {
 public:
   RobustLock();
+  RobustLock(const RobustLock &);
   ~RobustLock();
 
   void lock();
@@ -28,9 +29,9 @@ public:
   void unlock_sharable();
 
 private:
-  void prune_sharable_procs();
+  void prune_readers();
   PthreadReadWriteLock mutex_;
-  std::atomic<__pid_t> exclusive_owner = {0};
+  std::atomic<__pid_t> exclusive_owner{0};
   LocklessSet shared_owners;
 };
 
@@ -45,6 +46,12 @@ inline bool proc_dead(__pid_t proc) {
 
 RobustLock::RobustLock() = default;
 
+RobustLock::RobustLock(const RobustLock &lock) {
+  mutex_ = lock.mutex_;
+  exclusive_owner.store(lock.exclusive_owner.load());
+  shared_owners = lock.shared_owners;
+}
+
 RobustLock::~RobustLock() { exclusive_owner = 0; }
 
 void RobustLock::lock() {
@@ -58,7 +65,7 @@ void RobustLock::lock() {
         }
       }
     } else {
-      prune_sharable_procs();
+      prune_readers();
     }
 
     std::this_thread::sleep_for(std::chrono::microseconds(1));
@@ -97,7 +104,7 @@ void RobustLock::unlock_sharable() {
   }
 }
 
-void RobustLock::prune_sharable_procs() {
+void RobustLock::prune_readers() {
   for (auto &i : shared_owners.__array) {
     uint32_t shared_owner = i.load();
 

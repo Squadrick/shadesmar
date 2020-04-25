@@ -40,7 +40,7 @@ template <typename T> double get_stddev(const std::vector<T> &v) {
 }
 
 void callback(std::unique_ptr<uint8_t[]> &data, uint32_t size) {
-  Message *msg = reinterpret_cast<Message *>(data.get());
+  auto *msg = reinterpret_cast<Message *>(data.get());
   ++count;
   ++total_count;
   lag += std::chrono::duration_cast<TIMESCALE>(
@@ -58,7 +58,7 @@ int main() {
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
-      sub.spinOnce();
+      sub.spin_once();
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
 

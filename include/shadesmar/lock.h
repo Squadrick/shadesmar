@@ -5,63 +5,49 @@
 #ifndef SHADESMAR_LOCK_H
 #define SHADESMAR_LOCK_H
 
+#include <pthread.h>
+
 namespace shm {
-enum ExlOrShr { EXCLUSIVE, SHARED };
-enum LckOrTry { DO_LOCK, TRY_LOCK };
 
-template <typename LockT> class ScopeGuard {
+class PthreadWriteLock {
 public:
-  explicit ScopeGuard(LockT *lck, ExlOrShr type = EXCLUSIVE)
-      : lck_(lck), type_(type) {
-    if (type_ == SHARED) {
-      lck_->lock_sharable();
-    } else {
-      lck_->lock();
-    }
-  }
+  PthreadWriteLock();
+  ~PthreadWriteLock();
 
-  ~ScopeGuard() {
-    if (type_ == SHARED) {
-      lck_->unlock_sharable();
-    } else {
-      lck_->unlock();
-    }
-  }
+  void lock();
+  bool try_lock();
+  void unlock();
+
+  pthread_mutex_t *get_mutex() { return &mutex; }
 
 private:
-  LockT *lck_;
-  ExlOrShr type_;
+  pthread_mutex_t mutex{};
+  pthread_mutexattr_t attr{};
 };
 
-class PthreadGuard {
+PthreadWriteLock::PthreadWriteLock() {
+  pthread_mutexattr_init(&attr);
+  pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
+  pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+  pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+  pthread_mutex_init(&mutex, &attr);
+}
 
-public:
-  explicit PthreadGuard(pthread_mutex_t *mut, LckOrTry type = DO_LOCK);
-  ~PthreadGuard();
+PthreadWriteLock::~PthreadWriteLock() {
+  pthread_mutexattr_destroy(&attr);
+  pthread_mutex_destroy(&mutex);
+}
 
-  bool owns();
-
-private:
-  pthread_mutex_t *mut_;
-  int res;
-};
-
-PthreadGuard::PthreadGuard(pthread_mutex_t *mut, LckOrTry type) : mut_(mut) {
-  if (type == DO_LOCK) {
-    res = pthread_mutex_lock(mut);
-  } else if (type == TRY_LOCK) {
-    res = pthread_mutex_trylock(mut);
+void PthreadWriteLock::lock() {
+  pthread_mutex_lock(&mutex);
+  if (errno == EOWNERDEAD) {
+    std::cerr << "Previous owner of mutex was dead." << std::endl;
   }
 }
 
-PthreadGuard::~PthreadGuard() {
-  if (res == 0) {
-    pthread_mutex_unlock(mut_);
-  }
-  mut_ = nullptr;
-}
+bool PthreadWriteLock::try_lock() { return pthread_mutex_trylock(&mutex); }
 
-bool PthreadGuard::owns() { return res == 0; }
+void PthreadWriteLock::unlock() { pthread_mutex_unlock(&mutex); }
 
 } // namespace shm
 #endif // SHADESMAR_LOCK_H

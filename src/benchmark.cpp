@@ -20,7 +20,7 @@ uint64_t lag = 0;
 
 class BenchmarkMsg : public shm::BaseMsg {
 public:
-  int number;
+  int number{};
   std::vector<uint8_t> arr;
   SHM_PACK(number, arr);
   explicit BenchmarkMsg(int n) : number(n) {
@@ -73,7 +73,7 @@ int main() {
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
-      sub.spinOnce();
+      sub.spin_once();
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
 

@@ -17,9 +17,8 @@ int main(int argc, char **argv) {
   shm::Publisher<CustomMessage, 16> p("benchmark_topic");
   for (int i = 0;; ++i) {
     CustomMessage msg(1280 * 720 * 16);
-    msg.frame_id = "benchmark_frame";
     msg.fill(i % 256);
-    msg.init_time(shm::SYSTEM);
+    msg.init_time();
     p.publish(msg);
     std::cout << "Publishing " << i << std::endl;
 

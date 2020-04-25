@@ -22,7 +22,7 @@ namespace shm {
 
 template <uint32_t queue_size> class SubscriberBase {
 public:
-  void spinOnce();
+  void spin_once();
   void spin();
 
   virtual void _subscribe() = 0;
@@ -31,19 +31,20 @@ protected:
   SubscriberBase(std::string topic_name, bool extra_copy);
   std::string topic_name_;
   std::unique_ptr<Topic<queue_size>> topic;
-  std::atomic<uint32_t> counter{};
+  std::atomic<uint32_t> counter{0};
 };
 
 template <uint32_t queue_size>
 class SubscriberBin : public SubscriberBase<queue_size> {
 public:
   SubscriberBin(
-      std::string topic_name,
-      const std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> &callback)
-      : SubscriberBase<queue_size>(topic_name, false), callback_(callback) {}
+      const std::string &topic_name,
+      std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback)
+      : SubscriberBase<queue_size>(topic_name, false),
+        callback_(std::move(callback)) {}
 
 private:
-  const std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback_;
+  std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback_;
   void _subscribe();
 };
 
@@ -54,22 +55,21 @@ class Subscriber : public SubscriberBase<queue_size> {
                 "msgT must derive from BaseMsg");
 
 public:
-  Subscriber(std::string topic_name,
-             const std::function<void(const std::shared_ptr<msgT> &)> &callback,
+  Subscriber(const std::string &topic_name,
+             std::function<void(const std::shared_ptr<msgT> &)> callback,
              bool extra_copy = false)
       : SubscriberBase<queue_size>(topic_name, extra_copy),
-        callback_(callback) {}
+        callback_(std::move(callback)) {}
 
 private:
   std::function<void(const std::shared_ptr<msgT> &)> callback_;
-
   void _subscribe();
 };
 
 template <uint32_t queue_size>
 SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
                                            bool extra_copy)
-    : topic_name_(topic_name) {
+    : topic_name_(std::move(topic_name)) {
 
 #if __cplusplus >= 201703L
   topic = std::make_unique<Topic<queue_size>>(topic_name_, extra_copy);
@@ -81,21 +81,28 @@ SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
   counter = topic->counter();
 }
 
-template <uint32_t queue_size> void SubscriberBase<queue_size>::spinOnce() {
+template <uint32_t queue_size> void SubscriberBase<queue_size>::spin_once() {
+  /*
+   * topic's `counter` must be strictly greater than counter.
+   * If they're equal, there have been no new writes.
+   * If subscriber's counter is too far ahead, we need to catch up.
+   */
   if (topic->counter() <= counter) {
     // no new messages
     return;
   }
 
-  // TODO: Find a better policy
-  // pub_counter must be strictly greater than counter.
-  // If they're equal, there have been no new writes.
-  // If pub_counter to too far ahead, we need to catch up.
-  if (topic->counter() - counter >= queue_size) {
-    // If we have fallen behind by the size of the queue
-    // in the case of lapping, we go to last existing
-    // element in the queue.
-    counter = topic->counter() - queue_size + 1;
+  if (topic->counter() - counter > queue_size) {
+    /*
+     * If we have fallen behind by the size of the queue
+     * in the case of overlap, we go to last existing
+     * element in the queue.
+     *
+     * Why is the check > (not >=)? This is because in topic's
+     * `write` we do a `fetch_add`, so the queue pointer is already
+     * ahead of where it last wrote.
+     */
+    counter = topic->counter() - queue_size;
   }
 
   _subscribe();
@@ -103,8 +110,9 @@ template <uint32_t queue_size> void SubscriberBase<queue_size>::spinOnce() {
 }
 
 template <uint32_t queue_size> void SubscriberBase<queue_size>::spin() {
+  // TODO: Spin on different thread
   while (true) {
-    spinOnce();
+    spin_once();
   }
 }
 
@@ -112,8 +120,7 @@ template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
   std::unique_ptr<uint8_t[]> msg;
   size_t size = 0;
 
-  bool read_success = this->topic->read(msg, size, this->counter);
-  if (!read_success)
+  if (!this->topic->read(msg, size, this->counter))
     return;
 
   callback_(msg, size);
@@ -122,11 +129,8 @@ template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
 template <typename msgT, uint32_t queue_size>
 void Subscriber<msgT, queue_size>::_subscribe() {
   msgpack::object_handle oh;
-  bool read_success;
 
-  read_success = this->topic->read(oh, this->counter);
-
-  if (!read_success)
+  if (!this->topic->read(oh, this->counter))
     return;
 
   std::shared_ptr<msgT> msg = std::make_shared<msgT>();

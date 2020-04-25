@@ -14,15 +14,39 @@
 
 #include <msgpack.hpp>
 
+#include <shadesmar/cond_var.h>
+#include <shadesmar/lock.h>
 #include <shadesmar/memory.h>
+#include <shadesmar/scope.h>
 
 #define RPC_QUEUE_SIZE 32
 
 namespace shm {
-class Channel : public Memory<RPC_QUEUE_SIZE> {
+
+struct ChannelElem : public Element {
+  PthreadWriteLock mutex;
+  CondVar cond;
+  std::atomic<bool> ready;
+
+  ChannelElem() : Element() {
+    mutex = PthreadWriteLock();
+    cond = CondVar();
+    ready.store(false);
+  }
+
+  ChannelElem(const ChannelElem &channel_elem) : Element(channel_elem) {
+    mutex = channel_elem.mutex;
+    cond = channel_elem.cond;
+    ready.store(channel_elem.ready.load());
+  }
+};
+
+class Channel : public Memory<ChannelElem, RPC_QUEUE_SIZE> {
+  using ScopeGuardT = ScopeGuard<PthreadWriteLock, EXCLUSIVE>;
+
 public:
   Channel(const std::string &name, bool caller)
-      : Memory<RPC_QUEUE_SIZE>(name), caller_(caller), idx_(0) {}
+      : Memory<ChannelElem, RPC_QUEUE_SIZE>(name), caller_(caller), idx_(0) {}
 
   bool write(void *data, size_t size);
   bool read(msgpack::object_handle &oh);
@@ -30,6 +54,12 @@ public:
   bool _write_caller(void *data, size_t size);
   bool _write_server(void *data, size_t size);
   void _write(Element *elem, void *data, size_t size);
+  inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
+    return this->shared_queue_->counter.fetch_add(1);
+  }
+  inline __attribute__((always_inline)) uint32_t counter() {
+    return this->shared_queue_->counter.load();
+  }
 
   int32_t idx_;
 
@@ -59,7 +89,7 @@ bool Channel::_write_caller(void *data, size_t size) {
   if (!elem->empty.compare_exchange_strong(exp, false)) {
     return false;
   }
-  ScopeGuard _(&elem->mutex);
+  ScopeGuardT _(&elem->mutex);
 
   _write(elem, data, size);
   elem->ready = false;
@@ -71,13 +101,13 @@ bool Channel::_write_server(void *data, size_t size) {
   uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
   auto elem = &(this->shared_queue_->elements[pos]);
 
-  ScopeGuard _(&elem->mutex);
+  ScopeGuardT _(&elem->mutex);
   this->raw_buf_->deallocate(
       this->raw_buf_->get_address_from_handle(elem->addr_hdl));
 
   _write(elem, data, size);
   elem->ready = true;
-
+  idx_++;
   return true;
 }
 
@@ -94,23 +124,18 @@ bool Channel::read(msgpack::object_handle &oh) {
 
   if (caller_) {
     bool exp = true;
-    if (!elem->ready.compare_exchange_strong(exp, false)) {
+    if (not elem->ready.compare_exchange_strong(exp, false)) {
       return false;
     }
   }
 
-  ScopeGuard _(&elem->mutex);
+  ScopeGuardT _(&elem->mutex);
 
   const char *dst = reinterpret_cast<const char *>(
       this->raw_buf_->get_address_from_handle(elem->addr_hdl));
 
-  try {
-    DEBUG("try unpack");
-    oh = msgpack::unpack(dst, elem->size);
-  } catch (...) {
-    DEBUG("unpack fail");
-    return false;
-  }
+  DEBUG("try unpack");
+  oh = msgpack::unpack(dst, elem->size);
 
   if (caller_) {
     elem->empty = true;
