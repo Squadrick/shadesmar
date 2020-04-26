@@ -7,7 +7,7 @@
 
 #include <pthread.h>
 
-#include <shadesmar/lock.h>
+#include <shadesmar/concurrency/lock.h>
 
 namespace shm {
 

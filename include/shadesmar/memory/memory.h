@@ -19,9 +19,9 @@
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 
+#include <shadesmar/concurrency/robust_lock.h>
 #include <shadesmar/macros.h>
-#include <shadesmar/robust_lock.h>
-#include <shadesmar/tmp.h>
+#include <shadesmar/memory/tmp.h>
 
 using namespace boost::interprocess;
 

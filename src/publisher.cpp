@@ -3,7 +3,7 @@
 //
 
 #include <shadesmar/custom_msg.h>
-#include <shadesmar/publisher.h>
+#include <shadesmar/pubsub/publisher.h>
 
 int main(int argc, char **argv) {
   uint32_t timeout;

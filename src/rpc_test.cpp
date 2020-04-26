@@ -2,8 +2,8 @@
 // Created by squadrick on 17/12/19.
 //
 
-#include <shadesmar/client.h>
-#include <shadesmar/server.h>
+#include <shadesmar/rpc/client.h>
+#include <shadesmar/rpc/server.h>
 
 int fn(int a, int b) { return a + b; }
 

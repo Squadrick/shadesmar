@@ -4,10 +4,10 @@
 
 #include <iostream>
 
-#include <shadesmar/memory.h>
-#include <shadesmar/robust_lock.h>
-#include <shadesmar/rw_lock.h>
-#include <shadesmar/tmp.h>
+#include <shadesmar/concurrency/robust_lock.h>
+#include <shadesmar/concurrency/rw_lock.h>
+#include <shadesmar/memory/memory.h>
+#include <shadesmar/memory/tmp.h>
 
 typedef shm::PthreadReadWriteLock LOCK;
 

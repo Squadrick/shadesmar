@@ -3,8 +3,8 @@
 //
 
 #include <shadesmar/macros.h>
-#include <shadesmar/memory.h>
-#include <shadesmar/tmp.h>
+#include <shadesmar/memory/memory.h>
+#include <shadesmar/memory/tmp.h>
 
 int main() {
   bool creat;

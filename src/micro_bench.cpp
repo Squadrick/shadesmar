@@ -6,10 +6,10 @@
 #include <msgpack.hpp>
 
 #include <shadesmar/macros.h>
-#include <shadesmar/memory.h>
+#include <shadesmar/memory/memory.h>
 #include <shadesmar/message.h>
 
-#include <shadesmar/robust_lock.h>
+#include <shadesmar/concurrency/robust_lock.h>
 
 const size_t mem_size = 10 * 1024 * 1024;
 

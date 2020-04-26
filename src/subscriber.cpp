@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include <shadesmar/custom_msg.h>
-#include <shadesmar/subscriber.h>
+#include <shadesmar/pubsub/subscriber.h>
 
 void callback(const std::shared_ptr<CustomMessage> &msg) {
   std::cout << msg->seq << "\t";

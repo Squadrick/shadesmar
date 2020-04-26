@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-#include <shadesmar/tmp.h>
+#include <shadesmar/memory/tmp.h>
 
 int main() {
   for (int i = 0; i < 10; ++i) {

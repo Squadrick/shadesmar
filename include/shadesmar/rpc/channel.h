@@ -14,10 +14,10 @@
 
 #include <msgpack.hpp>
 
-#include <shadesmar/cond_var.h>
-#include <shadesmar/lock.h>
-#include <shadesmar/memory.h>
-#include <shadesmar/scope.h>
+#include <shadesmar/concurrency/cond_var.h>
+#include <shadesmar/concurrency/lock.h>
+#include <shadesmar/concurrency/scope.h>
+#include <shadesmar/memory/memory.h>
 
 #define RPC_QUEUE_SIZE 32
 

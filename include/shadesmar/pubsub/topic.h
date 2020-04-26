@@ -13,9 +13,9 @@
 
 #include <msgpack.hpp>
 
+#include <shadesmar/concurrency/scope.h>
 #include <shadesmar/macros.h>
-#include <shadesmar/memory.h>
-#include <shadesmar/scope.h>
+#include <shadesmar/memory/memory.h>
 
 using namespace boost::interprocess;
 namespace shm {

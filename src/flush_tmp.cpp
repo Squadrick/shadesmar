@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#include <shadesmar/tmp.h>
+#include <shadesmar/memory/tmp.h>
 
 void flush(std::string const &topic) {
   std::cout << "Flushing " << topic << std::endl;

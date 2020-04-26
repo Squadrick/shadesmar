@@ -15,7 +15,7 @@
 #include <msgpack.hpp>
 
 #include <shadesmar/message.h>
-#include <shadesmar/topic.h>
+#include <shadesmar/pubsub/topic.h>
 
 namespace shm {
 

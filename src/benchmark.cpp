@@ -6,8 +6,8 @@
 #include <iostream>
 #include <numeric>
 #include <shadesmar/message.h>
-#include <shadesmar/publisher.h>
-#include <shadesmar/subscriber.h>
+#include <shadesmar/pubsub/publisher.h>
+#include <shadesmar/pubsub/subscriber.h>
 
 const std::string topic = "benchmark_topic";
 const int QUEUE_SIZE = 16;

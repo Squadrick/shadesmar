@@ -10,10 +10,10 @@
 
 #include <thread>
 
-#include <shadesmar/lock.h>
-#include <shadesmar/lockless_set.h>
+#include <shadesmar/concurrency/lock.h>
+#include <shadesmar/concurrency/lockless_set.h>
+#include <shadesmar/concurrency/rw_lock.h>
 #include <shadesmar/macros.h>
-#include <shadesmar/rw_lock.h>
 
 namespace shm {
 

@@ -10,7 +10,7 @@
 
 #include <msgpack.hpp>
 
-#include <shadesmar/channel.h>
+#include <shadesmar/rpc/channel.h>
 #include <shadesmar/template_magic.h>
 
 namespace shm::rpc {

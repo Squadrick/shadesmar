@@ -6,7 +6,7 @@
 #define SHADESMAR_RW_LOCK_H
 
 #include <pthread.h>
-#include <shadesmar/lock.h>
+#include <shadesmar/concurrency/lock.h>
 #include <shadesmar/macros.h>
 
 namespace shm {
