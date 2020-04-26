@@ -11,26 +11,29 @@ Required packages: Boost, Msgpack
 
 * Multiple subscribers and publishers.
 
+* Multithreaded RPC support.
+
+* Uses a circular buffer to pass messages between processes.
+
 * Faster than using the network stack like in the case with ROS.
 
 * Read and write directly from GPU memory to shared memory.
-
-* Uses a circular buffer to pass messages between publishers and subscribers.
-
-* Minimal usage of locks, and uses sharable locks where possible. 
 
 * Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
 
 * Allows for both serialized message passing (using `msgpack`) and to 
 pass raw bytes.
 
+* No need to define external IDL files for messages. Use C++ classes as
+message definition.
+
 ---
 
-#### Usage (serialized messages)
+#### Publish-Subscribe (serialized messages)
 
 Message Definition (`custom_message.h`):
 ```c++
-#include <shadesmar/messages.h>
+#include <shadesmar/message.h>
 
 class InnerMessage : public shm::BaseMsg {
   public:
@@ -62,7 +65,7 @@ class CustomMessage : public shm::BaseMsg {
 
 Publisher:
 ```c++
-#include <shadesmar/publisher.h>
+#include <shadesmar/pubsub/publisher.h>
 #include <custom_message.h>
 
 int main() {
@@ -82,7 +85,7 @@ int main() {
 Subscriber:
 ```c++
 #include <iostream>
-#include <shadesmar/subscriber.h>
+#include <shadesmar/pubsub/subscriber.h>
 #include <custom_message.h>
 
 void callback(const std::shared_ptr<CustomMessage>& msg) {
@@ -104,11 +107,11 @@ int main() {
 
 ---
 
-#### Usage (raw bytes)
+#### Publish-Subscribe (raw bytes)
 
 Publisher:
 ```c++
-#include <shadesmar/publisher.h>
+#include <shadesmar/pubsub/publisher.h>
 
 int main() {
     shm::PublisherBin<16 /* buffer size */ > pub("topic_name");
@@ -123,7 +126,7 @@ int main() {
 
 Subscriber:
 ```c++
-#include <shadesmar/subscriber.h>
+#include <shadesmar/pubsub/subscriber.h>
 
 void callback(std::unique_ptr<uint8_t[]>& data, size_t data_size) {
   // use `data` here
@@ -143,6 +146,42 @@ int main() {
     // OR
     // Using `spin`
     sub.spin();
+}
+```
+
+---
+
+#### RPC
+
+Server:
+```c++
+#include <shadesmar/rpc/server.h>
+
+int add(int a, int b) {
+  return a + b;
+}
+
+int main() {
+  shm::rpc::Function<int(int, int)> rpc_fn("add_fn", add);
+
+  while (true) {
+    rpc_fn.serve_once();
+  }
+
+  // OR...
+
+  rpc_fn.serve();
+}
+```
+
+Client:
+```c++
+#include <shadesmar/rpc/client.h>
+
+int main() {
+  shm::rpc::FunctionCaller rpc_fn("add_fn");
+
+  std::cout << rpc_fn(4, 5).as<int>() << std::endl;
 }
 ```
 
