@@ -29,7 +29,9 @@ PthreadWriteLock::PthreadWriteLock() {
   pthread_mutexattr_init(&attr);
   pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
   pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+#ifdef __linux__
   pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+#endif
   pthread_mutex_init(&mutex, &attr);
 }
 
@@ -40,9 +42,11 @@ PthreadWriteLock::~PthreadWriteLock() {
 
 void PthreadWriteLock::lock() {
   pthread_mutex_lock(&mutex);
+#ifdef __linux__
   if (errno == EOWNERDEAD) {
     std::cerr << "Previous owner of mutex was dead." << std::endl;
   }
+#endif
 }
 
 bool PthreadWriteLock::try_lock() { return pthread_mutex_trylock(&mutex); }
