@@ -4,6 +4,8 @@
 
 // HERE BE DRAGONS
 
+#ifndef __APPLE__ // no MaxOS support
+
 #ifndef SHADESMAR_DRAGONS_H
 #define SHADESMAR_DRAGONS_H
 
@@ -102,3 +104,4 @@ void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
 
 } // namespace shm::dragons
 #endif // SHADESMAR_DRAGONS_H
+#endif // __APPLE__
