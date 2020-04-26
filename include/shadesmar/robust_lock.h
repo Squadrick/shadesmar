@@ -18,7 +18,7 @@
 namespace shm {
 
 class RobustLock {
-public:
+ public:
   RobustLock();
   ~RobustLock();
 
@@ -29,7 +29,7 @@ public:
   bool try_lock_sharable();
   void unlock_sharable();
 
-private:
+ private:
   void prune_sharable_procs();
   PthreadReadWriteLock mutex_;
   std::atomic<__pid_t> exclusive_owner = {0};
@@ -41,7 +41,7 @@ inline bool proc_dead(__pid_t proc) {
     return false;
   }
   std::string pid_path = "/proc/" + std::to_string(proc);
-  struct stat sts {};
+  struct stat sts{};
   return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
 
@@ -69,22 +69,26 @@ void RobustLock::lock() {
 }
 
 bool RobustLock::try_lock() {
-  if (exclusive_owner != 0) {
-    auto ex_proc = exclusive_owner.load();
-    if (proc_dead(ex_proc)) {
-      if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
-        mutex_.unlock();
+  if (!mutex_.try_lock()) {
+    if (exclusive_owner != 0) {
+      auto ex_proc = exclusive_owner.load();
+      if (proc_dead(ex_proc)) {
+        if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+          mutex_.unlock();
+        }
       }
+    } else {
+      prune_sharable_procs();
+    }
+    if (mutex_.try_lock()) {
+      exclusive_owner = getpid();
+      return true;
+    } else {
+      return false;
     }
   } else {
-    prune_sharable_procs();
-  }
-
-  if(mutex_.try_lock()) {
     exclusive_owner = getpid();
     return true;
-  } else {
-    return false;
   }
 }
 
@@ -109,27 +113,29 @@ void RobustLock::lock_sharable() {
 
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  while (!shared_owners.insert(getpid()))
-    ;
+  while (!shared_owners.insert(getpid()));
 }
 
 bool RobustLock::try_lock_sharable() {
-  if (exclusive_owner != 0) {
-    auto ex_proc = exclusive_owner.load();
-    if (proc_dead(ex_proc)) {
-      if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
-        exclusive_owner = 0;
-        mutex_.unlock();
+  if (!mutex_.try_lock_sharable()) {
+    if (exclusive_owner != 0) {
+      auto ex_proc = exclusive_owner.load();
+      if (proc_dead(ex_proc)) {
+        if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+          exclusive_owner = 0;
+          mutex_.unlock();
+        }
       }
     }
-  }
-
-  if(mutex_.try_lock_sharable()) {
-    while (!shared_owners.insert(getpid()))
-      ;
-    return true;
+    if (mutex_.try_lock_sharable()) {
+      while (!shared_owners.insert(getpid()));
+      return true;
+    } else {
+      return false;
+    }
   } else {
-    return false;
+    while (!shared_owners.insert(getpid()));
+    return true;
   }
 }
 
