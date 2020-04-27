@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include <msgpack.hpp>

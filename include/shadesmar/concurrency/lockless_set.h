@@ -5,9 +5,10 @@
 #ifndef SHADESMAR_LOCKLESS_SET_H
 #define SHADESMAR_LOCKLESS_SET_H
 
+#include <cstring>
+
 #include <array>
 #include <atomic>
-#include <cstring>
 
 #include <shadesmar/macros.h>
 

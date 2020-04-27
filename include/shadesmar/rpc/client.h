@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <string>
+#include <tuple>
 
 #include <msgpack.hpp>
 
@@ -16,7 +17,7 @@
 namespace shm::rpc {
 class FunctionCaller {
 public:
-  FunctionCaller(const std::string &name);
+  explicit FunctionCaller(const std::string &name);
 
   template <typename... Args> msgpack::object operator()(Args... args);
 
@@ -35,11 +36,11 @@ msgpack::object FunctionCaller::operator()(Args... args) {
 
   msgpack::pack(buf, data_tuple);
 
-  while (!channel_.write(buf.data(), buf.size()))
-    ;
+  while (!channel_.write(buf.data(), buf.size())) {
+  }
 
-  while (!channel_.read(reply_oh))
-    ;
+  while (!channel_.read(reply_oh)) {
+  }
 
   auto reply_obj = reply_oh.get();
   return reply_obj;
