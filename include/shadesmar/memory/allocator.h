@@ -7,7 +7,7 @@
 
 #include <atomic>
 
-namespace shm {
+namespace shm::memory {
 struct MemEntry {
   size_t offset;
   size_t size;
@@ -66,5 +66,5 @@ uint8_t *Allocator::malloc(size_t size) {
 
 void Allocator::free(uint8_t *ptr) { return; }
 
-} // namespace shm
+} // namespace shm::memory
 #endif // SHADESMAR_ALLOCATOR_H

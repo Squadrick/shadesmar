@@ -4,7 +4,7 @@
 
 #include <random>
 
-#include <shadesmar/client.h>
+#include <shadesmar/rpc/client.h>
 
 int main() {
   shm::rpc::FunctionCaller fmadd_fn("fmadd");

@@ -5,9 +5,10 @@
 #ifndef SHADESMAR_LOCKLESS_SET_H
 #define SHADESMAR_LOCKLESS_SET_H
 
+#include <cstring>
+
 #include <array>
 #include <atomic>
-#include <cstring>
 
 #include <shadesmar/macros.h>
 
@@ -15,9 +16,11 @@
 #define __pid_t __darwin_pid_t
 #endif
 
+namespace shm::concurrent {
 class LocklessSet {
 public:
   LocklessSet();
+  LocklessSet &operator=(const LocklessSet &);
 
   bool insert(uint32_t elem);
   bool remove(uint32_t elem);
@@ -25,7 +28,14 @@ public:
   std::array<std::atomic_uint32_t, MAX_SHARED_OWNERS> __array = {};
 };
 
-LocklessSet::LocklessSet() {}
+LocklessSet::LocklessSet() = default;
+
+LocklessSet &LocklessSet::operator=(const LocklessSet &set) {
+  for (uint32_t idx = 0; idx < MAX_SHARED_OWNERS; ++idx) {
+    __array[idx].store(set.__array[idx].load());
+  }
+  return *this;
+}
 
 bool LocklessSet::insert(uint32_t elem) {
   for (uint32_t idx = 0; idx < MAX_SHARED_OWNERS; ++idx) {
@@ -58,5 +68,6 @@ bool LocklessSet::remove(uint32_t elem) {
 
   return false;
 }
+} // namespace shm::concurrent
 
 #endif // SHADESMAR_LOCKLESS_SET_H

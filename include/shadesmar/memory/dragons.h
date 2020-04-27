@@ -4,13 +4,16 @@
 
 // HERE BE DRAGONS
 
+#ifndef __APPLE__ // no MaxOS support
+
 #ifndef SHADESMAR_DRAGONS_H
 #define SHADESMAR_DRAGONS_H
 
 #include <immintrin.h>
 #include <thread>
+#include <vector>
 
-namespace shm::dragons {
+namespace shm::memory::dragons {
 static inline void *_rep_movsb(void *d, const void *s, size_t n) {
   // Slower than using regular `memcpy`
   asm volatile("rep movsb"
@@ -27,8 +30,8 @@ static inline void *_avx_async_cpy(void *d, const void *s, size_t n) {
   //   d, s -> 32 byte aligned
   //   n -> multiple of 32
 
-  __m256i *dVec = reinterpret_cast<__m256i *>(d);
-  const __m256i *sVec = reinterpret_cast<const __m256i *>(s);
+  auto *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
   size_t nVec = n / sizeof(__m256i);
   for (; nVec > 0; nVec--, sVec++, dVec++) {
     const __m256i temp = _mm256_stream_load_si256(sVec);
@@ -50,11 +53,11 @@ void *_multithread_avx_async_cpy(void *d, const void *s, size_t n) {
   std::vector<std::thread> threads;
   threads.reserve(maxThreads);
 
-  const __m256i *sVec = reinterpret_cast<const __m256i *>(s);
-  __m256i *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
+  auto *dVec = reinterpret_cast<__m256i *>(d);
   size_t nVec = n / sizeof(__m256i);
 
-  lldiv_t perWorker = div((long long)nVec, maxThreads);
+  lldiv_t perWorker = div((int64_t)nVec, maxThreads);
 
   size_t nextStart = 0;
   for (uint32_t threadIdx = 0; threadIdx < maxThreads; ++threadIdx) {
@@ -79,7 +82,7 @@ void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
   std::vector<std::thread> threads;
   threads.reserve(maxThreads);
 
-  lldiv_t perWorker = div((long long)n, maxThreads);
+  lldiv_t perWorker = div((int64_t)n, maxThreads);
 
   size_t nextStart = 0;
   for (uint32_t threadIdx = 0; threadIdx < maxThreads; ++threadIdx) {
@@ -100,5 +103,6 @@ void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
   return d;
 }
 
-} // namespace shm::dragons
+} // namespace shm::memory::dragons
 #endif // SHADESMAR_DRAGONS_H
+#endif // __APPLE__

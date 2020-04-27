@@ -3,7 +3,7 @@
 //
 
 #include <shadesmar/custom_msg.h>
-#include <shadesmar/publisher.h>
+#include <shadesmar/pubsub/publisher.h>
 
 int main(int argc, char **argv) {
   uint32_t timeout;
@@ -14,12 +14,11 @@ int main(int argc, char **argv) {
     timeout = std::atoi(argv[1]);
   }
 
-  shm::Publisher<CustomMessage, 16> p("benchmark_topic");
-  for (int i = 0;; ++i) {
+  shm::pubsub::Publisher<CustomMessage, 16> p("benchmark_topic");
+  for (int i = 0; i < 1000000; ++i) {
     CustomMessage msg(1280 * 720 * 16);
-    msg.frame_id = "benchmark_frame";
     msg.fill(i % 256);
-    msg.init_time(shm::SYSTEM);
+    msg.init_time();
     p.publish(msg);
     std::cout << "Publishing " << i << std::endl;
 

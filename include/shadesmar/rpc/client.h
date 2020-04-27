@@ -7,16 +7,17 @@
 
 #include <iostream>
 #include <string>
+#include <tuple>
 
 #include <msgpack.hpp>
 
-#include <shadesmar/channel.h>
+#include <shadesmar/rpc/channel.h>
 #include <shadesmar/template_magic.h>
 
 namespace shm::rpc {
 class FunctionCaller {
 public:
-  FunctionCaller(const std::string &name);
+  explicit FunctionCaller(const std::string &name);
 
   template <typename... Args> msgpack::object operator()(Args... args);
 
@@ -35,15 +36,12 @@ msgpack::object FunctionCaller::operator()(Args... args) {
 
   msgpack::pack(buf, data_tuple);
 
-  DEBUG("C: Starting write");
-  while (!channel_.write(buf.data(), buf.size()))
-    ;
+  while (!channel_.write(buf.data(), buf.size())) {
+  }
 
-  DEBUG("C: Waiting read @ " << channel_.idx_);
-  while (!channel_.read(reply_oh))
-    ;
+  while (!channel_.read(reply_oh)) {
+  }
 
-  DEBUG("C: Done read");
   auto reply_obj = reply_oh.get();
   return reply_obj;
 }

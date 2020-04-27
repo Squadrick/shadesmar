@@ -8,7 +8,6 @@
 int main() {
   CustomMessage cm(5);
   cm.seq = 1;
-  cm.frame_id = "test123";
   cm.init_time();
   cm.im.inner_val = 100;
   cm.im.inner_str = "Dheeraj";
@@ -28,7 +27,6 @@ int main() {
   obj.convert(mc);
 
   std::cout << mc.seq << std::endl;
-  std::cout << mc.frame_id << std::endl;
   std::cout << mc.timestamp << std::endl;
   std::cout << mc.im.inner_val << std::endl;
   std::cout << mc.im.inner_str << std::endl;

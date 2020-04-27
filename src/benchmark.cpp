@@ -6,8 +6,8 @@
 #include <iostream>
 #include <numeric>
 #include <shadesmar/message.h>
-#include <shadesmar/publisher.h>
-#include <shadesmar/subscriber.h>
+#include <shadesmar/pubsub/publisher.h>
+#include <shadesmar/pubsub/subscriber.h>
 
 const std::string topic = "benchmark_topic";
 const int QUEUE_SIZE = 16;
@@ -20,7 +20,7 @@ uint64_t lag = 0;
 
 class BenchmarkMsg : public shm::BaseMsg {
 public:
-  int number;
+  int number{};
   std::vector<uint8_t> arr;
   SHM_PACK(number, arr);
   explicit BenchmarkMsg(int n) : number(n) {
@@ -69,11 +69,12 @@ int main() {
     std::vector<int> counts;
     std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback, EXTRA_COPY);
+    shm::pubsub::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback,
+                                                          EXTRA_COPY);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
-      sub.spinOnce();
+      sub.spin_once();
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
 
@@ -109,7 +110,7 @@ int main() {
               << std::endl;
 
   } else {
-    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
+    shm::pubsub::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
 
     msgpack::sbuffer buf;
     msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));

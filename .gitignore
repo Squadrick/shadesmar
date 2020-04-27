@@ -1,3 +1,6 @@
 .idea
 cmake-build-debug
+cmake-build-debug_ninja
+cmake-build-release
+cmake-build-release_ninja
 build

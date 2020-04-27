@@ -6,10 +6,10 @@
 #include <msgpack.hpp>
 
 #include <shadesmar/macros.h>
-#include <shadesmar/memory.h>
+#include <shadesmar/memory/memory.h>
 #include <shadesmar/message.h>
 
-#include <shadesmar/robust_lock.h>
+#include <shadesmar/concurrency/robust_lock.h>
 
 const size_t mem_size = 10 * 1024 * 1024;
 
@@ -59,14 +59,16 @@ void bench_memcpy() {
 
   bool new_segment;
 
-  void *shm_mem = shm::create_memory_segment("test", mem_size, new_segment);
+  void *shm_mem =
+      shm::memory::create_memory_segment("test", mem_size, new_segment);
   void *obj = malloc(mem_size);
   TIMEIT({ std::memcpy(shm_mem, obj, mem_size); }, "obj->shm_mem");
   free(obj);
   shm_unlink("test");
 
   void *obj2 = malloc(mem_size);
-  void *shm_mem2 = shm::create_memory_segment("test2", mem_size, new_segment);
+  void *shm_mem2 =
+      shm::memory::create_memory_segment("test2", mem_size, new_segment);
   std::memset(shm_mem2, 0, mem_size);
 
   TIMEIT({ std::memcpy(obj2, shm_mem2, mem_size); }, "shm_mem->obj");
@@ -79,7 +81,7 @@ void bench_lock() {
    * All take ~1500ns
    * Peaks at ~100us when prune_sharable is called
    */
-  shm::RobustLock lock;
+  shm::concurrent::RobustLock lock;
 
   TIMEIT({ lock.lock(); }, "lock");
   TIMEIT({ lock.unlock(); }, "unlock");
@@ -91,7 +93,7 @@ void bench_new_lock() {
   /*
    * All take ~200ns
    */
-  shm::RobustLock lock;
+  shm::concurrent::RobustLock lock;
 
   TIMEIT({ lock.lock(); }, "lock (new)");
   TIMEIT({ lock.unlock(); }, "unlock (new)");
