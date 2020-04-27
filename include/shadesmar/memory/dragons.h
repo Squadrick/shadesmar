@@ -12,7 +12,7 @@
 #include <immintrin.h>
 #include <thread>
 
-namespace shm::dragons {
+namespace shm::memory::dragons {
 static inline void *_rep_movsb(void *d, const void *s, size_t n) {
   // Slower than using regular `memcpy`
   asm volatile("rep movsb"
@@ -102,6 +102,6 @@ void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
   return d;
 }
 
-} // namespace shm::dragons
+} // namespace shm::memory::dragons
 #endif // SHADESMAR_DRAGONS_H
 #endif // __APPLE__

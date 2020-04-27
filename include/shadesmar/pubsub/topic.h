@@ -18,9 +18,9 @@
 #include <shadesmar/memory/memory.h>
 
 using namespace boost::interprocess;
-namespace shm {
+namespace shm::pubsub {
 
-template <class LockT> struct _TopicElem : public Element {
+template <class LockT> struct _TopicElem : public memory::Element {
   LockT mutex;
 
   _TopicElem() : Element(), mutex() {}
@@ -30,18 +30,20 @@ template <class LockT> struct _TopicElem : public Element {
   }
 };
 
-template <uint32_t queue_size = 1, class LockT = PthreadReadWriteLock>
-class Topic : public Memory<_TopicElem<LockT>, queue_size> {
+template <uint32_t queue_size = 1,
+          class LockT = concurrent::PthreadReadWriteLock>
+class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
 
   using TopicElem = _TopicElem<LockT>;
-  template <ExlOrShr type> using ScopeGuardT = ScopeGuard<LockT, type>;
+  template <concurrent::ExlOrShr type>
+  using ScopeGuardT = concurrent::ScopeGuard<LockT, type>;
 
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
 public:
   explicit Topic(const std::string &topic, bool copy = false)
-      : Memory<TopicElem, queue_size>(topic), copy_(copy) {}
+      : memory::Memory<TopicElem, queue_size>(topic), copy_(copy) {}
 
   bool write(void *data, size_t size) {
     /*
@@ -128,7 +130,7 @@ private:
        * to `elem`, any other expensive compute that doesn't
        * include `elem` can be put outside this block.
        */
-      ScopeGuardT<EXCLUSIVE> _(&elem.mutex);
+      ScopeGuardT<concurrent::EXCLUSIVE> _(&elem.mutex);
       old_addr = this->raw_buf_->get_address_from_handle(elem.addr_hdl);
       prev_empty = elem.empty;
       elem.addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
@@ -150,7 +152,7 @@ private:
      *  3. Unpack shared memory into the object handle
      *  4. Release sharable lock
      */
-    ScopeGuardT<SHARED> _(&elem.mutex);
+    ScopeGuardT<concurrent::SHARED> _(&elem.mutex);
 
     if (elem.empty)
       return false;
@@ -194,7 +196,7 @@ private:
      *  3. Copy from shared memory to input param `msg`
      *  4. Release sharable lock
      */
-    ScopeGuardT<SHARED> _(&elem.mutex);
+    ScopeGuardT<concurrent::SHARED> _(&elem.mutex);
 
     if (elem.empty)
       return false;
@@ -209,5 +211,5 @@ private:
 
   bool copy_{};
 };
-} // namespace shm
+} // namespace shm::pubsub
 #endif // shadesmar_TOPIC_H

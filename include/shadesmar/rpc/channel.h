@@ -21,16 +21,16 @@
 
 #define RPC_QUEUE_SIZE 32
 
-namespace shm {
+namespace shm::rpc {
 
-struct ChannelElem : public Element {
-  PthreadWriteLock mutex;
-  CondVar cond;
+struct ChannelElem : public memory::Element {
+  concurrent::PthreadWriteLock mutex;
+  concurrent::CondVar cond;
   std::atomic<bool> ready{};
 
   ChannelElem() : Element() {
-    mutex = PthreadWriteLock();
-    cond = CondVar();
+    mutex = concurrent::PthreadWriteLock();
+    cond = concurrent::CondVar();
     ready.store(false);
   }
 
@@ -41,8 +41,9 @@ struct ChannelElem : public Element {
   }
 };
 
-class Channel : public Memory<ChannelElem, RPC_QUEUE_SIZE> {
-  using ScopeGuardT = ScopeGuard<PthreadWriteLock, EXCLUSIVE>;
+class Channel : public memory::Memory<ChannelElem, RPC_QUEUE_SIZE> {
+  using ScopeGuardT = concurrent::ScopeGuard<concurrent::PthreadWriteLock,
+                                             concurrent::EXCLUSIVE>;
 
 public:
   Channel(const std::string &name, bool caller)
@@ -143,6 +144,6 @@ bool Channel::read(msgpack::object_handle &oh) {
   return true;
 }
 
-} // namespace shm
+} // namespace shm::rpc
 
 #endif // SHADESMAR_CHANNEL_H

@@ -69,7 +69,7 @@ Publisher:
 #include <custom_message.h>
 
 int main() {
-    shm::Publisher<CustomMessage, 16 /* buffer size */ > pub("topic_name");
+    shm::pubsub::Publisher<CustomMessage, 16 /* buffer size */ > pub("topic_name");
 
     CustomMessage msg;
     msg.val = 0;
@@ -93,7 +93,7 @@ void callback(const std::shared_ptr<CustomMessage>& msg) {
 }
 
 int main() {
-    shm::Subscriber<CustomMessage, 16 /* buffer size */ > sub("topic_name", callback);
+    shm::pubsub::Subscriber<CustomMessage, 16 /* buffer size */ > sub("topic_name", callback);
     
     // Using `spinOnce` with a manual loop
     while(true) {
@@ -114,7 +114,7 @@ Publisher:
 #include <shadesmar/pubsub/publisher.h>
 
 int main() {
-    shm::PublisherBin<16 /* buffer size */ > pub("topic_name");
+    shm::pubsub::PublisherBin<16 /* buffer size */ > pub("topic_name");
     const uint32_t data_size = 1024;
     void *data = malloc(data_size);
     
@@ -137,7 +137,7 @@ void callback(std::unique_ptr<uint8_t[]>& data, size_t data_size) {
 }
 
 int main() {
-    shm::SubscriberBin<16 /* buffer size */ > sub("topic_name", callback);
+    shm::pubsub::SubscriberBin<16 /* buffer size */ > sub("topic_name", callback);
     
     // Using `spinOnce` with a manual loop
     while(true) {

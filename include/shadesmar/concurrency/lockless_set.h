@@ -15,6 +15,7 @@
 #define __pid_t __darwin_pid_t
 #endif
 
+namespace shm::concurrent {
 class LocklessSet {
 public:
   LocklessSet();
@@ -66,5 +67,6 @@ bool LocklessSet::remove(uint32_t elem) {
 
   return false;
 }
+} // namespace shm::concurrent
 
 #endif // SHADESMAR_LOCKLESS_SET_H

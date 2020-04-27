@@ -54,7 +54,7 @@ int main() {
     std::vector<int> counts;
     std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    shm::SubscriberBin<QUEUE_SIZE> sub(topic, callback);
+    shm::pubsub::SubscriberBin<QUEUE_SIZE> sub(topic, callback);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
@@ -94,7 +94,7 @@ int main() {
     std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
               << std::endl;
   } else {
-    shm::PublisherBin<QUEUE_SIZE> pub(topic);
+    shm::pubsub::PublisherBin<QUEUE_SIZE> pub(topic);
 
     Message *msg = (Message *)malloc(VECTOR_SIZE);
 

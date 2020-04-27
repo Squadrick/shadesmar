@@ -7,7 +7,7 @@
 
 #include <pthread.h>
 
-namespace shm {
+namespace shm::concurrent {
 
 class PthreadWriteLock {
 public:
@@ -53,5 +53,5 @@ bool PthreadWriteLock::try_lock() { return pthread_mutex_trylock(&mutex); }
 
 void PthreadWriteLock::unlock() { pthread_mutex_unlock(&mutex); }
 
-} // namespace shm
+} // namespace shm::concurrent
 #endif // SHADESMAR_LOCK_H

@@ -18,7 +18,7 @@
 #include <shadesmar/message.h>
 #include <shadesmar/pubsub/topic.h>
 
-namespace shm {
+namespace shm::pubsub {
 
 template <uint32_t queue_size> class SubscriberBase {
 public:
@@ -139,5 +139,5 @@ void Subscriber<msgT, queue_size>::_subscribe() {
   callback_(msg);
 }
 
-} // namespace shm
+} // namespace shm::pubsub
 #endif // shadesmar_SUBSCRIBER_H

@@ -24,7 +24,8 @@ void callback(const std::shared_ptr<CustomMessage> &msg) {
 }
 
 int main() {
-  shm::Subscriber<CustomMessage, 16> sub("benchmark_topic", callback, true);
+  shm::pubsub::Subscriber<CustomMessage, 16> sub("benchmark_topic", callback,
+                                                 true);
 
   while (true) {
     sub.spin_once();

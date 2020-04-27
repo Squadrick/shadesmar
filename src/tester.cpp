@@ -8,10 +8,11 @@
 
 int main() {
   bool creat;
-  auto *ptr = shm::create_memory_segment("test_shm", sizeof(int) * 100, creat);
+  auto *ptr =
+      shm::memory::create_memory_segment("test_shm", sizeof(int) * 100, creat);
 
   if (creat) {
-    shm::tmp::write("test_shm");
+    shm::memory::tmp::write("test_shm");
     std::cout << "Writing" << std::endl;
     for (int i = 0; i < 100; ++i) {
       ptr[i] = i;

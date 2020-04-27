@@ -14,8 +14,8 @@ int main(int argc, char **argv) {
     timeout = std::atoi(argv[1]);
   }
 
-  shm::Publisher<CustomMessage, 16> p("benchmark_topic");
-  for (int i = 0;; ++i) {
+  shm::pubsub::Publisher<CustomMessage, 16> p("benchmark_topic");
+  for (int i = 0; i < 1000000; ++i) {
     CustomMessage msg(1280 * 720 * 16);
     msg.fill(i % 256);
     msg.init_time();

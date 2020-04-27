@@ -25,7 +25,7 @@
 
 using namespace boost::interprocess;
 
-namespace shm {
+namespace shm::memory {
 
 uint8_t *create_memory_segment(const std::string &name, size_t size,
                                bool &new_segment) {
@@ -142,6 +142,6 @@ public:
   SharedQueue<ElemT, queue_size> *shared_queue_;
 };
 
-} // namespace shm
+} // namespace shm::memory
 
 #endif // shadesmar_MEMORY_H

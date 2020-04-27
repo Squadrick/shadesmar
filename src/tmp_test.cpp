@@ -8,12 +8,12 @@
 
 int main() {
   for (int i = 0; i < 10; ++i) {
-    shm::tmp::write(shm::tmp::random_string(10));
+    shm::memory::tmp::write(shm::memory::tmp::random_string(10));
   }
 
-  for (const auto &topic : shm::tmp::get_tmp_names()) {
+  for (const auto &topic : shm::memory::tmp::get_tmp_names()) {
     std::cout << topic << std::endl;
   }
 
-  shm::tmp::delete_topics();
+  shm::memory::tmp::delete_topics();
 }

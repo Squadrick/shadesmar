@@ -5,7 +5,7 @@
 #ifndef SHADESMAR_SCOPE_H
 #define SHADESMAR_SCOPE_H
 
-namespace shm {
+namespace shm::concurrent {
 
 enum ExlOrShr { EXCLUSIVE, SHARED };
 
@@ -36,5 +36,5 @@ public:
 private:
   LockT *lck_;
 };
-} // namespace shm
+} // namespace shm::concurrent
 #endif // SHADESMAR_SCOPE_H

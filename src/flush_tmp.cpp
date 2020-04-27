@@ -16,10 +16,10 @@ void flush(std::string const &topic) {
 
 int main(int argc, char **argv) {
   if (argc == 1) {
-    for (auto &topic : shm::tmp::get_tmp_names()) {
+    for (auto &topic : shm::memory::tmp::get_tmp_names()) {
       flush(topic);
     }
-    shm::tmp::delete_topics();
+    shm::memory::tmp::delete_topics();
   } else {
     flush(std::string(argv[1]));
   }

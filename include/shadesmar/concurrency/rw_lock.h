@@ -9,7 +9,7 @@
 #include <shadesmar/concurrency/lock.h>
 #include <shadesmar/macros.h>
 
-namespace shm {
+namespace shm::concurrent {
 
 class PthreadReadWriteLock {
 public:
@@ -49,5 +49,5 @@ bool PthreadReadWriteLock::try_lock_sharable() {
 }
 void PthreadReadWriteLock::unlock_sharable() { pthread_rwlock_unlock(&rwlock); }
 
-} // namespace shm
+} // namespace shm::concurrent
 #endif // SHADESMAR_RW_LOCK_H

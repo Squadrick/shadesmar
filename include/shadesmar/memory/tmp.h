@@ -27,7 +27,7 @@ namespace filesystem = experimental::filesystem;
 #include <stdlib.h>
 #endif
 
-namespace shm::tmp {
+namespace shm::memory::tmp {
 std::string const default_chars =
     "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
@@ -117,5 +117,5 @@ inline void delete_topics() {
   system(("rm -rf " + tmp_prefix).c_str());
 #endif
 }
-} // namespace shm::tmp
+} // namespace shm::memory::tmp
 #endif // shadesmar_TMP_H

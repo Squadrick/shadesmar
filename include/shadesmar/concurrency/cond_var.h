@@ -9,7 +9,7 @@
 
 #include <shadesmar/concurrency/lock.h>
 
-namespace shm {
+namespace shm::concurrent {
 
 class CondVar {
 public:
@@ -41,6 +41,6 @@ void CondVar::wait(PthreadWriteLock &lock) {
 
 void CondVar::signal() { pthread_cond_signal(&cond); }
 
-} // namespace shm
+} // namespace shm::concurrent
 
 #endif // SHADESMAR_COND_VAR_H

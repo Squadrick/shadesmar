@@ -69,7 +69,8 @@ int main() {
     std::vector<int> counts;
     std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    shm::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback, EXTRA_COPY);
+    shm::pubsub::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback,
+                                                          EXTRA_COPY);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
@@ -109,7 +110,7 @@ int main() {
               << std::endl;
 
   } else {
-    shm::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
+    shm::pubsub::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
 
     msgpack::sbuffer buf;
     msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));

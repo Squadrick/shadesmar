@@ -9,19 +9,19 @@
 #include <shadesmar/memory/memory.h>
 #include <shadesmar/memory/tmp.h>
 
-typedef shm::PthreadReadWriteLock LOCK;
+typedef shm::concurrent::PthreadReadWriteLock LOCK;
 
 int main() {
   std::cout << "Size of lock = " << sizeof(LOCK) << std::endl;
   bool new_segment;
-  uint8_t *buff =
-      shm::create_memory_segment("lock_buffer", sizeof(LOCK), new_segment);
+  uint8_t *buff = shm::memory::create_memory_segment("lock_buffer",
+                                                     sizeof(LOCK), new_segment);
 
   LOCK *lock;
   if (new_segment) {
     std::cout << "Creating new lock" << std::endl;
     lock = new (buff) LOCK;
-    shm::tmp::write("lock_buffer");
+    shm::memory::tmp::write("lock_buffer");
   } else {
     std::cout << "Using older segment" << std::endl;
     lock = reinterpret_cast<LOCK *>(buff);

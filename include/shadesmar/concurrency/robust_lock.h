@@ -15,7 +15,7 @@
 #include <shadesmar/concurrency/rw_lock.h>
 #include <shadesmar/macros.h>
 
-namespace shm {
+namespace shm::concurrent {
 
 class RobustLock {
 public:
@@ -118,5 +118,5 @@ void RobustLock::prune_readers() {
   }
 }
 
-} // namespace shm
+} // namespace shm::concurrent
 #endif // shadesmar_ROBUST_LOCK_H

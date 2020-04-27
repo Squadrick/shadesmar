@@ -17,7 +17,7 @@
 #include <shadesmar/message.h>
 #include <shadesmar/pubsub/topic.h>
 
-namespace shm {
+namespace shm::pubsub {
 
 template <uint32_t queue_size> class PublisherBin {
 public:
@@ -78,5 +78,5 @@ bool Publisher<msgT, queue_size>::publish(msgT *msg) {
   return topic_.write(buf.data(), buf.size());
 }
 
-} // namespace shm
+} // namespace shm::pubsub
 #endif // shadesmar_PUBLISHER_H
