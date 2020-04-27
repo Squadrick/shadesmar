@@ -85,7 +85,7 @@ bool RobustLock::try_lock() {
         }
       }
     } else {
-      prune_sharable_procs();
+      prune_readers();
     }
     if (mutex_.try_lock()) {
       exclusive_owner = getpid();
