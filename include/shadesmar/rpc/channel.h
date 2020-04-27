@@ -53,7 +53,7 @@ public:
 
   bool _write_caller(void *data, size_t size);
   bool _write_server(void *data, size_t size);
-  void _write(Element *elem, void *data, size_t size);
+  void _write(ChannelElem &elem, void *data, size_t size);
   inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
     return this->shared_queue_->counter.fetch_add(1);
   }
@@ -83,62 +83,62 @@ bool Channel::write(void *data, size_t size) {
 bool Channel::_write_caller(void *data, size_t size) {
   idx_ = this->fetch_add_counter();
   uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
-  auto elem = &(this->shared_queue_->elements[pos]);
+  ChannelElem &elem = this->shared_queue_->elements[pos];
 
   bool exp = true;
-  if (!elem->empty.compare_exchange_strong(exp, false)) {
+  if (!elem.empty.compare_exchange_strong(exp, false)) {
     return false;
   }
-  ScopeGuardT _(&elem->mutex);
+  ScopeGuardT _(&elem.mutex);
 
   _write(elem, data, size);
-  elem->ready = false;
+  elem.ready = false;
 
   return true;
 }
 
 bool Channel::_write_server(void *data, size_t size) {
   uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
-  auto elem = &(this->shared_queue_->elements[pos]);
+  ChannelElem &elem = this->shared_queue_->elements[pos];
 
-  ScopeGuardT _(&elem->mutex);
+  ScopeGuardT _(&elem.mutex);
   this->raw_buf_->deallocate(
-      this->raw_buf_->get_address_from_handle(elem->addr_hdl));
+      this->raw_buf_->get_address_from_handle(elem.addr_hdl));
 
   _write(elem, data, size);
-  elem->ready = true;
+  elem.ready = true;
   idx_++;
   return true;
 }
 
-void Channel::_write(Element *elem, void *data, size_t size) {
+void Channel::_write(ChannelElem &elem, void *data, size_t size) {
   void *new_addr = this->raw_buf_->allocate(size);
   std::memcpy(new_addr, data, size);
-  elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
-  elem->size = size;
+  elem.addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
+  elem.size = size;
 }
 
 bool Channel::read(msgpack::object_handle &oh) {
   uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
-  auto elem = &(this->shared_queue_->elements[pos]);
+  ChannelElem &elem = this->shared_queue_->elements[pos];
 
   if (caller_) {
     bool exp = true;
-    if (not elem->ready.compare_exchange_strong(exp, false)) {
+    if (not elem.ready.compare_exchange_strong(exp, false)) {
       return false;
     }
   }
 
-  ScopeGuardT _(&elem->mutex);
+  ScopeGuardT _(&elem.mutex);
 
   const char *dst = reinterpret_cast<const char *>(
-      this->raw_buf_->get_address_from_handle(elem->addr_hdl));
+      this->raw_buf_->get_address_from_handle(elem.addr_hdl));
 
   DEBUG("try unpack");
-  oh = msgpack::unpack(dst, elem->size);
+  oh = msgpack::unpack(dst, elem.size);
 
   if (caller_) {
-    elem->empty = true;
+    elem.empty = true;
   }
 
   return true;

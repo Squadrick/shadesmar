@@ -55,7 +55,7 @@ public:
       return false;
     }
     uint32_t q_pos = fetch_add_counter() & (queue_size - 1);
-    auto elem = this->shared_queue_->elements[q_pos];
+    TopicElem &elem = this->shared_queue_->elements[q_pos];
     return _write_rcu(data, size, elem);
   }
 
@@ -86,7 +86,7 @@ public:
      * Read into a raw array. We pass `size` as a reference to store
      * the size of the message.
      */
-    auto elem = this->shared_queue_->elements[pos & (queue_size - 1)];
+    TopicElem &elem = this->shared_queue_->elements[pos & (queue_size - 1)];
     return _read_bin(msg, size, elem);
   }
 
