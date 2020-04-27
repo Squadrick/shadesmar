@@ -35,15 +35,12 @@ msgpack::object FunctionCaller::operator()(Args... args) {
 
   msgpack::pack(buf, data_tuple);
 
-  DEBUG("C: Starting write");
   while (!channel_.write(buf.data(), buf.size()))
     ;
 
-  DEBUG("C: Waiting read @ " << channel_.idx_);
   while (!channel_.read(reply_oh))
     ;
 
-  DEBUG("C: Done read");
   auto reply_obj = reply_oh.get();
   return reply_obj;
 }

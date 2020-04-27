@@ -26,7 +26,7 @@ namespace shm {
 struct ChannelElem : public Element {
   PthreadWriteLock mutex;
   CondVar cond;
-  std::atomic<bool> ready;
+  std::atomic<bool> ready{};
 
   ChannelElem() : Element() {
     mutex = PthreadWriteLock();
@@ -134,7 +134,6 @@ bool Channel::read(msgpack::object_handle &oh) {
   const char *dst = reinterpret_cast<const char *>(
       this->raw_buf_->get_address_from_handle(elem.addr_hdl));
 
-  DEBUG("try unpack");
   oh = msgpack::unpack(dst, elem.size);
 
   if (caller_) {
