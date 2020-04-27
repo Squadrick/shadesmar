@@ -1,9 +1,9 @@
 //
 // Created by squadrick on 10/10/19.
 //
+#include "custom_msg.h"
 #include <iostream>
 #include <msgpack.hpp>
-#include <shadesmar/custom_msg.h>
 
 int main() {
   CustomMessage cm(5);

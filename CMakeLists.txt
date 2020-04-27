@@ -19,49 +19,27 @@ if (APPLE)
 endif ()
 
 if (UNIX AND NOT APPLE)
-  list(APPEND libs rt pthread stdc++fs)# -fsanitize=thread -fsanitize=memory)
+  list(APPEND libs rt pthread stdc++fs)
 endif ()
 
-#add_compile_options(-fsanitize=thread -fsanitize=memory -fno-omit-frame-pointer)
 add_compile_options(-march=native)
 add_definitions(-DDEBUG_BUILD)
-#add_definitions(-DREP_MOVSB)
-
-add_executable(publish src/publisher.cpp)
-target_link_libraries(publish ${libs})
-
-add_executable(subscribe src/subscriber.cpp)
-target_link_libraries(subscribe ${libs})
 
 add_executable(flush_tmp src/flush_tmp.cpp)
 target_link_libraries(flush_tmp ${libs})
 
-add_executable(serialize_msg src/serialize_msg.cpp)
-target_link_libraries(serialize_msg ${libs})
+# TESTS
+add_executable(pubsub_test test/pubsub_test.cpp)
+target_link_libraries(pubsub_test ${libs})
 
-add_executable(benchmark src/benchmark.cpp)
-target_link_libraries(benchmark ${libs})
+add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
+target_link_libraries(pubsub_bin_test ${libs})
 
-add_executable(micro_bench src/micro_bench.cpp)
-target_link_libraries(micro_bench ${libs})
+add_executable(micro_benchmark test/micro_benchmark.cpp)
+target_link_libraries(micro_benchmark ${libs})
 
-add_executable(raw_benchmark src/raw_benchmark.cpp)
-target_link_libraries(raw_benchmark ${libs})
-
-add_executable(tmp_test src/tmp_test.cpp)
+add_executable(tmp_test test/tmp_test.cpp)
 target_link_libraries(tmp_test ${libs})
 
-add_executable(lock_tester src/lock_tester.cpp)
-target_link_libraries(lock_tester ${libs})
-
-add_executable(rpc_test src/rpc_test.cpp)
+add_executable(rpc_test test/rpc_test.cpp)
 target_link_libraries(rpc_test ${libs})
-
-add_executable(tester src/tester.cpp)
-target_link_libraries(tester ${libs})
-
-add_executable(rpc_server src/rpc_server.cpp)
-target_link_libraries(rpc_server ${libs})
-
-add_executable(rpc_client src/rpc_client.cpp)
-target_link_libraries(rpc_client ${libs})

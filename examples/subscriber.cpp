@@ -4,8 +4,9 @@
 
 #include <iostream>
 
-#include <shadesmar/custom_msg.h>
 #include <shadesmar/pubsub/subscriber.h>
+
+#include "custom_msg.h"
 
 void callback(const std::shared_ptr<CustomMessage> &msg) {
   std::cout << msg->seq << "\t";
@@ -24,7 +25,7 @@ void callback(const std::shared_ptr<CustomMessage> &msg) {
 }
 
 int main() {
-  shm::pubsub::Subscriber<CustomMessage, 16> sub("benchmark_topic", callback,
+  shm::pubsub::Subscriber<CustomMessage, 16> sub("example_topic", callback,
                                                  true);
 
   while (true) {
