@@ -189,8 +189,8 @@ int main() {
 
 **Note**: 
 
-* `shm::Subscriber` has a boolean parameter called `extra_copy`. `extra_copy=true` is faster for smaller (<1MB) messages, and `extra_copy=false` is faster for larger (>1MB) messages. For message of 10MB, the throughput for `extra_copy=false` is nearly 50% more than `extra_copy=true`. See `read_with_copy()` and `read_without_copy()` in `include/shadesmar/memory.h` for more information.
+* `shm::pubsub::Subscriber` has a boolean parameter called `extra_copy`. `extra_copy=true` is faster for smaller (<1MB) messages, and `extra_copy=false` is faster for larger (>1MB) messages. For message of 10MB, the throughput for `extra_copy=false` is nearly 50% more than `extra_copy=true`. See `_read_with_copy()` and `_read_without_copy()` in `include/shadesmar/pubsub/topic.h` for more information.
 
-* `queue_size` must be powers of 2. This is due to the underlying shared memory allocator which uses a red-black tree. See `include/shadesmar/allocator.h` for more information.
+* `queue_size` must be powers of 2. This is due to the underlying shared memory allocator which uses a red-black tree. See `include/shadesmar/memory/allocator.h` for more information.
 
-* You may get this error while publishing: `Increase max_buffer_size`. This occurs when the default memory allocated to the topic buffer cannot store all the messages. The default buffer size for every topic is 256MB. You can access and modify `shm::max_buffer_size`. The value must be set before creating a publisher.
+* You may get this error while publishing: `Increase max_buffer_size`. This occurs when the default memory allocated to the topic buffer cannot store all the messages. The default buffer size for every topic is 256MB. You can access and modify `shm::memory::max_buffer_size`. The value must be set before creating a publisher.
