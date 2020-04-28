@@ -29,17 +29,15 @@ add_executable(flush_tmp src/flush_tmp.cpp)
 target_link_libraries(flush_tmp ${libs})
 
 # TESTS
-add_executable(pubsub_test test/pubsub_test.cpp)
-target_link_libraries(pubsub_test ${libs})
+function(TEST TARGET_NAME SRC_FILE)
+  add_executable(${TARGET_NAME} ${SRC_FILE} test/catch_base.cpp)
+  target_link_libraries(${TARGET_NAME} ${libs})
+endfunction()
 
-add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
-target_link_libraries(pubsub_bin_test ${libs})
+#TEST(pubsub_test test/pubsub_test.cpp)
+#TEST(pubsub_bin_test test/pubsub_bin_test.cpp)
+TEST(tmp_test test/tmp_test.cpp)
+TEST(rpc_test test/rpc_test.cpp)
 
 add_executable(micro_benchmark test/micro_benchmark.cpp)
 target_link_libraries(micro_benchmark ${libs})
-
-add_executable(tmp_test test/tmp_test.cpp)
-target_link_libraries(tmp_test ${libs})
-
-add_executable(rpc_test test/rpc_test.cpp)
-target_link_libraries(rpc_test ${libs})

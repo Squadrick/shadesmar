@@ -2,25 +2,24 @@
 // Created by squadrick on 17/12/19.
 //
 
+#include <thread>
+
+#include <catch.hpp>
+
 #include <shadesmar/rpc/client.h>
 #include <shadesmar/rpc/server.h>
 
-int fn(int a, int b) { return a + b; }
+TEST_CASE("RPC client server") {
+  uint32_t iter = 10;
+  shm::rpc::Function<int(int, int)> serve_fn(
+      "inc", [](int a, int b) { return a + b; });
+  shm::rpc::FunctionCaller call_fn("inc");
 
-void call_run() {
-  shm::rpc::FunctionCaller rpc_fn("inc");
-  for (int i = 0; true; ++i) {
-    std::cout << rpc_fn(i, i).as<int>() << std::endl;
-  }
-}
-
-int main() {
-  if (fork() != 0) {
-    shm::rpc::Function<int(int, int)> rpc_fn("inc", fn);
-    while (true)
-      rpc_fn.serve_once();
-  } else {
-    //    fork();
-    call_run();
-  }
+  std::thread server([&]() {
+    for (uint32_t i = 0; i < 10000; ++i) {
+      serve_fn.serve_once();
+    }
+  });
+  REQUIRE(call_fn(10, 10).as<int>() == 20);
+  server.join();
 }

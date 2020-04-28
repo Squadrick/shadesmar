@@ -3,17 +3,27 @@
 //
 
 #include <iostream>
+#include <vector>
+
+#include <catch.hpp>
 
 #include <shadesmar/memory/tmp.h>
 
-int main() {
-  for (int i = 0; i < 10; ++i) {
-    shm::memory::tmp::write(shm::memory::tmp::random_string(10));
-  }
+TEST_CASE("shm::memory::tmp write to /tmp") {
+  shm::memory::tmp::delete_topics();
 
-  for (const auto &topic : shm::memory::tmp::get_tmp_names()) {
-    std::cout << topic << std::endl;
-  }
+  SECTION("Write 10 names") {
+    std::vector<std::string> mem_names(10);
+    for (auto &mem_name : mem_names) {
+      mem_name = shm::memory::tmp::random_string(16);
+      shm::memory::tmp::write(mem_name);
+    }
+    auto tmp_names = shm::memory::tmp::get_tmp_names();
 
+    std::sort(mem_names.begin(), mem_names.end());
+    std::sort(tmp_names.begin(), tmp_names.end());
+
+    REQUIRE(mem_names == tmp_names);
+  }
   shm::memory::tmp::delete_topics();
 }
