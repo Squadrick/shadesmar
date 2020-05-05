@@ -18,17 +18,19 @@
 namespace shm::concurrent {
 
 class RobustLock {
-public:
+ public:
   RobustLock();
   RobustLock(const RobustLock &);
   ~RobustLock();
 
   void lock();
+  bool try_lock();
   void unlock();
   void lock_sharable();
+  bool try_lock_sharable();
   void unlock_sharable();
 
-private:
+ private:
   void prune_readers();
   PthreadReadWriteLock mutex_;
   std::atomic<__pid_t> exclusive_owner{0};
@@ -40,7 +42,7 @@ inline bool proc_dead(__pid_t proc) {
     return false;
   }
   std::string pid_path = "/proc/" + std::to_string(proc);
-  struct stat sts {};
+  struct stat sts{};
   return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
 
@@ -73,6 +75,30 @@ void RobustLock::lock() {
   exclusive_owner = getpid();
 }
 
+bool RobustLock::try_lock() {
+  if (!mutex_.try_lock()) {
+    if (exclusive_owner != 0) {
+      auto ex_proc = exclusive_owner.load();
+      if (proc_dead(ex_proc)) {
+        if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+          mutex_.unlock();
+        }
+      }
+    } else {
+      prune_readers();
+    }
+    if (mutex_.try_lock()) {
+      exclusive_owner = getpid();
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    exclusive_owner = getpid();
+    return true;
+  }
+}
+
 void RobustLock::unlock() {
   __pid_t current_pid = getpid();
   if (exclusive_owner.compare_exchange_strong(current_pid, 0)) {
@@ -94,8 +120,30 @@ void RobustLock::lock_sharable() {
 
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  while (!shared_owners.insert(getpid()))
-    ;
+  while (!shared_owners.insert(getpid()));
+}
+
+bool RobustLock::try_lock_sharable() {
+  if (!mutex_.try_lock_sharable()) {
+    if (exclusive_owner != 0) {
+      auto ex_proc = exclusive_owner.load();
+      if (proc_dead(ex_proc)) {
+        if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
+          exclusive_owner = 0;
+          mutex_.unlock();
+        }
+      }
+    }
+    if (mutex_.try_lock_sharable()) {
+      while (!shared_owners.insert(getpid()));
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    while (!shared_owners.insert(getpid()));
+    return true;
+  }
 }
 
 void RobustLock::unlock_sharable() {
