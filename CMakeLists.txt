@@ -43,3 +43,6 @@ target_link_libraries(tmp_test ${libs})
 
 add_executable(rpc_test test/rpc_test.cpp)
 target_link_libraries(rpc_test ${libs})
+
+add_executable(dragons_test test/dragons_test.cpp)
+target_link_libraries(dragons_test ${libs})

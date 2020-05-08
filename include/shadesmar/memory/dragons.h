@@ -36,14 +36,27 @@ SOFTWARE.
 
 namespace shm::memory::dragons {
 
-static inline void *_rep_movsb(void *d, const void *s, size_t n) {
-  // Slower than using regular `memcpy`
+static inline void _rep_movsb(void *d, const void *s, size_t n) {
   asm volatile("rep movsb"
                : "=D"(d), "=S"(s), "=c"(n)
                : "0"(d), "1"(s), "2"(n)
                : "memory");
-  return d;
 }
+
+class RepMovsbCopier : public Copier {
+ public:
+  void *alloc(size_t size) override { return malloc(size); }
+
+  void dealloc(void *ptr) override { free(ptr); }
+
+  void shm_to_user(void *dst, void *src, size_t size) override {
+    _rep_movsb(dst, src, size);
+  }
+
+  void user_to_shm(void *dst, void *src, size_t size) override {
+    _rep_movsb(dst, src, size);
+  }
+};
 
 static inline void *_avx_async_cpy(void *d, const void *s, size_t n) {
   //  assert(n % 32 == 0);
@@ -79,7 +92,7 @@ void *_multithread_avx_async_cpy(void *d, const void *s, size_t n) {
   auto *dVec = reinterpret_cast<__m256i *>(d);
   size_t nVec = n / sizeof(__m256i);
 
-  lldiv_t perWorker = div((int64_t)nVec, maxThreads);
+  ldiv_t perWorker = div((int64_t)nVec, maxThreads);
 
   size_t nextStart = 0;
   for (uint32_t threadIdx = 0; threadIdx < maxThreads; ++threadIdx) {
@@ -104,7 +117,7 @@ void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
   std::vector<std::thread> threads;
   threads.reserve(maxThreads);
 
-  lldiv_t perWorker = div((int64_t)n, maxThreads);
+  ldiv_t perWorker = div((int64_t)n, maxThreads);
 
   size_t nextStart = 0;
   for (uint32_t threadIdx = 0; threadIdx < maxThreads; ++threadIdx) {
