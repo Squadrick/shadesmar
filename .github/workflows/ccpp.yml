@@ -34,7 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - name: dependencies
-        run: pip3 install cpplint
-      - name: cpplint
-        run: cpplint --filter=-build/c++11 **/*.{cpp,h}
+      - uses: actions/setup-python@v1
+      - run: pip install cpplint
+      - run: cpplint --filter=-build/c++11 --exclude="include/catch.hpp" --exclude="build/*" --recursive .
