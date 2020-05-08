@@ -111,10 +111,12 @@ int main() {
 
 Publisher:
 ```c++
+#include <shadesmar/memory/copier.h>
 #include <shadesmar/pubsub/publisher.h>
 
 int main() {
-    shm::pubsub::PublisherBin<16 /* buffer size */ > pub("topic_name");
+    shm::memory::DefaultCopier cpy;
+    shm::pubsub::PublisherBin<16 /* buffer size */ > pub("topic_name", &cpy);
     const uint32_t data_size = 1024;
     void *data = malloc(data_size);
     
@@ -126,18 +128,22 @@ int main() {
 
 Subscriber:
 ```c++
+#include <shadesmar/memory/copier.h>
 #include <shadesmar/pubsub/subscriber.h>
 
-void callback(std::unique_ptr<uint8_t[]>& data, size_t data_size) {
-  // use `data` here
+void callback(shm::memory::Ptr *msg) {
+  // `msg->ptr` to access `data`
+  // `msg->size` to access `size`
 
-  // to get the raw underlying pointer, use data.get()
-  // the memory will be free'd at the end of this callback
-  // copy to another memory location if you want to persist the data
+  // The memory will be free'd at the end of this callback.
+  // Copy to another memory location if you want to persist the data.
+  // Alternatively, if you want to avoid the copy, you can call
+  // `msg->persist()` that won't delete the memory after callback.
 }
 
 int main() {
-    shm::pubsub::SubscriberBin<16 /* buffer size */ > sub("topic_name", callback);
+    shm::memory::DefaultCopier cpy;
+    shm::pubsub::SubscriberBin<16 /* buffer size */ > sub("topic_name", &cpy, callback);
     
     // Using `spinOnce` with a manual loop
     while(true) {
