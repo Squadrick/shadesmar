@@ -32,7 +32,10 @@ SOFTWARE.
 #include <thread>
 #include <vector>
 
+#include "shadesmar/memory/copier.h"
+
 namespace shm::memory::dragons {
+
 static inline void *_rep_movsb(void *d, const void *s, size_t n) {
   // Slower than using regular `memcpy`
   asm volatile("rep movsb"
