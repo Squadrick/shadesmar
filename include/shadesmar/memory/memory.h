@@ -83,21 +83,25 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
   return static_cast<uint8_t *>(ptr);
 }
 
+struct Ptr {
+  void *ptr;
+  size_t size;
+  bool free;
+
+  Ptr() : ptr(nullptr), size(0), free(false) {}
+
+  void no_delete() { free = false; }
+};
+
 struct Element {
   size_t size;
   std::atomic<bool> empty{};
   managed_shared_memory::handle_t addr_hdl;
 
-  Element() {
-    size = 0;
-    empty.store(true);
-    addr_hdl = 0;
-  }
+  Element() : size(0), addr_hdl(0) { empty.store(true); }
 
-  Element(const Element &elem) {
-    size = elem.size;
+  Element(const Element &elem) : size(elem.size), addr_hdl(elem.addr_hdl) {
     empty.store(elem.empty.load());
-    addr_hdl = elem.addr_hdl;
   }
 };
 

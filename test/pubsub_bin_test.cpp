@@ -21,11 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#include <shadesmar/pubsub/publisher.h>
-#include <shadesmar/pubsub/subscriber.h>
 #include <chrono>
 #include <iostream>
 #include <numeric>
+
+#include "shadesmar/memory/copier.h"
+#include "shadesmar/pubsub/publisher.h"
+#include "shadesmar/pubsub/subscriber.h"
 
 const char topic[] = "raw_benchmark_topic";
 const int QUEUE_SIZE = 16;
@@ -60,8 +62,8 @@ double get_stddev(const std::vector<T> &v) {
   return stddev;
 }
 
-void callback(const std::unique_ptr<uint8_t[]> &data, uint32_t size) {
-  auto *msg = reinterpret_cast<Message *>(data.get());
+void callback(shm::memory::Ptr *shm_ptr) {
+  auto *msg = reinterpret_cast<Message *>(shm_ptr->ptr);
   ++count;
   ++total_count;
   lag += std::chrono::duration_cast<TIMESCALE>(
@@ -75,7 +77,8 @@ int main() {
     std::vector<int> counts;
     std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    shm::pubsub::SubscriberBin<QUEUE_SIZE> sub(topic, callback);
+    shm::memory::DefaultCopier cpy;
+    shm::pubsub::SubscriberBin<QUEUE_SIZE> sub(topic, &cpy, callback);
     auto start = std::chrono::system_clock::now();
     int seconds = 0;
     while (true) {
@@ -114,7 +117,8 @@ int main() {
     std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
               << std::endl;
   } else {
-    shm::pubsub::PublisherBin<QUEUE_SIZE> pub(topic);
+    shm::memory::DefaultCopier cpy;
+    shm::pubsub::PublisherBin<QUEUE_SIZE> pub(topic, &cpy);
 
     Message *msg = reinterpret_cast<Message *>(malloc(VECTOR_SIZE));
 

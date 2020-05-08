@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "shadesmar/concurrency/scope.h"
 #include "shadesmar/macros.h"
+#include "shadesmar/memory/copier.h"
 #include "shadesmar/memory/memory.h"
 
 namespace shm::pubsub {
@@ -61,8 +62,13 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
                 "queue_size must be power of two");
 
  public:
+  Topic(const std::string &topic, memory::Copier *copier, bool copy = false)
+      : memory::Memory<TopicElem, queue_size>(topic),
+        copy_(copy),
+        copier_(copier) {}
+
   explicit Topic(const std::string &topic, bool copy = false)
-      : memory::Memory<TopicElem, queue_size>(topic), copy_(copy) {}
+      : Topic(topic, nullptr, copy) {}
 
   bool write(void *data, size_t size) {
     /*
@@ -102,14 +108,13 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
       return _read_without_copy(oh, elem);
   }
 
-  bool read(std::unique_ptr<uint8_t[]> &msg, size_t *size,  // NOLINT
-            uint32_t pos) {
+  bool read(memory::Ptr *ptr, uint32_t pos) {
     /*
      * Read into a raw array. We pass `size` as a reference to store
      * the size of the message.
      */
     TopicElem *elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
-    return _read_bin(msg, size, elem);
+    return _read_bin(ptr, elem);
   }
 
   inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
@@ -122,6 +127,10 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
 
   inline __attribute__((always_inline)) void inc_counter() {
     this->shared_queue_->counter.fetch_add(1);
+  }
+
+  inline __attribute__((always_inline)) memory::Copier *copier() const {
+    return copier_;
   }
 
  private:
@@ -139,7 +148,12 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
     if (new_addr == nullptr) {
       return false;
     }
-    std::memcpy(new_addr, data, size);
+
+    if (copier_ == nullptr) {
+      std::memcpy(new_addr, data, size);
+    } else {
+      copier_->user_to_shm(new_addr, data, size);
+    }
 
     void *old_addr;
     bool prev_empty;
@@ -195,18 +209,19 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
      * So we bite the cost of the extra function call before checking
      * for emptiness.
      */
-    auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
-    size_t size;
 
-    if (_read_bin(src, &size, elem)) {
-      *oh = msgpack::unpack(reinterpret_cast<const char *>(src.get()), size);
+    memory::Ptr ptr;
+
+    if (_read_bin(&ptr, elem)) {
+      *oh = msgpack::unpack(reinterpret_cast<const char *>(ptr.ptr), ptr.size);
+      free(ptr.ptr);
       return true;
     }
+
     return false;
   }
 
-  bool _read_bin(std::unique_ptr<uint8_t[]> &msg, size_t *size,  // NOLINT
-                 TopicElem *elem) {
+  bool _read_bin(memory::Ptr *ptr, TopicElem *elem) {
     /*
      * Code path:
      *  1. Acquire sharable lock
@@ -218,14 +233,21 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
 
     if (elem->empty) return false;
 
-    *size = elem->size;
-    msg = std::unique_ptr<uint8_t[]>(new uint8_t[*size]);
     auto *dst = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
-    std::memcpy(msg.get(), dst, *size);
+
+    ptr->size = elem->size;
+    if (copier_ != nullptr) {
+      ptr->ptr = copier_->alloc(ptr->size);
+      copier_->shm_to_user(ptr->ptr, dst, ptr->size);
+    } else {
+      ptr->ptr = malloc(ptr->size);
+      std::memcpy(ptr->ptr, dst, ptr->size);
+    }
 
     return true;
   }
 
+  memory::Copier *copier_;
   bool copy_{};
 };
 }  // namespace shm::pubsub

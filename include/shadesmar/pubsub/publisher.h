@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include <msgpack.hpp>
 
+#include "shadesmar/memory/copier.h"
 #include "shadesmar/message.h"
 #include "shadesmar/pubsub/topic.h"
 
@@ -41,7 +42,7 @@ namespace shm::pubsub {
 template <uint32_t queue_size>
 class PublisherBin {
  public:
-  explicit PublisherBin(std::string topic_name);
+  explicit PublisherBin(std::string topic_name, memory::Copier *copier);
   bool publish(void *data, size_t size);
 
  private:
@@ -50,8 +51,9 @@ class PublisherBin {
 };
 
 template <uint32_t queue_size>
-PublisherBin<queue_size>::PublisherBin(std::string topic_name)
-    : topic_name_(topic_name), topic_(Topic<queue_size>(topic_name)) {}
+PublisherBin<queue_size>::PublisherBin(std::string topic_name,
+                                       memory::Copier *copier)
+    : topic_name_(topic_name), topic_(Topic<queue_size>(topic_name, copier)) {}
 
 template <uint32_t queue_size>
 bool PublisherBin<queue_size>::publish(void *data, size_t size) {

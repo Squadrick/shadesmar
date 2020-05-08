@@ -34,6 +34,7 @@ SOFTWARE.
 #include <thread>
 #include <utility>
 
+#include "shadesmar/memory/copier.h"
 #include "shadesmar/message.h"
 #include "shadesmar/pubsub/topic.h"
 
@@ -48,7 +49,9 @@ class SubscriberBase {
   virtual void _subscribe() = 0;
 
  protected:
-  SubscriberBase(std::string topic_name, bool extra_copy);
+  SubscriberBase(std::string topic_name, memory::Copier *copier,
+                 bool extra_copy);
+
   std::string topic_name_;
   std::unique_ptr<Topic<queue_size>> topic;
   std::atomic<uint32_t> counter{0};
@@ -57,14 +60,13 @@ class SubscriberBase {
 template <uint32_t queue_size>
 class SubscriberBin : public SubscriberBase<queue_size> {
  public:
-  SubscriberBin(
-      const std::string &topic_name,
-      std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback)
-      : SubscriberBase<queue_size>(topic_name, false),
+  SubscriberBin(const std::string &topic_name, memory::Copier *copier,
+                std::function<void(memory::Ptr *)> callback)
+      : SubscriberBase<queue_size>(topic_name, copier, false),
         callback_(std::move(callback)) {}
 
  private:
-  std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback_;
+  std::function<void(memory::Ptr *)> callback_;
   void _subscribe();
 };
 
@@ -77,7 +79,7 @@ class Subscriber : public SubscriberBase<queue_size> {
   Subscriber(const std::string &topic_name,
              std::function<void(const std::shared_ptr<msgT> &)> callback,
              bool extra_copy = false)
-      : SubscriberBase<queue_size>(topic_name, extra_copy),
+      : SubscriberBase<queue_size>(topic_name, nullptr, extra_copy),
         callback_(std::move(callback)) {}
 
  private:
@@ -87,10 +89,11 @@ class Subscriber : public SubscriberBase<queue_size> {
 
 template <uint32_t queue_size>
 SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
+                                           memory::Copier *copier,
                                            bool extra_copy)
     : topic_name_(std::move(topic_name)) {
 #if __cplusplus >= 201703L
-  topic = std::make_unique<Topic<queue_size>>(topic_name_, extra_copy);
+  topic = std::make_unique<Topic<queue_size>>(topic_name_, copier, extra_copy);
 #else
   topic = std::unique_ptr<Topic<queue_size>>(new Topic<queue_size>(
       std::forward<std::string>(topic_name_, extra_copy)));
@@ -138,12 +141,16 @@ void SubscriberBase<queue_size>::spin() {
 
 template <uint32_t queue_size>
 void SubscriberBin<queue_size>::_subscribe() {
-  std::unique_ptr<uint8_t[]> msg;
-  size_t size = 0;
+  memory::Ptr ptr;
+  ptr.free = true;
 
-  if (!this->topic->read(msg, &size, this->counter)) return;
+  if (!this->topic->read(&ptr, this->counter)) return;
 
-  callback_(msg, size);
+  callback_(&ptr);
+
+  if (ptr.free) {
+    this->topic->copier()->dealloc(ptr.ptr);
+  }
 }
 
 template <typename msgT, uint32_t queue_size>
