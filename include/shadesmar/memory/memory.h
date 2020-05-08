@@ -1,9 +1,28 @@
-//
-// Created by squadrick on 27/11/19.
-//
+/* MIT License
 
-#ifndef shadesmar_MEMORY_H
-#define shadesmar_MEMORY_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
+#define INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
 
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -15,20 +34,22 @@
 #include <cstdint>
 
 #include <atomic>
+#include <memory>
+#include <string>
 #include <type_traits>
 
 #include <boost/interprocess/managed_shared_memory.hpp>
 
-#include <shadesmar/concurrency/robust_lock.h>
-#include <shadesmar/macros.h>
-#include <shadesmar/memory/tmp.h>
+#include "shadesmar/concurrency/robust_lock.h"
+#include "shadesmar/macros.h"
+#include "shadesmar/memory/tmp.h"
 
-using namespace boost::interprocess;
+using managed_shared_memory = boost::interprocess::managed_shared_memory;
 
 namespace shm::memory {
 
 uint8_t *create_memory_segment(const std::string &name, size_t size,
-                               bool &new_segment) {
+                               bool *new_segment) {
   /*
    * Create a new shared memory segment. The segment is created
    * under a name. We check if an existing segment is found under
@@ -38,7 +59,7 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
    */
   int fd;
   while (true) {
-    new_segment = true;
+    *new_segment = true;
     fd = shm_open(name.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
     if (fd >= 0) {
       fchmod(fd, 0644);
@@ -49,7 +70,7 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
         // the memory segment was deleted in the mean time
         continue;
       }
-      new_segment = false;
+      *new_segment = false;
     }
     break;
   }
@@ -80,26 +101,28 @@ struct Element {
   }
 };
 
-template <class ElemT, uint32_t queue_size> class SharedQueue {
-public:
+template <class ElemT, uint32_t queue_size>
+class SharedQueue {
+ public:
   std::atomic<uint32_t> counter;
   std::array<ElemT, queue_size> elements;
 };
 
-static size_t max_buffer_size = (1U << 28); // 256mb
+static size_t max_buffer_size = (1U << 28);  // 256mb
 
-template <class ElemT, uint32_t queue_size = 1> class Memory {
+template <class ElemT, uint32_t queue_size = 1>
+class Memory {
   static_assert(std::is_base_of<Element, ElemT>::value,
                 "ElemT must be a subclass of Element");
 
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
-public:
+ public:
   explicit Memory(const std::string &name) : name_(name) {
     bool new_segment;
     auto *base_addr = create_memory_segment(
-        name, sizeof(SharedQueue<ElemT, queue_size>), new_segment);
+        name, sizeof(SharedQueue<ElemT, queue_size>), &new_segment);
 
     if (base_addr == nullptr) {
       std::cerr << "Could not create shared memory buffer" << std::endl;
@@ -107,7 +130,8 @@ public:
     }
 
     raw_buf_ = std::make_shared<managed_shared_memory>(
-        open_or_create, (name + "Raw").c_str(), max_buffer_size);
+        boost::interprocess::open_or_create, (name + "Raw").c_str(),
+        max_buffer_size);
 
     if (new_segment) {
       shared_queue_ = new (base_addr) SharedQueue<ElemT, queue_size>();
@@ -142,6 +166,6 @@ public:
   SharedQueue<ElemT, queue_size> *shared_queue_;
 };
 
-} // namespace shm::memory
+}  // namespace shm::memory
 
-#endif // shadesmar_MEMORY_H
+#endif  // INCLUDE_SHADESMAR_MEMORY_MEMORY_H_

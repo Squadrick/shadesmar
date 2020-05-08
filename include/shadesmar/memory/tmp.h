@@ -1,9 +1,28 @@
-//
-// Created by squadrick on 24/8/19.
-//
+/* MIT License
 
-#ifndef shadesmar_TMP_H
-#define shadesmar_TMP_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_MEMORY_TMP_H_
+#define INCLUDE_SHADESMAR_MEMORY_TMP_H_
 
 #include <sys/stat.h>
 
@@ -12,6 +31,7 @@
 #include <iterator>
 #include <random>
 #include <string>
+#include <vector>
 
 #if __cplusplus >= 201703L
 #ifdef __cpp_lib_filesystem
@@ -28,19 +48,17 @@ namespace filesystem = experimental::filesystem;
 #endif
 
 namespace shm::memory::tmp {
-std::string const default_chars =
+char const default_chars[] =
     "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
-std::string const tmp_prefix = "/tmp/shm/";
+char const tmp_prefix[] = "/tmp/shm/";
 
-inline std::string
-random_string(size_t len = 15,
-              std::string const &allowed_chars = default_chars) {
+inline std::string random_string(size_t len = 15) {
   std::mt19937_64 gen{std::random_device()()};
-  std::uniform_int_distribution<size_t> dist{0, allowed_chars.length() - 1};
+  std::uniform_int_distribution<size_t> dist{0, sizeof(default_chars) - 1};
   std::string ret;
   std::generate_n(std::back_inserter(ret), len,
-                  [&] { return allowed_chars[dist(gen)]; });
+                  [&] { return default_chars[dist(gen)]; });
   return ret;
 }
 
@@ -117,5 +135,5 @@ inline void delete_topics() {
   system(("rm -rf " + tmp_prefix).c_str());
 #endif
 }
-} // namespace shm::memory::tmp
-#endif // shadesmar_TMP_H
+}  // namespace shm::memory::tmp
+#endif  // INCLUDE_SHADESMAR_MEMORY_TMP_H_

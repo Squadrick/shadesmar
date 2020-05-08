@@ -1,15 +1,35 @@
-//
-// Created by squadrick on 11/10/19.
-//
+/* MIT License
+
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
 
 #include <chrono>
 #include <iostream>
 #include <numeric>
-#include <shadesmar/message.h>
-#include <shadesmar/pubsub/publisher.h>
-#include <shadesmar/pubsub/subscriber.h>
 
-const std::string topic = "benchmark_topic";
+#include "shadesmar/message.h"
+#include "shadesmar/pubsub/publisher.h"
+#include "shadesmar/pubsub/subscriber.h"
+
+const char topic[] = "benchmark_topic";
 const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
@@ -19,24 +39,25 @@ int count = 0, total_count = 0;
 uint64_t lag = 0;
 
 class BenchmarkMsg : public shm::BaseMsg {
-public:
+ public:
   int number{};
   std::vector<uint8_t> arr;
   SHM_PACK(number, arr);
   explicit BenchmarkMsg(int n) : number(n) {
-    for (int i = 0; i < VECTOR_SIZE; ++i)
-      arr.push_back(n);
+    for (int i = 0; i < VECTOR_SIZE; ++i) arr.push_back(n);
   }
   BenchmarkMsg() = default;
 };
 
-template <typename T> double get_mean(const std::vector<T> &v) {
+template <typename T>
+double get_mean(const std::vector<T> &v) {
   double sum = std::accumulate(v.begin(), v.end(), 0.0);
   double mean = sum / v.size();
   return mean;
 }
 
-template <typename T> double get_stddev(const std::vector<T> &v) {
+template <typename T>
+double get_stddev(const std::vector<T> &v) {
   double mean = get_mean(v);
   std::vector<double> diff(v.size());
   std::transform(v.begin(), v.end(), diff.begin(),
@@ -79,7 +100,7 @@ int main() {
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
 
       if (diff.count() > TIMESCALE_COUNT) {
-        double lag_per_msg = (double)lag / count;
+        double lag_per_msg = static_cast<double>(lag) / count;
         if (count != 0) {
           std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
           std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
@@ -90,8 +111,7 @@ int main() {
           std::cout << "Number of message sent: <1/s" << std::endl;
         }
 
-        if (++seconds == SECONDS)
-          break;
+        if (++seconds == SECONDS) break;
         count = 0;
         lag = 0;
         start = std::chrono::system_clock::now();
@@ -126,8 +146,7 @@ int main() {
       pub.publish(msg);
       auto end = std::chrono::system_clock::now();
       auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
-      if (diff.count() > (SECONDS + 1) * TIMESCALE_COUNT)
-        break;
+      if (diff.count() > (SECONDS + 1) * TIMESCALE_COUNT) break;
     }
   }
 }

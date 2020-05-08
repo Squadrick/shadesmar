@@ -1,9 +1,28 @@
-//
-// Created by squadrick on 8/2/19.
-//
+/* MIT License
 
-#ifndef shadesmar_TOPIC_H
-#define shadesmar_TOPIC_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_
+#define INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_
 
 #include <cstring>
 
@@ -14,14 +33,14 @@
 
 #include <msgpack.hpp>
 
-#include <shadesmar/concurrency/scope.h>
-#include <shadesmar/macros.h>
-#include <shadesmar/memory/memory.h>
+#include "shadesmar/concurrency/scope.h"
+#include "shadesmar/macros.h"
+#include "shadesmar/memory/memory.h"
 
-using namespace boost::interprocess;
 namespace shm::pubsub {
 
-template <class LockT> struct _TopicElem : public memory::Element {
+template <class LockT>
+struct _TopicElem : public memory::Element {
   LockT mutex;
 
   _TopicElem() : Element(), mutex() {}
@@ -34,7 +53,6 @@ template <class LockT> struct _TopicElem : public memory::Element {
 template <uint32_t queue_size = 1,
           class LockT = concurrent::PthreadReadWriteLock>
 class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
-
   using TopicElem = _TopicElem<LockT>;
   template <concurrent::ExlOrShr type>
   using ScopeGuardT = concurrent::ScopeGuard<LockT, type>;
@@ -42,7 +60,7 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
-public:
+ public:
   explicit Topic(const std::string &topic, bool copy = false)
       : memory::Memory<TopicElem, queue_size>(topic), copy_(copy) {}
 
@@ -59,7 +77,7 @@ public:
     }
     uint32_t q_pos = fetch_add_counter() & (queue_size - 1);
     TopicElem &elem = this->shared_queue_->elements[q_pos];
-    return _write_rcu(data, size, elem);
+    return _write_rcu(data, size, &elem);
   }
 
   /*
@@ -72,11 +90,11 @@ public:
    * logic to handle circular queue wrap around logic.
    */
 
-  bool read(msgpack::object_handle &oh, uint32_t pos) {
+  bool read(msgpack::object_handle *oh, uint32_t pos) {
     /*
      * Read directly into object handle.
      */
-    TopicElem &elem = this->shared_queue_->elements[pos & (queue_size - 1)];
+    TopicElem *elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
 
     if (copy_)
       return _read_with_copy(oh, elem);
@@ -84,12 +102,13 @@ public:
       return _read_without_copy(oh, elem);
   }
 
-  bool read(std::unique_ptr<uint8_t[]> &msg, size_t &size, uint32_t pos) {
+  bool read(std::unique_ptr<uint8_t[]> &msg, size_t *size,  // NOLINT
+            uint32_t pos) {
     /*
      * Read into a raw array. We pass `size` as a reference to store
      * the size of the message.
      */
-    TopicElem &elem = this->shared_queue_->elements[pos & (queue_size - 1)];
+    TopicElem *elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
     return _read_bin(msg, size, elem);
   }
 
@@ -105,8 +124,8 @@ public:
     this->shared_queue_->counter.fetch_add(1);
   }
 
-private:
-  bool _write_rcu(void *data, size_t size, TopicElem &elem) {
+ private:
+  bool _write_rcu(void *data, size_t size, TopicElem *elem) {
     /*
      * Code path:
      *  1. Allocate shared memory buffer `new_addr`
@@ -131,21 +150,20 @@ private:
        * to `elem`, any other expensive compute that doesn't
        * include `elem` can be put outside this block.
        */
-      ScopeGuardT<concurrent::EXCLUSIVE> _(&elem.mutex);
-      old_addr = this->raw_buf_->get_address_from_handle(elem.addr_hdl);
-      prev_empty = elem.empty;
-      elem.addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
-      elem.size = size;
-      elem.empty = false;
+      ScopeGuardT<concurrent::EXCLUSIVE> _(&elem->mutex);
+      old_addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
+      prev_empty = elem->empty;
+      elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
+      elem->size = size;
+      elem->empty = false;
     }
 
-    if (!prev_empty)
-      this->raw_buf_->deallocate(old_addr);
+    if (!prev_empty) this->raw_buf_->deallocate(old_addr);
 
     return true;
   }
 
-  bool _read_without_copy(msgpack::object_handle &oh, TopicElem &elem) {
+  bool _read_without_copy(msgpack::object_handle *oh, TopicElem *elem) {
     /*
      * Code path:
      *  1. Acquire sharable lock
@@ -153,43 +171,42 @@ private:
      *  3. Unpack shared memory into the object handle
      *  4. Release sharable lock
      */
-    ScopeGuardT<concurrent::SHARED> _(&elem.mutex);
+    ScopeGuardT<concurrent::SHARED> _(&elem->mutex);
 
-    if (elem.empty)
-      return false;
+    if (elem->empty) return false;
 
     const char *dst = reinterpret_cast<const char *>(
-        this->raw_buf_->get_address_from_handle(elem.addr_hdl));
+        this->raw_buf_->get_address_from_handle(elem->addr_hdl));
 
-    oh = msgpack::unpack(dst, elem.size);
+    *oh = msgpack::unpack(dst, elem->size);
     return true;
   }
 
-  bool _read_with_copy(msgpack::object_handle &oh, TopicElem &elem) {
+  bool _read_with_copy(msgpack::object_handle *oh, TopicElem *elem) {
     /*
      * Code path:
      *  1. Create temporary buffer
      *  2. Safe copy from shared memory to tmp buffer (`_read_bin`)
      *  3. Unpack temporary buffer into the object handle
      *
-     * Can't check for `elem.empty` here since we don't have a
+     * Can't check for `elem->empty` here since we don't have a
      * sharable lock. We can't have a sharable lock, since `_read_bin`
      * also acquires a sharable lock, and it'll become recursive.
      * So we bite the cost of the extra function call before checking
      * for emptiness.
      */
-    auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem.size]);
+    auto src = std::unique_ptr<uint8_t[]>(new uint8_t[elem->size]);
     size_t size;
 
-    if (_read_bin(src, size, elem)) {
-      oh = msgpack::unpack(reinterpret_cast<const char *>(src.get()), size);
+    if (_read_bin(src, &size, elem)) {
+      *oh = msgpack::unpack(reinterpret_cast<const char *>(src.get()), size);
       return true;
     }
     return false;
   }
 
-  bool _read_bin(std::unique_ptr<uint8_t[]> &msg, size_t &size,
-                 TopicElem &elem) {
+  bool _read_bin(std::unique_ptr<uint8_t[]> &msg, size_t *size,  // NOLINT
+                 TopicElem *elem) {
     /*
      * Code path:
      *  1. Acquire sharable lock
@@ -197,20 +214,19 @@ private:
      *  3. Copy from shared memory to input param `msg`
      *  4. Release sharable lock
      */
-    ScopeGuardT<concurrent::SHARED> _(&elem.mutex);
+    ScopeGuardT<concurrent::SHARED> _(&elem->mutex);
 
-    if (elem.empty)
-      return false;
+    if (elem->empty) return false;
 
-    size = elem.size;
-    msg = std::unique_ptr<uint8_t[]>(new uint8_t[size]);
-    auto *dst = this->raw_buf_->get_address_from_handle(elem.addr_hdl);
-    std::memcpy(msg.get(), dst, size);
+    *size = elem->size;
+    msg = std::unique_ptr<uint8_t[]>(new uint8_t[*size]);
+    auto *dst = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
+    std::memcpy(msg.get(), dst, *size);
 
     return true;
   }
 
   bool copy_{};
 };
-} // namespace shm::pubsub
-#endif // shadesmar_TOPIC_H
+}  // namespace shm::pubsub
+#endif  // INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_

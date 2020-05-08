@@ -1,9 +1,28 @@
-//
-// Created by squadrick on 14/11/19.
-//
+/* MIT License
 
-#ifndef SHADESMAR_ALLOCATOR_H
-#define SHADESMAR_ALLOCATOR_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
+#define INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
 
 #include <atomic>
 
@@ -24,7 +43,7 @@ struct MemEntry {
  * We align to 16 bytes for the underlying memory space.
  */
 class Allocator {
-public:
+ public:
   Allocator(uint8_t *, size_t, uint32_t);
   uint8_t *malloc(size_t size);
   void free(uint8_t *ptr);
@@ -32,7 +51,7 @@ public:
   size_t get_offset(uint8_t *addr) const;
   uint8_t *set_offset(size_t offset) const;
 
-private:
+ private:
   uint8_t *start_ptr_;
   uint8_t *buffer_ptr_;
   size_t total_size_, free_size_;
@@ -44,7 +63,10 @@ private:
 Allocator::Allocator(uint8_t *raw_buffer, size_t total_size, uint32_t elems)
     : start_ptr_(raw_buffer),
       buffer_ptr_(raw_buffer + elems * sizeof(MemEntry)),
-      total_size_(total_size), free_size_(total_size), elems_(elems), idx_(0) {
+      total_size_(total_size),
+      free_size_(total_size),
+      elems_(elems),
+      idx_(0) {
   table = new (start_ptr_) MemEntry[elems];
 }
 
@@ -66,5 +88,5 @@ uint8_t *Allocator::malloc(size_t size) {
 
 void Allocator::free(uint8_t *ptr) { return; }
 
-} // namespace shm::memory
-#endif // SHADESMAR_ALLOCATOR_H
+}  // namespace shm::memory
+#endif  // INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_

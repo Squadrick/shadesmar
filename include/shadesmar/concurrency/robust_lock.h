@@ -1,19 +1,39 @@
-//
-// Created by squadrick on 30/09/19.
-//
+/* MIT License
 
-#ifndef shadesmar_ROBUST_LOCK_H
-#define shadesmar_ROBUST_LOCK_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
+#define INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
 
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <string>
 #include <thread>
 
-#include <shadesmar/concurrency/lock.h>
-#include <shadesmar/concurrency/lockless_set.h>
-#include <shadesmar/concurrency/rw_lock.h>
-#include <shadesmar/macros.h>
+#include "shadesmar/concurrency/lock.h"
+#include "shadesmar/concurrency/lockless_set.h"
+#include "shadesmar/concurrency/rw_lock.h"
+#include "shadesmar/macros.h"
 
 namespace shm::concurrent {
 
@@ -42,7 +62,7 @@ inline bool proc_dead(__pid_t proc) {
     return false;
   }
   std::string pid_path = "/proc/" + std::to_string(proc);
-  struct stat sts{};
+  struct stat sts {};
   return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
 }
 
@@ -120,7 +140,8 @@ void RobustLock::lock_sharable() {
 
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  while (!shared_owners.insert(getpid()));
+  while (!shared_owners.insert(getpid())) {
+  }
 }
 
 bool RobustLock::try_lock_sharable() {
@@ -135,13 +156,15 @@ bool RobustLock::try_lock_sharable() {
       }
     }
     if (mutex_.try_lock_sharable()) {
-      while (!shared_owners.insert(getpid()));
+      while (!shared_owners.insert(getpid())) {
+      }
       return true;
     } else {
       return false;
     }
   } else {
-    while (!shared_owners.insert(getpid()));
+    while (!shared_owners.insert(getpid())) {
+    }
     return true;
   }
 }
@@ -156,8 +179,7 @@ void RobustLock::prune_readers() {
   for (auto &i : shared_owners.__array) {
     uint32_t shared_owner = i.load();
 
-    if (shared_owner == 0)
-      continue;
+    if (shared_owner == 0) continue;
     if (proc_dead(shared_owner)) {
       if (shared_owners.remove(shared_owner)) {
         mutex_.unlock_sharable();
@@ -166,5 +188,5 @@ void RobustLock::prune_readers() {
   }
 }
 
-} // namespace shm::concurrent
-#endif // shadesmar_ROBUST_LOCK_H
+}  // namespace shm::concurrent
+#endif  // INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
