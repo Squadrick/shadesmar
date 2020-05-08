@@ -1,9 +1,28 @@
-//
-// Created by squadrick on 8/3/19.
-//
+/* MIT License
 
-#ifndef shadesmar_SUBSCRIBER_H
-#define shadesmar_SUBSCRIBER_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_
+#define INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_
 
 #include <cstdint>
 #include <cstring>
@@ -15,19 +34,20 @@
 #include <thread>
 #include <utility>
 
-#include <shadesmar/message.h>
-#include <shadesmar/pubsub/topic.h>
+#include "shadesmar/message.h"
+#include "shadesmar/pubsub/topic.h"
 
 namespace shm::pubsub {
 
-template <uint32_t queue_size> class SubscriberBase {
-public:
+template <uint32_t queue_size>
+class SubscriberBase {
+ public:
   void spin_once();
   void spin();
 
   virtual void _subscribe() = 0;
 
-protected:
+ protected:
   SubscriberBase(std::string topic_name, bool extra_copy);
   std::string topic_name_;
   std::unique_ptr<Topic<queue_size>> topic;
@@ -36,32 +56,31 @@ protected:
 
 template <uint32_t queue_size>
 class SubscriberBin : public SubscriberBase<queue_size> {
-public:
+ public:
   SubscriberBin(
       const std::string &topic_name,
       std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback)
       : SubscriberBase<queue_size>(topic_name, false),
         callback_(std::move(callback)) {}
 
-private:
+ private:
   std::function<void(std::unique_ptr<uint8_t[]> &, size_t)> callback_;
   void _subscribe();
 };
 
 template <typename msgT, uint32_t queue_size>
 class Subscriber : public SubscriberBase<queue_size> {
-
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
 
-public:
+ public:
   Subscriber(const std::string &topic_name,
              std::function<void(const std::shared_ptr<msgT> &)> callback,
              bool extra_copy = false)
       : SubscriberBase<queue_size>(topic_name, extra_copy),
         callback_(std::move(callback)) {}
 
-private:
+ private:
   std::function<void(const std::shared_ptr<msgT> &)> callback_;
   void _subscribe();
 };
@@ -70,7 +89,6 @@ template <uint32_t queue_size>
 SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
                                            bool extra_copy)
     : topic_name_(std::move(topic_name)) {
-
 #if __cplusplus >= 201703L
   topic = std::make_unique<Topic<queue_size>>(topic_name_, extra_copy);
 #else
@@ -81,7 +99,8 @@ SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
   counter = topic->counter();
 }
 
-template <uint32_t queue_size> void SubscriberBase<queue_size>::spin_once() {
+template <uint32_t queue_size>
+void SubscriberBase<queue_size>::spin_once() {
   /*
    * topic's `counter` must be strictly greater than counter.
    * If they're equal, there have been no new writes.
@@ -109,19 +128,20 @@ template <uint32_t queue_size> void SubscriberBase<queue_size>::spin_once() {
   counter++;
 }
 
-template <uint32_t queue_size> void SubscriberBase<queue_size>::spin() {
-  // TODO: Spin on different thread
+template <uint32_t queue_size>
+void SubscriberBase<queue_size>::spin() {
+  // TODO(squadrick): Spin on different thread
   while (true) {
     spin_once();
   }
 }
 
-template <uint32_t queue_size> void SubscriberBin<queue_size>::_subscribe() {
+template <uint32_t queue_size>
+void SubscriberBin<queue_size>::_subscribe() {
   std::unique_ptr<uint8_t[]> msg;
   size_t size = 0;
 
-  if (!this->topic->read(msg, size, this->counter))
-    return;
+  if (!this->topic->read(msg, &size, this->counter)) return;
 
   callback_(msg, size);
 }
@@ -130,8 +150,7 @@ template <typename msgT, uint32_t queue_size>
 void Subscriber<msgT, queue_size>::_subscribe() {
   msgpack::object_handle oh;
 
-  if (!this->topic->read(oh, this->counter))
-    return;
+  if (!this->topic->read(&oh, this->counter)) return;
 
   std::shared_ptr<msgT> msg = std::make_shared<msgT>();
   oh.get().convert(*msg);
@@ -139,5 +158,5 @@ void Subscriber<msgT, queue_size>::_subscribe() {
   callback_(msg);
 }
 
-} // namespace shm::pubsub
-#endif // shadesmar_SUBSCRIBER_H
+}  // namespace shm::pubsub
+#endif  // INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_

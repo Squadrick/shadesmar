@@ -1,16 +1,35 @@
-//
-// Created by squadrick on 11/12/19.
-//
+/* MIT License
 
-#ifndef SHADESMAR_LOCKLESS_SET_H
-#define SHADESMAR_LOCKLESS_SET_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_CONCURRENCY_LOCKLESS_SET_H_
+#define INCLUDE_SHADESMAR_CONCURRENCY_LOCKLESS_SET_H_
 
 #include <cstring>
 
 #include <array>
 #include <atomic>
 
-#include <shadesmar/macros.h>
+#include "shadesmar/macros.h"
 
 #ifdef __APPLE__
 #define __pid_t __darwin_pid_t
@@ -18,7 +37,7 @@
 
 namespace shm::concurrent {
 class LocklessSet {
-public:
+ public:
   LocklessSet();
   LocklessSet &operator=(const LocklessSet &);
 
@@ -68,6 +87,6 @@ bool LocklessSet::remove(uint32_t elem) {
 
   return false;
 }
-} // namespace shm::concurrent
+}  // namespace shm::concurrent
 
-#endif // SHADESMAR_LOCKLESS_SET_H
+#endif  // INCLUDE_SHADESMAR_CONCURRENCY_LOCKLESS_SET_H_

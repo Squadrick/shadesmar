@@ -1,20 +1,38 @@
-//
-// Created by squadrick on 16/11/19.
-//
+/* MIT License
+
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
 
 #include <iostream>
 #include <msgpack.hpp>
 
-#include <shadesmar/macros.h>
-#include <shadesmar/memory/memory.h>
-#include <shadesmar/message.h>
-
-#include <shadesmar/concurrency/robust_lock.h>
+#include "shadesmar/concurrency/robust_lock.h"
+#include "shadesmar/macros.h"
+#include "shadesmar/memory/memory.h"
+#include "shadesmar/message.h"
 
 const size_t mem_size = 10 * 1024 * 1024;
 
 class TestMessage : shm::BaseMsg {
-public:
+ public:
   std::vector<uint32_t> arr;
   SHM_PACK(arr);
 
@@ -60,7 +78,7 @@ void bench_memcpy() {
   bool new_segment;
 
   void *shm_mem =
-      shm::memory::create_memory_segment("test", mem_size, new_segment);
+      shm::memory::create_memory_segment("test", mem_size, &new_segment);
   void *obj = malloc(mem_size);
   TIMEIT({ std::memcpy(shm_mem, obj, mem_size); }, "obj->shm_mem");
   free(obj);
@@ -68,7 +86,7 @@ void bench_memcpy() {
 
   void *obj2 = malloc(mem_size);
   void *shm_mem2 =
-      shm::memory::create_memory_segment("test2", mem_size, new_segment);
+      shm::memory::create_memory_segment("test2", mem_size, &new_segment);
   std::memset(shm_mem2, 0, mem_size);
 
   TIMEIT({ std::memcpy(obj2, shm_mem2, mem_size); }, "shm_mem->obj");

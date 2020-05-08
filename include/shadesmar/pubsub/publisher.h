@@ -1,9 +1,28 @@
-//
-// Created by squadrick on 7/30/19.
-//
+/* MIT License
 
-#ifndef shadesmar_PUBLISHER_H
-#define shadesmar_PUBLISHER_H
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_PUBSUB_PUBLISHER_H_
+#define INCLUDE_SHADESMAR_PUBSUB_PUBLISHER_H_
 
 #include <cstdint>
 
@@ -14,17 +33,18 @@
 
 #include <msgpack.hpp>
 
-#include <shadesmar/message.h>
-#include <shadesmar/pubsub/topic.h>
+#include "shadesmar/message.h"
+#include "shadesmar/pubsub/topic.h"
 
 namespace shm::pubsub {
 
-template <uint32_t queue_size> class PublisherBin {
-public:
+template <uint32_t queue_size>
+class PublisherBin {
+ public:
   explicit PublisherBin(std::string topic_name);
   bool publish(void *data, size_t size);
 
-private:
+ private:
   std::string topic_name_;
   Topic<queue_size> topic_;
 };
@@ -38,14 +58,15 @@ bool PublisherBin<queue_size>::publish(void *data, size_t size) {
   return topic_.write(data, size);
 }
 
-template <typename msgT, uint32_t queue_size> class Publisher {
-public:
+template <typename msgT, uint32_t queue_size>
+class Publisher {
+ public:
   explicit Publisher(std::string topic_name);
   bool publish(std::shared_ptr<msgT> msg);
-  bool publish(msgT &msg);
+  bool publish(msgT &msg);  // NOLINT
   bool publish(msgT *msg);
 
-private:
+ private:
   std::string topic_name_;
   Topic<queue_size> topic_;
 };
@@ -63,7 +84,7 @@ bool Publisher<msgT, queue_size>::publish(std::shared_ptr<msgT> msg) {
 }
 
 template <typename msgT, uint32_t queue_size>
-bool Publisher<msgT, queue_size>::publish(msgT &msg) {
+bool Publisher<msgT, queue_size>::publish(msgT &msg) {  // NOLINT
   return publish(&msg);
 }
 
@@ -78,5 +99,5 @@ bool Publisher<msgT, queue_size>::publish(msgT *msg) {
   return topic_.write(buf.data(), buf.size());
 }
 
-} // namespace shm::pubsub
-#endif // shadesmar_PUBLISHER_H
+}  // namespace shm::pubsub
+#endif  // INCLUDE_SHADESMAR_PUBSUB_PUBLISHER_H_
