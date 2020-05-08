@@ -24,6 +24,8 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_MEMORY_COPIER_H_
 #define INCLUDE_SHADESMAR_MEMORY_COPIER_H_
 
+#include <cstring>
+
 namespace shm::memory {
 class Copier {
  public:

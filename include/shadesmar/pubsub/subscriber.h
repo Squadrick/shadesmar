@@ -142,6 +142,7 @@ void SubscriberBase<queue_size>::spin() {
 template <uint32_t queue_size>
 void SubscriberBin<queue_size>::_subscribe() {
   memory::Ptr ptr;
+  ptr.free = true;
 
   if (!this->topic->read(&ptr, this->counter)) return;
 
