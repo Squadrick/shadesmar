@@ -75,6 +75,7 @@ int main() {
     test<shm::memory::DefaultCopier>(mem_size, i);
 #ifndef __APPLE__  // no MaxOS support
     test<shm::memory::dragons::RepMovsbCopier>(mem_size, i + 1);
+    test<shm::memory::dragons::MTCopier>(mem_size + i, i + 2);
 #endif
   }
 }

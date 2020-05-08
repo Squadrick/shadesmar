@@ -36,6 +36,8 @@ SOFTWARE.
 
 namespace shm::memory::dragons {
 
+const uint32_t max_threads = std::thread::hardware_concurrency();
+
 static inline void _rep_movsb(void *d, const void *s, size_t n) {
   asm volatile("rep movsb"
                : "=D"(d), "=S"(s), "=c"(n)
@@ -112,15 +114,15 @@ void *_multithread_avx_async_cpy(void *d, const void *s, size_t n) {
   return d;
 }
 
-void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
-  const uint32_t maxThreads = std::thread::hardware_concurrency();
+static inline void _multithread_memcpy(void *d, void *s, size_t n,
+                                       uint32_t nthreads) {
   std::vector<std::thread> threads;
-  threads.reserve(maxThreads);
+  threads.reserve(nthreads);
 
-  ldiv_t perWorker = div((int64_t)n, maxThreads);
+  ldiv_t perWorker = div((int64_t)n, nthreads);
 
   size_t nextStart = 0;
-  for (uint32_t threadIdx = 0; threadIdx < maxThreads; ++threadIdx) {
+  for (uint32_t threadIdx = 0; threadIdx < nthreads; ++threadIdx) {
     const size_t currStart = nextStart;
     nextStart += perWorker.quot;
     if (threadIdx < perWorker.rem) {
@@ -135,8 +137,26 @@ void *_multithreaded_memcpy(void *d, const void *s, size_t n) {
     thread.join();
   }
   threads.clear();
-  return d;
 }
+
+class MTCopier : public Copier {
+ public:
+  explicit MTCopier(uint32_t nthreads = max_threads) : threads(nthreads) {}
+
+  void *alloc(size_t size) override { return malloc(size); }
+
+  void dealloc(void *ptr) override { free(ptr); }
+
+  void shm_to_user(void *dst, void *src, size_t size) override {
+    _multithread_memcpy(dst, src, size, threads);
+  }
+
+  void user_to_shm(void *dst, void *src, size_t size) override {
+    _multithread_memcpy(dst, src, size, threads);
+  }
+
+  uint32_t threads;
+};
 
 }  // namespace shm::memory::dragons
 
