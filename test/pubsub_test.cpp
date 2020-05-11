@@ -24,6 +24,7 @@ SOFTWARE.
 #include <chrono>
 #include <iostream>
 #include <numeric>
+#include <stdexcept>
 
 #include "shadesmar/message.h"
 #include "shadesmar/pubsub/publisher.h"
@@ -80,7 +81,7 @@ void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
   for (auto i : msg->arr) {
     if (i != msg->number) {
       std::cerr << "Error on " << msg->number << std::endl;
-      return;
+      throw std::runtime_error("Subscriber data mismatch");
     }
   }
 }

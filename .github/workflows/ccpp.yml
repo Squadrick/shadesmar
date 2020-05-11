@@ -10,25 +10,38 @@ jobs:
         compiler: [g++, clang++]
     steps:
     - uses: actions/checkout@v1
-    - name: dependencies
+    - name: Install dependencies
       run: sudo apt update && sudo apt install libboost-all-dev libmsgpack-dev ninja-build
-    - name: configure
+    - name: Configure
       env:
         CXX: ${{ matrix.compiler }}
       run: ./configure
-    - name: build
+    - name: Build
       run: cmake --build build
+    - name: Binary pubsub test
+      run: ./build/pubsub_bin_test
+    - name: Serialized pubsub test
+      run: ./build/pubsub_test
+    - name: Dragons memory test
+      run: ./build/dragons_test
+
 
   build-macos:
     runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v1
-    - name: dependencies
+    - name: Install dependencies
       run: brew update && brew install boost msgpack ninja
-    - name: configure
+    - name: Configure
       run: ./configure
-    - name: build
+    - name: Build
       run: cmake --build build
+    - name: Binary pubsub test
+      run: ./build/pubsub_bin_test
+    - name: Serialized pubsub test
+      run: ./build/pubsub_test
+    - name: Dragons memory test
+      run: ./build/dragons_test
 
   lint-check:
     runs-on: ubuntu-latest
