@@ -1,5 +1,7 @@
 ### Shadesmar
 
+[Soulcast](https://stormlightarchive.fandom.com/wiki/Soulcasting) [hoid](https://stormlightarchive.fandom.com/wiki/Hoid) pointers.
+
 An IPC library that uses the system's shared memory to pass messages. 
 The communication paradigm is either publish-subscibe or RPC similar to ROS and ROS2.
 The library was built to be used within [Project MANAS](http://projectmanas.in/).
@@ -138,7 +140,8 @@ void callback(shm::memory::Ptr *msg) {
   // The memory will be free'd at the end of this callback.
   // Copy to another memory location if you want to persist the data.
   // Alternatively, if you want to avoid the copy, you can call
-  // `msg->persist()` that won't delete the memory after callback.
+  // `msg->no_delete()` which prevents the memory from being deleted
+  // at the end of the callback.
 }
 
 int main() {
