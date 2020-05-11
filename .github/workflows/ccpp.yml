@@ -22,8 +22,6 @@ jobs:
       run: ./build/pubsub_bin_test
     - name: Serialized pubsub test
       run: ./build/pubsub_test
-    - name: tmp file manager test
-      run: ./build/tmp_test
     - name: Dragons memory test
       run: ./build/dragons_test
 
@@ -42,8 +40,6 @@ jobs:
       run: ./build/pubsub_bin_test
     - name: Serialized pubsub test
       run: ./build/pubsub_test
-    - name: tmp file manager test
-      run: ./build/tmp_test
     - name: Dragons memory test
       run: ./build/dragons_test
 
