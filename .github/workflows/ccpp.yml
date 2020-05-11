@@ -18,6 +18,11 @@ jobs:
       run: ./configure
     - name: build
       run: cmake --build build
+    - run: ./build/pubsub_bin_test
+    - run: ./build/pubsub_test
+    - run: ./build/tmp_test
+    - run: ./build/dragons_test
+
 
   build-macos:
     runs-on: macOS-latest
@@ -29,6 +34,10 @@ jobs:
       run: ./configure
     - name: build
       run: cmake --build build
+    - run: ./build/pubsub_bin_test
+    - run: ./build/pubsub_test
+    - run: ./build/tmp_test
+    - run: ./build/dragons_test
 
   lint-check:
     runs-on: ubuntu-latest
