@@ -18,10 +18,14 @@ jobs:
       run: ./configure
     - name: build
       run: cmake --build build
-    - run: ./build/pubsub_bin_test
-    - run: ./build/pubsub_test
-    - run: ./build/tmp_test
-    - run: ./build/dragons_test
+    - name: Binary pubsub test
+      run: ./build/pubsub_bin_test
+    - name: Serialized pubsub test
+      run: ./build/pubsub_test
+    - name: tmp file manager test
+      run: ./build/tmp_test
+    - name: Dragons memory test
+      run: ./build/dragons_test
 
 
   build-macos:
@@ -34,10 +38,14 @@ jobs:
       run: ./configure
     - name: build
       run: cmake --build build
-    - run: ./build/pubsub_bin_test
-    - run: ./build/pubsub_test
-    - run: ./build/tmp_test
-    - run: ./build/dragons_test
+    - name: Binary pubsub test
+      run: ./build/pubsub_bin_test
+    - name: Serialized pubsub test
+      run: ./build/pubsub_test
+    - name: tmp file manager test
+      run: ./build/tmp_test
+    - name: Dragons memory test
+      run: ./build/dragons_test
 
   lint-check:
     runs-on: ubuntu-latest
