@@ -4,6 +4,7 @@ project(shadesmar)
 
 find_package(Boost REQUIRED)
 find_package(msgpack REQUIRED)
+find_package(benchmark REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -22,7 +23,7 @@ if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)
 endif ()
 
-add_compile_options(-march=native)
+add_compile_options(-march=native -O2)
 add_definitions(-DDEBUG_BUILD)
 
 add_executable(flush_tmp src/flush_tmp.cpp)
@@ -46,3 +47,7 @@ target_link_libraries(rpc_test ${libs})
 
 add_executable(dragons_test test/dragons_test.cpp)
 target_link_libraries(dragons_test ${libs})
+
+# BENCHMARKS
+add_executable(dragons_bench benchmark/dragons.cpp)
+target_link_libraries(dragons_bench ${libs} benchmark::benchmark)

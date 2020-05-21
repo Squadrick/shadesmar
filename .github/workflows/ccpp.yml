@@ -11,7 +11,10 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install dependencies
-      run: sudo apt update && sudo apt install libboost-all-dev libmsgpack-dev ninja-build
+      run: |
+        sudo apt update
+        sudo apt install libboost-all-dev libmsgpack-dev ninja-build
+        ./install_deps.sh
     - name: Configure
       env:
         CXX: ${{ matrix.compiler }}
@@ -22,16 +25,20 @@ jobs:
       run: ./build/pubsub_bin_test
     - name: Serialized pubsub test
       run: ./build/pubsub_test
-    - name: Dragons memory test
-      run: ./build/dragons_test
-
+    - name: Dragons test
+      run: |
+        ./build/dragons_test
+        ./build/dragons_bench
 
   build-macos:
     runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v1
     - name: Install dependencies
-      run: brew update && brew install boost msgpack ninja
+      run: |
+        brew update
+        brew install boost msgpack ninja
+        ./install_deps.sh
     - name: Configure
       run: ./configure
     - name: Build

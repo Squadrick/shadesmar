@@ -48,7 +48,7 @@ using managed_shared_memory = boost::interprocess::managed_shared_memory;
 
 namespace shm::memory {
 
-#define ALIGN(s, a) (((s - 1) | (a - 1)) + 1)
+#define SHMALIGN(s, a) (((s - 1) | (a - 1)) + 1)
 
 uint8_t *create_memory_segment(const std::string &name, size_t size,
                                bool *new_segment, size_t alignment = 32) {
@@ -86,7 +86,7 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
   auto *ptr = mmap(nullptr, size + alignment, PROT_READ | PROT_WRITE,
                    MAP_SHARED, fd, 0);
   auto intptr = reinterpret_cast<uintptr_t>(ptr);
-  uintptr_t aligned_ptr = ALIGN(intptr, alignment);
+  uintptr_t aligned_ptr = SHMALIGN(intptr, alignment);
   return reinterpret_cast<uint8_t *>(aligned_ptr);
 }
 
