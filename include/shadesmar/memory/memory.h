@@ -48,8 +48,10 @@ using managed_shared_memory = boost::interprocess::managed_shared_memory;
 
 namespace shm::memory {
 
+#define ALIGN(s, a) (((s - 1) | (a - 1)) + 1)
+
 uint8_t *create_memory_segment(const std::string &name, size_t size,
-                               bool *new_segment) {
+                               bool *new_segment, size_t alignment = 32) {
   /*
    * Create a new shared memory segment. The segment is created
    * under a name. We check if an existing segment is found under
@@ -74,13 +76,18 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
     }
     break;
   }
-  int result = ftruncate(fd, size);
+
+  // We allocate an extra `alignment` bytes as padding
+  int result = ftruncate(fd, size + alignment);
   if (result == EINVAL) {
     return nullptr;
   }
 
-  auto ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-  return static_cast<uint8_t *>(ptr);
+  auto *ptr = mmap(nullptr, size + alignment, PROT_READ | PROT_WRITE,
+                   MAP_SHARED, fd, 0);
+  auto intptr = reinterpret_cast<uintptr_t>(ptr);
+  uintptr_t aligned_ptr = ALIGN(intptr, alignment);
+  return reinterpret_cast<uint8_t *>(aligned_ptr);
 }
 
 struct Ptr {

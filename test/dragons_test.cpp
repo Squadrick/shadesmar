@@ -43,18 +43,13 @@ void mem_check(void *mem, size_t mem_size, int num) {
 
 template <class CopierT>
 void test(size_t mem_size, int num) {
-  CopierT cpy;
-  bool segment;
-  void *user;
-
-  shm_unlink("dragons_test");
-  void *shm =
-      shm::memory::create_memory_segment("dragons_test", mem_size, &segment);
-
   std::cout << "Test for: " << typeid(CopierT).name() << std::endl;
+  CopierT cpy;
 
+  void *shm = cpy.alloc(mem_size);
   std::memset(shm, num, mem_size);
 
+  void *user = nullptr;
   TIMEIT(user = cpy.alloc(mem_size), "Alloc");
 
   TIMEIT(cpy.shm_to_user(user, shm, mem_size), "Shm->User");
@@ -64,7 +59,7 @@ void test(size_t mem_size, int num) {
   mem_check(shm, mem_size, num);
 
   TIMEIT(cpy.dealloc(user), "Dealloc");
-  shm_unlink("dragons_test");
+  cpy.dealloc(shm);
   std::cout << std::endl;
 }
 
@@ -76,6 +71,8 @@ int main() {
 #ifndef __APPLE__  // no MaxOS support
     test<shm::memory::dragons::RepMovsbCopier>(mem_size, i + 1);
     test<shm::memory::dragons::MTCopier>(mem_size + i, i + 2);
+    test<shm::memory::dragons::AvxAsyncCopier>(mem_size + i, i + 3);
+    test<shm::memory::dragons::MTAvxAsyncCopier>(mem_size + i, i + 4);
 #endif
   }
 }
