@@ -40,8 +40,6 @@ SOFTWARE.
 
 namespace shm::memory::dragons {
 
-const uint32_t MAX_THREADS = std::thread::hardware_concurrency();
-
 //------------------------------------------------------------------------------
 
 static inline void _rep_movsb(void *d, const void *s, size_t n) {
@@ -63,6 +61,40 @@ class RepMovsbCopier : public Copier {
 
   void user_to_shm(void *dst, void *src, size_t size) override {
     _rep_movsb(dst, src, size);
+  }
+};
+
+//------------------------------------------------------------------------------
+
+static inline void _avx_cpy(void *d, const void *s, size_t n) {
+  // d, s -> 32 byte aligned
+  // n -> multiple of 32
+
+  auto *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
+  size_t nVec = n / sizeof(__m256i);
+  for (; nVec > 0; nVec--, sVec++, dVec++) {
+    const __m256i temp = _mm256_load_si256(sVec);
+    _mm256_store_si256(dVec, temp);
+  }
+}
+
+class AvxCopier : public Copier {
+ public:
+  constexpr static size_t alignment = sizeof(__m256i);
+
+  void *alloc(size_t size) override {
+    return aligned_alloc(alignment, SHMALIGN(size, alignment));
+  }
+
+  void dealloc(void *ptr) override { free(ptr); }
+
+  void shm_to_user(void *dst, void *src, size_t size) override {
+    _avx_cpy(dst, src, SHMALIGN(size, alignment));
+  }
+
+  void user_to_shm(void *dst, void *src, size_t size) override {
+    _avx_cpy(dst, src, SHMALIGN(size, alignment));
   }
 };
 
@@ -103,47 +135,26 @@ class AvxAsyncCopier : public Copier {
 
 //------------------------------------------------------------------------------
 
-void _async_stream_cpy(__m256i *d, const __m256i *s, size_t n) {
-  for (; n > 0; n--, d++, s++) {
-    const __m256i temp = _mm256_stream_load_si256(s);
-    _mm256_stream_si256(d, temp);
-  }
-}
+static inline void _avx_async_pf_cpy(void *d, const void *s, size_t n) {
+  // d, s -> 32 byte aligned
+  // n -> multiple of 32
 
-void _multithread_avx_async_cpy(void *d, const void *s, size_t n,
-                                uint32_t nthreads) {
-  std::vector<std::thread> threads;
-  threads.reserve(nthreads);
-
-  const auto *sVec = reinterpret_cast<const __m256i *>(s);
   auto *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
   size_t nVec = n / sizeof(__m256i);
-
-  ldiv_t perWorker = div((int64_t)nVec, nthreads);
-
-  size_t nextStart = 0;
-  for (uint32_t threadIdx = 0; threadIdx < nthreads; ++threadIdx) {
-    const size_t currStart = nextStart;
-    nextStart += perWorker.quot;
-    if (threadIdx < perWorker.rem) {
-      nextStart++;
-    }
-    threads.emplace_back(_async_stream_cpy, dVec + currStart, sVec + currStart,
-                         nextStart - currStart);
+  for (; nVec > 1; nVec--, sVec++, dVec++) {
+    _mm_prefetch(sVec + 1, _MM_HINT_T0);
+    const __m256i temp = _mm256_load_si256(sVec);
+    _mm256_stream_si256(dVec, temp);
   }
-  for (auto &thread : threads) {
-    thread.join();
-  }
+  _mm256_stream_si256(dVec, _mm256_load_si256(sVec));
   _mm_sfence();
-  threads.clear();
 }
 
-class MTAvxAsyncCopier : public Copier {
+class AvxAsyncPFCopier : public Copier {
  public:
   constexpr static size_t alignment = sizeof(__m256i);
 
-  explicit MTAvxAsyncCopier(uint32_t nthreads = MAX_THREADS)
-      : threads(nthreads) {}
   void *alloc(size_t size) override {
     return aligned_alloc(alignment, SHMALIGN(size, alignment));
   }
@@ -151,47 +162,34 @@ class MTAvxAsyncCopier : public Copier {
   void dealloc(void *ptr) override { free(ptr); }
 
   void shm_to_user(void *dst, void *src, size_t size) override {
-    _multithread_avx_async_cpy(dst, src, SHMALIGN(size, alignment), threads);
+    _avx_async_pf_cpy(dst, src, SHMALIGN(size, alignment));
   }
 
   void user_to_shm(void *dst, void *src, size_t size) override {
-    _multithread_avx_async_cpy(dst, src, SHMALIGN(size, alignment), threads);
+    _avx_async_pf_cpy(dst, src, SHMALIGN(size, alignment));
   }
-
-  uint32_t threads;
 };
 
 //------------------------------------------------------------------------------
 
-static inline void _multithread_memcpy(void *d, void *s, size_t n,
-                                       uint32_t nthreads) {
-  std::vector<std::thread> threads;
-  threads.reserve(nthreads);
+static inline void _avx_unroll_cpy(void *d, const void *s, size_t n) {
+  // d, s -> 128 byte aligned
+  // n -> multiple of 128
 
-  ldiv_t perWorker = div((int64_t)n, nthreads);
-
-  size_t nextStart = 0;
-  for (uint32_t threadIdx = 0; threadIdx < nthreads; ++threadIdx) {
-    const size_t currStart = nextStart;
-    nextStart += perWorker.quot;
-    if (threadIdx < perWorker.rem) {
-      nextStart++;
-    }
-    uint8_t *dTemp = reinterpret_cast<uint8_t *>(d) + currStart;
-    const uint8_t *sTemp = reinterpret_cast<const uint8_t *>(s) + currStart;
-
-    threads.emplace_back(memcpy, dTemp, sTemp, nextStart - currStart);
+  auto *dVec = reinterpret_cast<__m256i *>(d);
+  const auto *sVec = reinterpret_cast<const __m256i *>(s);
+  size_t nVec = n / sizeof(__m256i);
+  for (; nVec > 0; nVec -= 4, sVec += 4, dVec += 4) {
+    _mm256_store_si256(dVec, _mm256_load_si256(sVec));
+    _mm256_store_si256(dVec + 1, _mm256_load_si256(sVec + 1));
+    _mm256_store_si256(dVec + 2, _mm256_load_si256(sVec + 2));
+    _mm256_store_si256(dVec + 3, _mm256_load_si256(sVec + 3));
   }
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
 }
 
-class MTCopier : public Copier {
+class AvxUnrollCopier : public Copier {
  public:
-  const size_t alignment = 32;
-  explicit MTCopier(uint32_t nthreads = MAX_THREADS) : threads(nthreads) {}
+  constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
     return aligned_alloc(alignment, SHMALIGN(size, alignment));
@@ -200,14 +198,12 @@ class MTCopier : public Copier {
   void dealloc(void *ptr) override { free(ptr); }
 
   void shm_to_user(void *dst, void *src, size_t size) override {
-    _multithread_memcpy(dst, src, size, threads);
+    _avx_unroll_cpy(dst, src, SHMALIGN(size, alignment));
   }
 
   void user_to_shm(void *dst, void *src, size_t size) override {
-    _multithread_memcpy(dst, src, size, threads);
+    _avx_unroll_cpy(dst, src, SHMALIGN(size, alignment));
   }
-
-  uint32_t threads;
 };
 
 //------------------------------------------------------------------------------

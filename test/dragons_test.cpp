@@ -63,10 +63,11 @@ int main() {
     std::cout << "Memory size: 2 ^ " << i << std::endl;
     test<shm::memory::DefaultCopier>(mem_size, i);
 #ifndef __APPLE__  // no MaxOS support
-    test<shm::memory::dragons::RepMovsbCopier>(mem_size, i + 1);
-    test<shm::memory::dragons::MTCopier>(mem_size + i, i + 2);
-    test<shm::memory::dragons::AvxAsyncCopier>(mem_size + i, i + 3);
-    test<shm::memory::dragons::MTAvxAsyncCopier>(mem_size + i, i + 4);
+    test<shm::memory::dragons::RepMovsbCopier>(mem_size, i);
+    test<shm::memory::dragons::AvxCopier>(mem_size + i, i);
+    test<shm::memory::dragons::AvxAsyncCopier>(mem_size + i, i);
+    test<shm::memory::dragons::AvxAsyncPFCopier>(mem_size + i, i);
+    test<shm::memory::dragons::AvxUnrollCopier>(mem_size + i, i);
 #endif
   }
 }
