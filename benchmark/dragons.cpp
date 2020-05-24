@@ -51,9 +51,10 @@ SHM_COPY_BENCHMARK(shm::memory::DefaultCopier);
 #ifndef __APPLE__  // no MaxOS support
 
 SHM_COPY_BENCHMARK(shm::memory::dragons::RepMovsbCopier);
+SHM_COPY_BENCHMARK(shm::memory::dragons::AvxCopier);
 SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::MTCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::MTAvxAsyncCopier);
+SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncPFCopier);
+SHM_COPY_BENCHMARK(shm::memory::dragons::AvxUnrollCopier);
 
 #endif
 BENCHMARK_MAIN();
