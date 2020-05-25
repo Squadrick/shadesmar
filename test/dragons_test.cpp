@@ -38,8 +38,7 @@ void mem_check(void *mem, size_t mem_size, int num) {
   }
 }
 
-template <class CopierT>
-void test(size_t mem_size, int num) {
+template <class CopierT> void _test(size_t mem_size, int num) {
   std::cout << "Test for: " << typeid(CopierT).name() << std::endl;
   CopierT cpy;
 
@@ -57,17 +56,26 @@ void test(size_t mem_size, int num) {
   cpy.dealloc(user);
 }
 
+template <class CopierT> void test(size_t mem_size, int num, bool mt = false) {
+  _test<CopierT>(mem_size, num);
+  if (mt)
+    _test<shm::memory::dragons::MTCopier<CopierT, 2>>(mem_size, num);
+}
+
 int main() {
   for (int i = 11; i < 30; i += 3) {
     size_t mem_size = 1 << i;
     std::cout << "Memory size: 2 ^ " << i << std::endl;
-    test<shm::memory::DefaultCopier>(mem_size, i);
-#ifndef __APPLE__  // no MaxOS support
-    test<shm::memory::dragons::RepMovsbCopier>(mem_size, i);
-    test<shm::memory::dragons::AvxCopier>(mem_size + i, i);
-    test<shm::memory::dragons::AvxAsyncCopier>(mem_size + i, i);
-    test<shm::memory::dragons::AvxAsyncPFCopier>(mem_size + i, i);
-    test<shm::memory::dragons::AvxUnrollCopier>(mem_size + i, i);
+    test<shm::memory::DefaultCopier>(mem_size, i, true);
+#ifndef __APPLE__ // no MaxOS support
+    using namespace shm::memory::dragons;
+    test<RepMovsbCopier>(mem_size, i, true);
+    test<AvxCopier>(mem_size + i, i);
+    test<AvxAsyncCopier>(mem_size + i, i);
+    test<AvxAsyncPFCopier>(mem_size + i, i);
+    test<AvxUnrollCopier>(mem_size + i, i);
+    test<AvxAsyncUnrollCopier>(mem_size + i, i);
+    test<AvxAsyncPFUnrollCopier>(mem_size + i, i);
 #endif
   }
 }

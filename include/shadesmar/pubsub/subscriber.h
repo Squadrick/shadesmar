@@ -92,13 +92,7 @@ SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
                                            memory::Copier *copier,
                                            bool extra_copy)
     : topic_name_(std::move(topic_name)) {
-#if __cplusplus >= 201703L
   topic = std::make_unique<Topic<queue_size>>(topic_name_, copier, extra_copy);
-#else
-  topic = std::unique_ptr<Topic<queue_size>>(new Topic<queue_size>(
-      std::forward<std::string>(topic_name_, extra_copy)));
-#endif
-
   counter = topic->counter();
 }
 

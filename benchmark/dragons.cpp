@@ -24,12 +24,11 @@ SOFTWARE.
 #include <benchmark/benchmark.h>
 #include <cstring>
 
-#define STARTRANGE 1 << 5  // 32 bytes
-#define ENDRANGE 1 << 23   // 8 MB
+#define STARTRANGE 1 << 5 // 32 bytes
+#define ENDRANGE 1 << 23  // 8 MB
 #define SHMRANGE STARTRANGE, ENDRANGE
 
-template <class CopierT>
-void CopyBench(benchmark::State &state) {  // NOLINT
+template <class CopierT> void CopyBench(benchmark::State &state) { // NOLINT
   CopierT cpy;
   size_t size = state.range(0);
   auto *src = cpy.alloc(size);
@@ -46,15 +45,22 @@ void CopyBench(benchmark::State &state) {  // NOLINT
 
 #define SHM_COPY_BENCHMARK(c) BENCHMARK_TEMPLATE(CopyBench, c)->Range(SHMRANGE);
 
+using namespace shm::memory::dragons;
+
 SHM_COPY_BENCHMARK(shm::memory::DefaultCopier);
+BENCHMARK_TEMPLATE(CopyBench, MTCopier<shm::memory::DefaultCopier, 2>)
+    ->Range(SHMRANGE);
 
-#ifndef __APPLE__  // no MaxOS support
+#ifndef __APPLE__ // no MaxOS support
 
-SHM_COPY_BENCHMARK(shm::memory::dragons::RepMovsbCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::AvxCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncPFCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::AvxUnrollCopier);
+SHM_COPY_BENCHMARK(RepMovsbCopier);
+SHM_COPY_BENCHMARK(AvxCopier);
+SHM_COPY_BENCHMARK(AvxAsyncCopier);
+SHM_COPY_BENCHMARK(AvxAsyncPFCopier);
+SHM_COPY_BENCHMARK(AvxUnrollCopier);
+SHM_COPY_BENCHMARK(AvxAsyncUnrollCopier);
+SHM_COPY_BENCHMARK(AvxAsyncPFUnrollCopier);
+BENCHMARK_TEMPLATE(CopyBench, MTCopier<RepMovsbCopier, 2>)->Range(SHMRANGE);
 
 #endif
 BENCHMARK_MAIN();
