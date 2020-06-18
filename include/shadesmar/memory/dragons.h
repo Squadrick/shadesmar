@@ -40,6 +40,8 @@ namespace shm::memory::dragons {
 
 //------------------------------------------------------------------------------
 
+#ifdef __x86_64__
+
 static inline void _rep_movsb(void *d, const void *s, size_t n) {
   asm volatile("rep movsb"
                : "=D"(d), "=S"(s), "=c"(n)
@@ -63,7 +65,11 @@ class RepMovsbCopier : public Copier {
   }
 };
 
+#endif  // __x86_64__
+
 //------------------------------------------------------------------------------
+
+#ifdef __AVX__
 
 static inline void _avx_cpy(void *d, const void *s, size_t n) {
   // d, s -> 32 byte aligned
@@ -98,7 +104,11 @@ class AvxCopier : public Copier {
   }
 };
 
+#endif  // __AVX__
+
 //------------------------------------------------------------------------------
+
+#ifdef __AVX2__
 
 static inline void _avx_async_cpy(void *d, const void *s, size_t n) {
   // d, s -> 32 byte aligned
@@ -134,7 +144,11 @@ class AvxAsyncCopier : public Copier {
   }
 };
 
+#endif  // __AVX2__
+
 //------------------------------------------------------------------------------
+
+#ifdef __AVX2__
 
 static inline void _avx_async_pf_cpy(void *d, const void *s, size_t n) {
   // d, s -> 64 byte aligned
@@ -176,7 +190,11 @@ class AvxAsyncPFCopier : public Copier {
   }
 };
 
+#endif  // __AVX2__
+
 //------------------------------------------------------------------------------
+
+#ifdef __AVX__
 
 static inline void _avx_cpy_unroll(void *d, const void *s, size_t n) {
   // d, s -> 128 byte aligned
@@ -213,7 +231,11 @@ class AvxUnrollCopier : public Copier {
   }
 };
 
+#endif  // __AVX__
+
 //------------------------------------------------------------------------------
+
+#ifdef __AVX2__
 
 static inline void _avx_async_cpy_unroll(void *d, const void *s, size_t n) {
   // d, s -> 128 byte aligned
@@ -251,7 +273,11 @@ class AvxAsyncUnrollCopier : public Copier {
   }
 };
 
+#endif  // __AVX2__
+
 //------------------------------------------------------------------------------
+
+#ifdef __AVX2__
 
 static inline void _avx_async_pf_cpy_unroll(void *d, const void *s, size_t n) {
   // d, s -> 128 byte aligned
@@ -295,6 +321,8 @@ class AvxAsyncPFUnrollCopier : public Copier {
     _avx_async_pf_cpy_unroll(dst, src, SHMALIGN(size, alignment));
   }
 };
+
+#endif  // __AVX2__
 
 //------------------------------------------------------------------------------
 
