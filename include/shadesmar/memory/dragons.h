@@ -36,8 +36,6 @@ SOFTWARE.
 #include "shadesmar/memory/copier.h"
 #include "shadesmar/memory/memory.h"
 
-#ifndef __APPLE__  // no MaxOS support
-
 namespace shm::memory::dragons {
 
 //------------------------------------------------------------------------------
@@ -210,5 +208,4 @@ class AvxUnrollCopier : public Copier {
 
 }  // namespace shm::memory::dragons
 
-#endif  // __APPLE__
 #endif  // INCLUDE_SHADESMAR_MEMORY_DRAGONS_H_
