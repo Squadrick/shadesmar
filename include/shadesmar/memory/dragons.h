@@ -48,7 +48,7 @@ static inline void _rep_movsb(void *d, const void *s, size_t n) {
 }
 
 class RepMovsbCopier : public Copier {
-public:
+ public:
   void *alloc(size_t size) override { return malloc(size); }
 
   void dealloc(void *ptr) override { free(ptr); }
@@ -78,7 +78,7 @@ static inline void _avx_cpy(void *d, const void *s, size_t n) {
 }
 
 class AvxCopier : public Copier {
-public:
+ public:
   constexpr static size_t alignment = sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -113,7 +113,7 @@ static inline void _avx_async_cpy(void *d, const void *s, size_t n) {
 }
 
 class AvxAsyncCopier : public Copier {
-public:
+ public:
   constexpr static size_t alignment = sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -154,7 +154,7 @@ static inline void _avx_async_pf_cpy(void *d, const void *s, size_t n) {
 }
 
 class AvxAsyncPFCopier : public Copier {
-public:
+ public:
   constexpr static size_t alignment = sizeof(__m256i) * 2;
 
   void *alloc(size_t size) override {
@@ -190,7 +190,7 @@ static inline void _avx_cpy_unroll(void *d, const void *s, size_t n) {
 }
 
 class AvxUnrollCopier : public Copier {
-public:
+ public:
   constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -227,7 +227,7 @@ static inline void _avx_async_cpy_unroll(void *d, const void *s, size_t n) {
 }
 
 class AvxAsyncUnrollCopier : public Copier {
-public:
+ public:
   constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -271,7 +271,7 @@ static inline void _avx_async_pf_cpy_unroll(void *d, const void *s, size_t n) {
 }
 
 class AvxAsyncPFUnrollCopier : public Copier {
-public:
+ public:
   constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -291,8 +291,9 @@ public:
 
 //------------------------------------------------------------------------------
 
-template <class BaseCopierT, uint32_t nthreads> class MTCopier : public Copier {
-public:
+template <class BaseCopierT, uint32_t nthreads>
+class MTCopier : public Copier {
+ public:
   MTCopier() : base_copier() {}
 
   void *alloc(size_t size) override { return base_copier.alloc(size); }
@@ -338,12 +339,12 @@ public:
     _copy(dst, src, size, false);
   }
 
-private:
+ private:
   BaseCopierT base_copier;
 };
 
 //------------------------------------------------------------------------------
 
-} // namespace shm::memory::dragons
+}  // namespace shm::memory::dragons
 
-#endif // INCLUDE_SHADESMAR_MEMORY_DRAGONS_H_
+#endif  // INCLUDE_SHADESMAR_MEMORY_DRAGONS_H_
