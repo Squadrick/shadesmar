@@ -30,6 +30,8 @@ SOFTWARE.
 namespace shm::memory {
 class Copier {
  public:
+  // Each derived class of `Copier` needs to also add `PtrT` for compatibility
+  // with`MTCopier`. See `DefaultCopier` for example.
   virtual void *alloc(size_t) = 0;
   virtual void dealloc(void *) = 0;
   virtual void shm_to_user(void *, void *, size_t) = 0;
@@ -38,6 +40,7 @@ class Copier {
 
 class DefaultCopier : public Copier {
  public:
+  using PtrT = uint8_t;
   void *alloc(size_t size) override { return malloc(size); }
 
   void dealloc(void *ptr) override { free(ptr); }

@@ -49,6 +49,7 @@ static inline void _rep_movsb(void *d, const void *s, size_t n) {
 
 class RepMovsbCopier : public Copier {
  public:
+  using PtrT = uint8_t;
   void *alloc(size_t size) override { return malloc(size); }
 
   void dealloc(void *ptr) override { free(ptr); }
@@ -79,6 +80,7 @@ static inline void _avx_cpy(void *d, const void *s, size_t n) {
 
 class AvxCopier : public Copier {
  public:
+  using PtrT = __m256i;
   constexpr static size_t alignment = sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -114,6 +116,7 @@ static inline void _avx_async_cpy(void *d, const void *s, size_t n) {
 
 class AvxAsyncCopier : public Copier {
  public:
+  using PtrT = __m256i;
   constexpr static size_t alignment = sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -155,6 +158,7 @@ static inline void _avx_async_pf_cpy(void *d, const void *s, size_t n) {
 
 class AvxAsyncPFCopier : public Copier {
  public:
+  using PtrT = __m256i;
   constexpr static size_t alignment = sizeof(__m256i) * 2;
 
   void *alloc(size_t size) override {
@@ -191,6 +195,7 @@ static inline void _avx_cpy_unroll(void *d, const void *s, size_t n) {
 
 class AvxUnrollCopier : public Copier {
  public:
+  using PtrT = __m256i;
   constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -228,6 +233,7 @@ static inline void _avx_async_cpy_unroll(void *d, const void *s, size_t n) {
 
 class AvxAsyncUnrollCopier : public Copier {
  public:
+  using PtrT = __m256i;
   constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -272,6 +278,7 @@ static inline void _avx_async_pf_cpy_unroll(void *d, const void *s, size_t n) {
 
 class AvxAsyncPFUnrollCopier : public Copier {
  public:
+  using PtrT = __m256i;
   constexpr static size_t alignment = 4 * sizeof(__m256i);
 
   void *alloc(size_t size) override {
@@ -301,6 +308,8 @@ class MTCopier : public Copier {
   void dealloc(void *ptr) override { base_copier.dealloc(ptr); }
 
   void _copy(void *d, void *s, size_t n, bool shm_to_user) {
+    n = SHMALIGN(n, sizeof(typename BaseCopierT::PtrT)) /
+        sizeof(typename BaseCopierT::PtrT);
     std::vector<std::thread> threads;
     threads.reserve(nthreads);
 
@@ -317,21 +326,24 @@ class MTCopier : public Copier {
       if (thread_idx < per_worker.rem) {
         ++next_start;
       }
-      uint8_t *d_thread = reinterpret_cast<uint8_t *>(d) + curr_start;
-      uint8_t *s_thread = reinterpret_cast<uint8_t *>(s) + curr_start;
+      auto d_thread =
+          reinterpret_cast<typename BaseCopierT::PtrT *>(d) + curr_start;
+      auto s_thread =
+          reinterpret_cast<typename BaseCopierT::PtrT *>(s) + curr_start;
 
       if (shm_to_user) {
-        threads.emplace_back(&Copier::shm_to_user, &base_copier, d_thread,
-                             s_thread, next_start - curr_start);
+        threads.emplace_back(
+            &Copier::shm_to_user, &base_copier, d_thread, s_thread,
+            (next_start - curr_start) * sizeof(typename BaseCopierT::PtrT));
       } else {
-        threads.emplace_back(&Copier::user_to_shm, &base_copier, d_thread,
-                             s_thread, next_start - curr_start);
+        threads.emplace_back(
+            &Copier::user_to_shm, &base_copier, d_thread, s_thread,
+            (next_start - curr_start) * sizeof(typename BaseCopierT::PtrT));
       }
     }
     for (auto &thread : threads) {
       thread.join();
     }
-    _mm_sfence();
     threads.clear();
   }
 
