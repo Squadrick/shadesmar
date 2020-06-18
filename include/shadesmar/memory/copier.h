@@ -25,6 +25,7 @@ SOFTWARE.
 #define INCLUDE_SHADESMAR_MEMORY_COPIER_H_
 
 #include <cstring>
+#include <memory>
 
 namespace shm::memory {
 class Copier {
