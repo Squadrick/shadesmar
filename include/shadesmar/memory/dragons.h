@@ -304,7 +304,11 @@ class MTCopier : public Copier {
     std::vector<std::thread> threads;
     threads.reserve(nthreads);
 
+#ifdef __APPLE__
+    lldiv_t per_worker = div((int64_t)n, nthreads);
+#else
     ldiv_t per_worker = div((int64_t)n, nthreads);
+#endif
 
     size_t next_start = 0;
     for (uint32_t thread_idx = 0; thread_idx < nthreads; ++thread_idx) {
