@@ -47,14 +47,18 @@ void CopyBench(benchmark::State &state) {  // NOLINT
 #define SHM_COPY_BENCHMARK(c) BENCHMARK_TEMPLATE(CopyBench, c)->Range(SHMRANGE);
 
 SHM_COPY_BENCHMARK(shm::memory::DefaultCopier);
-
-#ifndef __APPLE__  // no MaxOS support
-
+#ifdef __x86_64__
 SHM_COPY_BENCHMARK(shm::memory::dragons::RepMovsbCopier);
+#endif
+#ifdef __AVX__
 SHM_COPY_BENCHMARK(shm::memory::dragons::AvxCopier);
+SHM_COPY_BENCHMARK(shm::memory::dragons::AvxUnrollCopier);
+#endif
+#ifdef __AVX2__
 SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncCopier);
 SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncPFCopier);
-SHM_COPY_BENCHMARK(shm::memory::dragons::AvxUnrollCopier);
-
+SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncUnrollCopier);
+SHM_COPY_BENCHMARK(shm::memory::dragons::AvxAsyncPFUnrollCopier);
 #endif
+
 BENCHMARK_MAIN();
