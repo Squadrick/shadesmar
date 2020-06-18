@@ -26,8 +26,6 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_MEMORY_DRAGONS_H_
 #define INCLUDE_SHADESMAR_MEMORY_DRAGONS_H_
 
-#ifndef __APPLE__  // no MaxOS support
-
 #include <immintrin.h>
 
 #include <cstdlib>
@@ -37,6 +35,8 @@ SOFTWARE.
 
 #include "shadesmar/memory/copier.h"
 #include "shadesmar/memory/memory.h"
+
+#ifndef __APPLE__  // no MaxOS support
 
 namespace shm::memory::dragons {
 
