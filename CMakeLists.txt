@@ -23,7 +23,7 @@ if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)
 endif ()
 
-add_compile_options(-march=native -O2)
+add_compile_options(-mavx -mavx2 -march=native -O2)
 add_definitions(-DDEBUG_BUILD)
 
 add_executable(flush_tmp src/flush_tmp.cpp)
