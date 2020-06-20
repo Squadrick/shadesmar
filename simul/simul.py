@@ -1,6 +1,8 @@
 import re
 import os
 import sys
+
+import datetime
 from pathlib import Path
 
 import networkx as nx
@@ -111,10 +113,13 @@ def make_pretty(code):
 
 
 def finalize_code(code):
+  dt = str(datetime.datetime.utcnow())
   warning_text = \
 """/* 
   THIS SINGLE HEADER FILE WAS AUTO-GENERATED USING `simul/simul.py`.
   DO NOT MAKE CHANGES HERE.
+
+  GENERATION TIME: """ + dt + """ UTC
 */\n\n"""
   license_text = "/*" + ''.join(read_file(license_file)) + "*/\n\n"
 
