@@ -7,6 +7,8 @@ The communication paradigm is either publish-subscibe or RPC similar to ROS and 
 
 Required packages: Boost, Msgpack
 
+Caution: Pre-alpha software.
+
 
 #### Features
 
