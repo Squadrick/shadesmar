@@ -56,4 +56,24 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions/setup-python@v1
       - run: pip install cpplint
-      - run: cpplint --filter=-build/c++11 --exclude="include/catch.hpp" --exclude="build/*" --recursive .
+      - run: cpplint --filter=-build/c++11,-build/include_subdir --exclude="include/catch.hpp" --exclude="build/*" --recursive .
+
+  single-header-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install libboost-all-dev libmsgpack-dev ninja-build
+        ./install_deps.sh
+        pip3 install -r simul/requirements.txt
+    - name: Generate single header
+      run: python3 simul/simul.py
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DSINGLE_H=ON ..
+    - name: Build
+      run: cmake --build build

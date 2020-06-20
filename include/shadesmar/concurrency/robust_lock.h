@@ -27,6 +27,7 @@ SOFTWARE.
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <iostream>
 #include <string>
 #include <thread>
