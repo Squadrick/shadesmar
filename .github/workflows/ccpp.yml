@@ -69,7 +69,7 @@ jobs:
         ./install_deps.sh
         pip3 install -r simul/requirements.txt
     - name: Generate single header
-      run: python3 simul/simul.py include/shadesmar LICENSE include/shadesmar.h
+      run: python3 simul/simul.py
     - name: Configure
       run: |
         mkdir build

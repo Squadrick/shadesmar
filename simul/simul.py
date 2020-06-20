@@ -5,8 +5,8 @@ from pathlib import Path
 
 import networkx as nx
 
-source_folder = sys.argv[1]
-license_file = sys.argv[2]
+source_folder = "include/shadesmar"
+license_file = "LICENSE"
 
 
 def comment_remover(text):
@@ -132,5 +132,5 @@ if __name__ == '__main__':
   clean_code = make_pretty(pure_code)
   final_code = finalize_code(clean_code)
 
-  with open(sys.argv[3], "w") as f:
+  with open("include/shadesmar.h", "w") as f:
     f.write(final_code)
