@@ -65,10 +65,11 @@ def process_includes(source_code):
       mod = line[len("#include"):].strip()[1:-1]
       if "shadesmar" in mod:
         shm_inc.append(mod)
+        continue
       else:
         other_inc.append(mod)
-    else:
-      good_source_code.append(line)
+    good_source_code.append(line)
+
   return shm_inc, other_inc, good_source_code
 
 
@@ -92,8 +93,6 @@ def topo_sort(g):
 
 def get_single_header(order, ft_dict, incs):
   header_lines = []
-  for inc in incs:
-    header_lines.append(f"#include<{inc}>\n")
 
   for o in order:
     header_lines += ft_dict[o]

@@ -26,9 +26,13 @@ SOFTWARE.
 #include <numeric>
 #include <stdexcept>
 
+#ifdef SINGLE_HEADER
+#include "shadesmar.h"
+#else
 #include "shadesmar/message.h"
 #include "shadesmar/pubsub/publisher.h"
 #include "shadesmar/pubsub/subscriber.h"
+#endif
 
 const char topic[] = "benchmark_topic";
 const int QUEUE_SIZE = 16;

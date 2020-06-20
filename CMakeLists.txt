@@ -13,18 +13,17 @@ if (Boost_FOUND)
   include_directories(include ${Boost_INCLUDE_DIRS})
 endif ()
 
-if (APPLE)
-  if ("${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "10.14")
-    set(CMAKE_CXX_STANDARD 11)
-  endif ()
-endif ()
-
 if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)
+  add_compile_options(-lstdc++fs -lrt)
 endif ()
 
-add_compile_options(-march=native -O2)
+add_compile_options(-march=native)
 add_definitions(-DDEBUG_BUILD)
+IF(SINGLE_H)
+  add_definitions(-DSINGLE_HEADER)
+ENDIF(SINGLE_H)
+
 
 add_executable(flush_tmp src/flush_tmp.cpp)
 target_link_libraries(flush_tmp ${libs})

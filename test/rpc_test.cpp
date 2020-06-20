@@ -21,8 +21,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
+#ifdef SINGLE_HEADER
+#include "shadesmar.h"
+#else
 #include <shadesmar/rpc/client.h>
 #include <shadesmar/rpc/server.h>
+#endif
 
 int fn(int a, int b) { return a + b; }
 
