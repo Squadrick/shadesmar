@@ -15,7 +15,6 @@ endif ()
 
 if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)
-  add_compile_options(-lstdc++fs -lrt)
 endif ()
 
 add_compile_options(-march=native)
