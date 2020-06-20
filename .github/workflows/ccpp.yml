@@ -77,3 +77,8 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -DSINGLE_H=ON ..
     - name: Build
       run: cmake --build build
+
+    - uses: actions/upload-artifact@v2
+      if: success()
+      with:
+        path: include/shadesmar.h
