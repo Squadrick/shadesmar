@@ -26,9 +26,7 @@ jobs:
     - name: Serialized pubsub test
       run: ./build/pubsub_test
     - name: Dragons test
-      run: |
-        ./build/dragons_test
-        ./build/dragons_bench
+      run: ./build/dragons_test
 
   build-macos:
     runs-on: macOS-latest
