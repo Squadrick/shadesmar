@@ -44,6 +44,7 @@ SOFTWARE.
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/tmp.h"
+#include "shadesmar/memory/allocator.h"
 
 using managed_shared_memory = boost::interprocess::managed_shared_memory;
 
@@ -154,11 +155,11 @@ class Memory {
        * in time, i.e., `init_shared_queue` is still running,
        * we need to wait a bit to ensure nothing crazy happens.
        * The exact time to sleep is just a guess: depends on file IO.
-       * Currently: 100ms.
+       * Currently: 10ms.
        */
       shared_queue_ =
           reinterpret_cast<SharedQueue<ElemT, queue_size> *>(base_addr);
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
 

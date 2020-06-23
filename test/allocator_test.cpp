@@ -21,47 +21,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#ifndef INCLUDE_SHADESMAR_CONCURRENCY_SCOPE_H_
-#define INCLUDE_SHADESMAR_CONCURRENCY_SCOPE_H_
+#include <cstdlib>
 
-namespace shm::concurrent {
+#ifdef SINGLE_HEADER
+#include "shadesmar.h"
+#else
+#include "shadesmar/concurrency/lock.h"
+#include "shadesmar/memory/allocator.h"
+#endif
 
-enum ExlOrShr { EXCLUSIVE, SHARED };
+int main() {
+  auto *memblock = reinterpret_cast<uint8_t *>(malloc(1024 * 1024));
 
-template <typename LockT, ExlOrShr type> class ScopeGuard;
+  shm::concurrent::PthreadWriteLock lock;
+  shm::memory::Allocator alloc(memblock, 1024 * 1024, &lock);
 
-template <typename LockT> class ScopeGuard<LockT, EXCLUSIVE> {
-public:
-  explicit ScopeGuard(LockT *lck) : lck_(lck) {
-    if (lck_ != nullptr) {
-      lck_->lock();
-    }
-  }
-
-  ~ScopeGuard() {
-    if (lck_ != nullptr) {
-      lck_->unlock();
-      lck_ = nullptr;
-    }
-  }
-
-private:
-  LockT *lck_;
-};
-
-template <typename LockT> class ScopeGuard<LockT, SHARED> {
-public:
-  explicit ScopeGuard(LockT *lck) : lck_(lck) { lck_->lock_sharable(); }
-
-  ~ScopeGuard() {
-    if (lck_ != nullptr) {
-      lck_->unlock_sharable();
-      lck_ = nullptr;
-    }
-  }
-
-private:
-  LockT *lck_;
-};
-} // namespace shm::concurrent
-#endif // INCLUDE_SHADESMAR_CONCURRENCY_SCOPE_H_
+  auto *x = alloc.alloc(32);
+  alloc.free(x);
+  std::cout << x << std::endl;
+}

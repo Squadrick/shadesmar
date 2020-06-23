@@ -46,6 +46,9 @@ target_link_libraries(rpc_test ${libs})
 add_executable(dragons_test test/dragons_test.cpp)
 target_link_libraries(dragons_test ${libs})
 
+add_executable(allocator_test test/allocator_test.cpp)
+target_link_libraries(allocator_test ${libs})
+
 # BENCHMARKS
 add_executable(dragons_bench benchmark/dragons.cpp)
 target_link_libraries(dragons_bench ${libs} benchmark::benchmark)
