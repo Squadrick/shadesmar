@@ -26,6 +26,10 @@ SOFTWARE.
 
 #include <pthread.h>
 
+#include <cerrno>
+
+#include <iostream>
+
 namespace shm::concurrent {
 
 class PthreadWriteLock {

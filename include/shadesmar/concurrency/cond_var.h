@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include <pthread.h>
 
-#include <shadesmar/concurrency/lock.h>
+#include "shadesmar/concurrency/lock.h"
 
 namespace shm::concurrent {
 

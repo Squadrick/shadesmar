@@ -25,8 +25,12 @@ SOFTWARE.
 
 #include <iostream>
 
+#ifdef SINGLE_HEADER
+#include "shadesmar.h"
+#else
 #include "shadesmar/memory/copier.h"
 #include "shadesmar/memory/dragons.h"
+#endif
 
 void mem_check(void *mem, size_t mem_size, int num) {
   for (size_t i = 0; i < mem_size; ++i) {

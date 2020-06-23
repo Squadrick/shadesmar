@@ -24,10 +24,14 @@ SOFTWARE.
 #include <iostream>
 #include <msgpack.hpp>
 
+#ifdef SINGLE_HEADER
+#include "shadesmar.h"
+#else
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/memory.h"
 #include "shadesmar/message.h"
+#endif
 
 const size_t mem_size = 10 * 1024 * 1024;
 
