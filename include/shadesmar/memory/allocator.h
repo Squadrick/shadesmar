@@ -33,10 +33,19 @@ namespace shm::memory {
 
 class Allocator {
  public:
+  using handle = uint32_t;
+
   Allocator(uint8_t *heap, size_t size, concurrent::PthreadWriteLock *lock);
   uint8_t *alloc(uint32_t bytes);
   bool free(const uint8_t *ptr);
   void reset();
+
+  inline __attribute__((always_inline)) handle ptr_to_handle(uint8_t *p) {
+    return p - reinterpret_cast<uint8_t *>(heap_);
+  }
+  uint8_t *__attribute__((always_inline)) handle_to_ptr(handle h) {
+    return reinterpret_cast<uint8_t *>(heap_) + h;
+  }
 
  private:
   void validate_index(uint32_t index) const;
@@ -101,7 +110,7 @@ uint8_t *Allocator::alloc(uint32_t bytes) {
       _scoped(lock_);
 
   const auto payload_index = suggest_index(alloc_index_, payload_size);
-  thread_local const uint32_t free_index_th = free_index_;
+  const auto free_index_th = free_index_;
   uint32_t new_alloc_index = payload_index + payload_size;
 
   if (alloc_index_ < free_index_th && payload_index == 0) {
@@ -144,7 +153,7 @@ bool Allocator::free(const uint8_t *ptr) {
   uint32_t payload_size = heap_[free_index_];
   uint32_t payload_index = suggest_index(free_index_, payload_size);
 
-  if (ptr != heap + payload_index) {
+  if (ptr != reinterpret_cast<uint8_t *>(heap_ + payload_index)) {
     return false;
   }
 
