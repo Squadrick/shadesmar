@@ -28,10 +28,12 @@ namespace shm::concurrent {
 
 enum ExlOrShr { EXCLUSIVE, SHARED };
 
-template <typename LockT, ExlOrShr type> class ScopeGuard;
+template <typename LockT, ExlOrShr type>
+class ScopeGuard;
 
-template <typename LockT> class ScopeGuard<LockT, EXCLUSIVE> {
-public:
+template <typename LockT>
+class ScopeGuard<LockT, EXCLUSIVE> {
+ public:
   explicit ScopeGuard(LockT *lck) : lck_(lck) {
     if (lck_ != nullptr) {
       lck_->lock();
@@ -45,12 +47,13 @@ public:
     }
   }
 
-private:
+ private:
   LockT *lck_;
 };
 
-template <typename LockT> class ScopeGuard<LockT, SHARED> {
-public:
+template <typename LockT>
+class ScopeGuard<LockT, SHARED> {
+ public:
   explicit ScopeGuard(LockT *lck) : lck_(lck) { lck_->lock_sharable(); }
 
   ~ScopeGuard() {
@@ -60,8 +63,8 @@ public:
     }
   }
 
-private:
+ private:
   LockT *lck_;
 };
-} // namespace shm::concurrent
-#endif // INCLUDE_SHADESMAR_CONCURRENCY_SCOPE_H_
+}  // namespace shm::concurrent
+#endif  // INCLUDE_SHADESMAR_CONCURRENCY_SCOPE_H_

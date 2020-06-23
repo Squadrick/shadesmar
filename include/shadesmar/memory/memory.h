@@ -43,8 +43,8 @@ SOFTWARE.
 
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
-#include "shadesmar/memory/tmp.h"
 #include "shadesmar/memory/allocator.h"
+#include "shadesmar/memory/tmp.h"
 
 using managed_shared_memory = boost::interprocess::managed_shared_memory;
 

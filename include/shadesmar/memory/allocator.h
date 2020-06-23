@@ -26,19 +26,19 @@ SOFTWARE.
 
 #include <cassert>
 
-#include "shadesmar/concurrency/scope.h"
 #include "shadesmar/concurrency/lock.h"
+#include "shadesmar/concurrency/scope.h"
 
 namespace shm::memory {
 
 class Allocator {
-public:
+ public:
   Allocator(uint8_t *heap, size_t size, concurrent::PthreadWriteLock *lock);
   uint8_t *alloc(uint32_t bytes);
   bool free(const uint8_t *ptr);
   void reset();
 
-private:
+ private:
   void validate_index(uint32_t index) const;
   [[nodiscard]] uint32_t suggest_index(uint32_t header_index,
                                        uint32_t payload_size) const;
@@ -53,8 +53,11 @@ private:
 
 Allocator::Allocator(uint8_t *heap, size_t size,
                      concurrent::PthreadWriteLock *lock)
-    : alloc_index_(0), free_index_(0),
-      heap_(reinterpret_cast<uint32_t *>(heap)), size_(size), lock_(lock) {
+    : alloc_index_(0),
+      free_index_(0),
+      heap_(reinterpret_cast<uint32_t *>(heap)),
+      size_(size),
+      lock_(lock) {
   assert(!(size & (sizeof(int) - 1)));
 }
 
@@ -158,5 +161,5 @@ void Allocator::reset() {
   free_index_ = 0;
 }
 
-} // namespace shm::memory
-#endif // INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
+}  // namespace shm::memory
+#endif  // INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
