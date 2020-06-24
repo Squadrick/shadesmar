@@ -22,6 +22,8 @@ SOFTWARE.
 ==============================================================================*/
 
 #include <cstdlib>
+#include <thread>
+#include <vector>
 
 #ifdef SINGLE_HEADER
 #include "shadesmar.h"
@@ -145,10 +147,53 @@ void cyclic() {
   free(memblock);
 }
 
+void multithread(int nthreads) {
+  auto *memblock = reinterpret_cast<uint8_t *>(malloc(128 * nthreads));
+  shm::concurrent::PthreadWriteLock lock;
+  shm::memory::Allocator alloc(memblock, 128 * nthreads, &lock);
+
+  std::vector<std::thread> threads;
+  threads.reserve(nthreads);
+  for (int t = 0; t < nthreads; ++t) {
+    threads.emplace_back([&]() {
+      int iters = 100;
+      while (iters--) {
+        auto *p1 = alloc.alloc(16);
+        auto *p2 = alloc.alloc(10);
+
+        assert(p1 != nullptr);
+        assert(p2 != nullptr);
+
+        int max_tries = nthreads * nthreads;
+
+        auto timed_free_loop = [&](uint8_t *p) -> bool {
+          for (int i = 0; i < max_tries; ++i) {
+            if (alloc.free(p)) {
+              return true;
+            }
+            std::this_thread::sleep_for(std::chrono::microseconds(50));
+          }
+          return false;
+        };
+
+        assert(timed_free_loop(p1));
+        assert(timed_free_loop(p2));
+      }
+    });
+  }
+  for (int t = 0; t < nthreads; ++t) {
+    threads[t].join();
+  }
+
+  free(memblock);
+}
+
 int main() {
   basic();
   size_limit();
   perfect_wrap_around();
   wrap_around();
   cyclic();
+
+  multithread(128);  // FLAKY
 }

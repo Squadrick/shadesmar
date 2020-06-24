@@ -143,12 +143,12 @@ bool Allocator::free(const uint8_t *ptr) {
   }
   auto *heap = reinterpret_cast<uint8_t *>(heap_);
 
+  concurrent::ScopeGuard<concurrent::PthreadWriteLock, concurrent::EXCLUSIVE>
+      _scoped(lock_);
+
   if (ptr < heap || ptr >= heap + size_ || free_index_ > size_ / sizeof(int)) {
     return false;
   }
-
-  concurrent::ScopeGuard<concurrent::PthreadWriteLock, concurrent::EXCLUSIVE>
-      _scoped(lock_);
 
   uint32_t payload_size = heap_[free_index_];
   uint32_t payload_index = suggest_index(free_index_, payload_size);
