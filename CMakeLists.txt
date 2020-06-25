@@ -7,6 +7,8 @@ find_package(benchmark REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include_directories(include)
+
 if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)
 endif ()
