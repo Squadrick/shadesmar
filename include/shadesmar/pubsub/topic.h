@@ -170,9 +170,7 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
     this->shared_queue_->counter.fetch_add(1);
   }
 
-  inline memory::Copier *copier() const {
-    return copier_;
-  }
+  inline memory::Copier *copier() const { return copier_; }
 
  private:
   bool _read_without_copy(msgpack::object_handle *oh, TopicElem *elem) {

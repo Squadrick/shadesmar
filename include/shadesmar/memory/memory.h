@@ -106,23 +106,25 @@ struct Element {
   Element() : size(0), address_handle(0), empty(true) {}
 };
 
-template <class ElemT, uint32_t queue_size> class SharedQueue {
-public:
+template <class ElemT, uint32_t queue_size>
+class SharedQueue {
+ public:
   std::atomic<uint32_t> counter;
   std::array<ElemT, queue_size> elements;
 };
 
-static size_t buffer_size = (1U << 28); // 256mb
-static size_t GAP = 1024;               // safety gaps
+static size_t buffer_size = (1U << 28);  // 256mb
+static size_t GAP = 1024;                // safety gaps
 
-template <class ElemT, uint32_t queue_size = 1> class Memory {
+template <class ElemT, uint32_t queue_size = 1>
+class Memory {
   static_assert(std::is_base_of<Element, ElemT>::value,
                 "ElemT must be a subclass of Element");
 
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
-public:
+ public:
   explicit Memory(const std::string &name) : name_(name) {
     auto shared_queue_size = sizeof(SharedQueue<ElemT, queue_size>);
     auto allocator_size = sizeof(Allocator);
@@ -179,6 +181,6 @@ public:
   SharedQueue<ElemT, queue_size> *shared_queue_;
 };
 
-} // namespace shm::memory
+}  // namespace shm::memory
 
-#endif // INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
+#endif  // INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
