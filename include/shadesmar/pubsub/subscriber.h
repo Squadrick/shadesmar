@@ -143,7 +143,12 @@ void SubscriberBin<queue_size>::_subscribe() {
   callback_(&ptr);
 
   if (ptr.free) {
-    this->topic->copier()->dealloc(ptr.ptr);
+    auto* copier = this->topic->copier();
+    if (copier != nullptr) {
+      copier->dealloc(ptr.ptr);
+    } else {
+      free(ptr.ptr);
+    }
   }
 }
 

@@ -88,7 +88,7 @@ class Channel : public memory::Memory<ChannelElem, RPC_QUEUE_SIZE> {
 };
 
 bool Channel::write(void *data, size_t size) {
-  if (size > this->raw_buf_->get_free_memory()) {
+  if (size > this->allocator_->get_free_memory()) {
     std::cerr << "Increase max_buffer_size" << std::endl;
     return false;
   }
@@ -105,8 +105,7 @@ bool Channel::_write_caller(void *data, size_t size) {
   uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
   ChannelElem &elem = this->shared_queue_->elements[pos];
 
-  bool exp = true;
-  if (!elem.empty.compare_exchange_strong(exp, false)) {
+  if (elem.empty) {
     return false;
   }
   ScopeGuardT _(&elem.mutex);
@@ -122,8 +121,7 @@ bool Channel::_write_server(void *data, size_t size) {
   ChannelElem &elem = this->shared_queue_->elements[pos];
 
   ScopeGuardT _(&elem.mutex);
-  this->raw_buf_->deallocate(
-      this->raw_buf_->get_address_from_handle(elem.addr_hdl));
+  this->allocator_->free(this->allocator_->handle_to_ptr(elem.address_handle));
 
   _write(&elem, data, size);
   elem.ready = true;
@@ -132,9 +130,9 @@ bool Channel::_write_server(void *data, size_t size) {
 }
 
 void Channel::_write(ChannelElem *elem, void *data, size_t size) {
-  void *new_addr = this->raw_buf_->allocate(size);
-  std::memcpy(new_addr, data, size);
-  elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
+  uint8_t *new_address = this->allocator_->alloc(size);
+  std::memcpy(new_address, data, size);
+  elem->address_handle = this->allocator_->ptr_to_handle(new_address);
   elem->size = size;
 }
 
@@ -152,7 +150,7 @@ bool Channel::read(msgpack::object_handle *oh) {
   ScopeGuardT _(&elem.mutex);
 
   const char *dst = reinterpret_cast<const char *>(
-      this->raw_buf_->get_address_from_handle(elem.addr_hdl));
+      this->allocator_->handle_to_ptr(elem.address_handle));
 
   *oh = msgpack::unpack(dst, elem.size);
 

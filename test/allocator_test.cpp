@@ -32,125 +32,124 @@ SOFTWARE.
 #include "shadesmar/memory/allocator.h"
 #endif
 
+shm::memory::Allocator *new_alloc(size_t size) {
+  auto *memory = malloc(size + sizeof(shm::memory::Allocator));
+  auto *alloc =
+      new (memory) shm::memory::Allocator(sizeof(shm::memory::Allocator), size);
+  return alloc;
+}
+
 void basic() {
-  auto *memblock = reinterpret_cast<uint8_t *>(malloc(1024 * 1024));
+  auto *alloc = new_alloc(1024 * 1024);
 
-  shm::memory::Allocator alloc(memblock, 1024 * 1024, nullptr);
+  auto *x = alloc->alloc(100);
+  auto *y = alloc->alloc(250);
+  auto *z = alloc->alloc(1000);
 
-  auto *x = alloc.alloc(100);
-  auto *y = alloc.alloc(250);
-  auto *z = alloc.alloc(1000);
-
-  auto xh = alloc.ptr_to_handle(x);
-  auto yh = alloc.ptr_to_handle(y);
-  auto zh = alloc.ptr_to_handle(z);
+  auto xh = alloc->ptr_to_handle(x);
+  auto yh = alloc->ptr_to_handle(y);
+  auto zh = alloc->ptr_to_handle(z);
 
   assert(yh - xh > 100);
   assert(zh - yh > 250);
 
-  assert(!alloc.free(z));
-  assert(!alloc.free(y));
-  assert(alloc.free(x));
+  assert(!alloc->free(z));
+  assert(!alloc->free(y));
+  assert(alloc->free(x));
 
-  assert(!alloc.free(z));
-  assert(alloc.free(y));
-  assert(alloc.free(z));
+  assert(!alloc->free(z));
+  assert(alloc->free(y));
+  assert(alloc->free(z));
 
-  free(memblock);
+  free(alloc);
 }
 
 void size_limit() {
-  auto *memblock = reinterpret_cast<uint8_t *>(malloc(100));
-  shm::memory::Allocator alloc(memblock, 100, nullptr);
+  auto *alloc = new_alloc(100);
 
-  auto *x = alloc.alloc(50);
-  auto *y = alloc.alloc(32);
-  auto *z = alloc.alloc(50);
+  auto *x = alloc->alloc(50);
+  auto *y = alloc->alloc(32);
+  auto *z = alloc->alloc(50);
 
   assert(x != nullptr);
   assert(y != nullptr);
   assert(z == nullptr);
 
-  free(memblock);
+  free(alloc);
 }
 
 void perfect_wrap_around() {
-  auto *memblock = reinterpret_cast<uint8_t *>(malloc(100));
-  shm::memory::Allocator alloc(memblock, 100, nullptr);
+  auto *alloc = new_alloc(100);
 
-  auto *x = alloc.alloc(50);
-  auto *y = alloc.alloc(32);
-  auto *z = alloc.alloc(50);
+  auto *x = alloc->alloc(50);
+  auto *y = alloc->alloc(32);
+  auto *z = alloc->alloc(50);
 
   assert(x != nullptr);
   assert(y != nullptr);
   assert(z == nullptr);
 
-  assert(alloc.free(x));
-  assert(alloc.free(y));
+  assert(alloc->free(x));
+  assert(alloc->free(y));
 
-  z = alloc.alloc(50);
+  z = alloc->alloc(50);
   assert(z != nullptr);
 
-  free(memblock);
+  free(alloc);
 }
 
 void wrap_around() {
-  auto *memblock = reinterpret_cast<uint8_t *>(malloc(100));
-  shm::memory::Allocator alloc(memblock, 100, nullptr);
+  auto *alloc = new_alloc(100);
 
-  auto *x = alloc.alloc(50);
-  auto *y = alloc.alloc(32);
+  auto *x = alloc->alloc(50);
+  auto *y = alloc->alloc(32);
 
   assert(x != nullptr);
   assert(y != nullptr);
 
-  assert(alloc.free(x));
+  assert(alloc->free(x));
 
-  auto *z = alloc.alloc(40);
+  auto *z = alloc->alloc(40);
   assert(z != nullptr);
 
-  assert(alloc.free(y));
-  assert(alloc.free(z));
+  assert(alloc->free(y));
+  assert(alloc->free(z));
 
-  free(memblock);
+  free(alloc);
 }
 
 void cyclic() {
-  auto *memblock = reinterpret_cast<uint8_t *>(malloc(256));
-  shm::memory::Allocator alloc(memblock, 256, nullptr);
+  auto *alloc = new_alloc(256);
 
-  auto *it1 = alloc.alloc(40);
-  auto *it2 = alloc.alloc(40);
+  auto *it1 = alloc->alloc(40);
+  auto *it2 = alloc->alloc(40);
 
   assert(it1 != nullptr);
   assert(it2 != nullptr);
 
-  int iters = 100;
-  while (iters--) {
-    auto *it3 = alloc.alloc(40);
-    auto *it4 = alloc.alloc(40);
+  int iterations = 100;
+  while (iterations--) {
+    auto *it3 = alloc->alloc(40);
+    auto *it4 = alloc->alloc(40);
 
     assert(it3 != nullptr);
     assert(it4 != nullptr);
 
-    assert(alloc.free(it1));
-    assert(alloc.free(it2));
+    assert(alloc->free(it1));
+    assert(alloc->free(it2));
 
     it1 = it3;
     it2 = it4;
   }
 
-  assert(alloc.free(it1));
-  assert(alloc.free(it2));
+  assert(alloc->free(it1));
+  assert(alloc->free(it2));
 
-  free(memblock);
+  free(alloc);
 }
 
 void multithread(int nthreads) {
-  auto *memblock = reinterpret_cast<uint8_t *>(malloc(128 * nthreads));
-  shm::concurrent::PthreadWriteLock lock;
-  shm::memory::Allocator alloc(memblock, 128 * nthreads, &lock);
+  auto *alloc = new_alloc(128 * nthreads);
 
   std::vector<std::thread> threads;
   threads.reserve(nthreads);
@@ -158,8 +157,8 @@ void multithread(int nthreads) {
     threads.emplace_back([&]() {
       int iters = 100;
       while (iters--) {
-        auto *p1 = alloc.alloc(16);
-        auto *p2 = alloc.alloc(10);
+        auto *p1 = alloc->alloc(16);
+        auto *p2 = alloc->alloc(10);
 
         assert(p1 != nullptr);
         assert(p2 != nullptr);
@@ -168,7 +167,7 @@ void multithread(int nthreads) {
 
         auto timed_free_loop = [&](uint8_t *p) -> bool {
           for (int i = 0; i < max_tries; ++i) {
-            if (alloc.free(p)) {
+            if (alloc->free(p)) {
               return true;
             }
             std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -185,7 +184,7 @@ void multithread(int nthreads) {
     threads[t].join();
   }
 
-  free(memblock);
+  free(alloc);
 }
 
 int main() {

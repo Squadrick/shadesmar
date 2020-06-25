@@ -39,14 +39,10 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
-#include <boost/interprocess/managed_shared_memory.hpp>
-
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/allocator.h"
 #include "shadesmar/memory/tmp.h"
-
-using managed_shared_memory = boost::interprocess::managed_shared_memory;
 
 namespace shm::memory {
 
@@ -104,50 +100,53 @@ struct Ptr {
 
 struct Element {
   size_t size;
-  std::atomic<bool> empty{};
-  managed_shared_memory::handle_t addr_hdl;
+  bool empty;
+  Allocator::handle address_handle;
 
-  Element() : size(0), addr_hdl(0) { empty.store(true); }
-
-  Element(const Element &elem) : size(elem.size), addr_hdl(elem.addr_hdl) {
-    empty.store(elem.empty.load());
-  }
+  Element() : size(0), address_handle(0), empty(true) {}
 };
 
-template <class ElemT, uint32_t queue_size>
-class SharedQueue {
- public:
+template <class ElemT, uint32_t queue_size> class SharedQueue {
+public:
   std::atomic<uint32_t> counter;
   std::array<ElemT, queue_size> elements;
 };
 
-static size_t max_buffer_size = (1U << 28);  // 256mb
+static size_t buffer_size = (1U << 28); // 256mb
+static size_t GAP = 1024;               // safety gaps
 
-template <class ElemT, uint32_t queue_size = 1>
-class Memory {
+template <class ElemT, uint32_t queue_size = 1> class Memory {
   static_assert(std::is_base_of<Element, ElemT>::value,
                 "ElemT must be a subclass of Element");
 
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
 
- public:
+public:
   explicit Memory(const std::string &name) : name_(name) {
-    bool new_segment;
-    auto *base_addr = create_memory_segment(
-        name, sizeof(SharedQueue<ElemT, queue_size>), &new_segment);
+    auto shared_queue_size = sizeof(SharedQueue<ElemT, queue_size>);
+    auto allocator_size = sizeof(Allocator);
 
-    if (base_addr == nullptr) {
+    auto total_size =
+        shared_queue_size + allocator_size + buffer_size + 3 * GAP;
+    bool new_segment = false;
+
+    auto *base_address = create_memory_segment(name, total_size, &new_segment);
+
+    if (base_address == nullptr) {
       std::cerr << "Could not create shared memory buffer" << std::endl;
       exit(1);
     }
 
-    raw_buf_ = std::make_shared<managed_shared_memory>(
-        boost::interprocess::open_or_create, (name + "Raw").c_str(),
-        max_buffer_size);
+    auto *shared_queue_address = base_address;
+    auto *allocator_address = shared_queue_address + shared_queue_size + GAP;
+    auto *buffer_address = allocator_address + allocator_size + GAP;
 
     if (new_segment) {
-      shared_queue_ = new (base_addr) SharedQueue<ElemT, queue_size>();
+      shared_queue_ =
+          new (shared_queue_address) SharedQueue<ElemT, queue_size>();
+      allocator_ = new (allocator_address)
+          Allocator(buffer_address - allocator_address, buffer_size);
       init_shared_queue();
     } else {
       /*
@@ -157,8 +156,9 @@ class Memory {
        * The exact time to sleep is just a guess: depends on file IO.
        * Currently: 10ms.
        */
-      shared_queue_ =
-          reinterpret_cast<SharedQueue<ElemT, queue_size> *>(base_addr);
+      shared_queue_ = reinterpret_cast<SharedQueue<ElemT, queue_size> *>(
+          shared_queue_address);
+      allocator_ = reinterpret_cast<Allocator *>(allocator_address);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
@@ -175,10 +175,10 @@ class Memory {
   }
 
   std::string name_;
-  std::shared_ptr<managed_shared_memory> raw_buf_;
+  Allocator *allocator_;
   SharedQueue<ElemT, queue_size> *shared_queue_;
 };
 
-}  // namespace shm::memory
+} // namespace shm::memory
 
-#endif  // INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
+#endif // INCLUDE_SHADESMAR_MEMORY_MEMORY_H_

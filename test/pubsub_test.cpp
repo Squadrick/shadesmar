@@ -38,7 +38,7 @@ const char topic[] = "benchmark_topic";
 const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
-const bool EXTRA_COPY = false;
+const bool EXTRA_COPY = true;
 
 int count = 0, total_count = 0;
 uint64_t lag = 0;

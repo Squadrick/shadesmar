@@ -33,40 +33,47 @@ namespace shm::memory {
 
 class Allocator {
  public:
-  using handle = uint32_t;
+  using handle = uint64_t;
+  template <concurrent::ExlOrShr type>
+  using Scope = concurrent::ScopeGuard<concurrent::PthreadWriteLock, type>;
 
-  Allocator(uint8_t *heap, size_t size, concurrent::PthreadWriteLock *lock);
+  Allocator(size_t offset, size_t size);
   uint8_t *alloc(uint32_t bytes);
   bool free(const uint8_t *ptr);
   void reset();
 
-  inline __attribute__((always_inline)) handle ptr_to_handle(uint8_t *p) {
-    return p - reinterpret_cast<uint8_t *>(heap_);
+  inline handle ptr_to_handle(uint8_t *p) {
+    return p - reinterpret_cast<uint8_t *>(heap_());
   }
-  uint8_t *__attribute__((always_inline)) handle_to_ptr(handle h) {
-    return reinterpret_cast<uint8_t *>(heap_) + h;
+  uint8_t *handle_to_ptr(handle h) {
+    return reinterpret_cast<uint8_t *>(heap_()) + h;
+  }
+
+  size_t get_free_memory() {
+    // TODO(squadrick): Implement this properly
+    Scope<concurrent::EXCLUSIVE> _(&lock_);
+    return size_;
   }
 
  private:
   void validate_index(uint32_t index) const;
   [[nodiscard]] uint32_t suggest_index(uint32_t header_index,
                                        uint32_t payload_size) const;
+  uint32_t *__attribute__((always_inline)) heap_() {
+    return reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(this) +
+                                        offset_);
+  }
 
-  concurrent::PthreadWriteLock *lock_;
+  concurrent::PthreadWriteLock lock_;
 
   uint32_t alloc_index_;
   volatile uint32_t free_index_;
-  uint32_t *heap_;
+  size_t offset_;
   size_t size_;
 };
 
-Allocator::Allocator(uint8_t *heap, size_t size,
-                     concurrent::PthreadWriteLock *lock)
-    : alloc_index_(0),
-      free_index_(0),
-      heap_(reinterpret_cast<uint32_t *>(heap)),
-      size_(size),
-      lock_(lock) {
+Allocator::Allocator(size_t offset, size_t size)
+    : alloc_index_(0), free_index_(0), offset_(offset), size_(size) {
   assert(!(size & (sizeof(int) - 1)));
 }
 
@@ -106,8 +113,7 @@ uint8_t *Allocator::alloc(uint32_t bytes) {
 
   payload_size /= sizeof(int);
 
-  concurrent::ScopeGuard<concurrent::PthreadWriteLock, concurrent::EXCLUSIVE>
-      _scoped(lock_);
+  Scope<concurrent::EXCLUSIVE> _(&lock_);
 
   const auto payload_index = suggest_index(alloc_index_, payload_size);
   const auto free_index_th = free_index_;
@@ -131,29 +137,28 @@ uint8_t *Allocator::alloc(uint32_t bytes) {
   assert(new_alloc_index != alloc_index_);
   validate_index(new_alloc_index);
 
-  heap_[alloc_index_] = payload_size;
+  heap_()[alloc_index_] = payload_size;
   alloc_index_ = new_alloc_index;
 
-  return reinterpret_cast<uint8_t *>(heap_ + payload_index);
+  return reinterpret_cast<uint8_t *>(heap_() + payload_index);
 }
 
 bool Allocator::free(const uint8_t *ptr) {
   if (ptr == nullptr) {
     return true;
   }
-  auto *heap = reinterpret_cast<uint8_t *>(heap_);
+  auto *heap = reinterpret_cast<uint8_t *>(heap_());
 
-  concurrent::ScopeGuard<concurrent::PthreadWriteLock, concurrent::EXCLUSIVE>
-      _scoped(lock_);
+  Scope<concurrent::EXCLUSIVE> _(&lock_);
 
-  if (ptr < heap || ptr >= heap + size_ || free_index_ > size_ / sizeof(int)) {
-    return false;
-  }
+  assert(ptr >= heap);
+  assert(ptr < heap + size_);
+  validate_index(free_index_);
 
-  uint32_t payload_size = heap_[free_index_];
+  uint32_t payload_size = heap_()[free_index_];
   uint32_t payload_index = suggest_index(free_index_, payload_size);
 
-  if (ptr != reinterpret_cast<uint8_t *>(heap_ + payload_index)) {
+  if (ptr != reinterpret_cast<uint8_t *>(heap_() + payload_index)) {
     return false;
   }
 
