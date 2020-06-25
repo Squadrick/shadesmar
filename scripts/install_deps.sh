@@ -3,12 +3,12 @@ case "$(uname -s)" in
 
    Darwin)
       brew update
-      brew install boost msgpack ninja
+      brew install msgpack ninja
      ;;
 
    Linux)
       sudo apt update
-      sudo apt install libboost-all-dev libmsgpack-dev ninja-build
+      sudo apt install libmsgpack-dev ninja-build
      ;;
 
    *)

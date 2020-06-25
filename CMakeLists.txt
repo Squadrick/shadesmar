@@ -2,16 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 
 project(shadesmar)
 
-find_package(Boost REQUIRED)
 find_package(msgpack REQUIRED)
 find_package(benchmark REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
-
-if (Boost_FOUND)
-  set(libs ${Boost_LIBRARIES})
-  include_directories(include ${Boost_INCLUDE_DIRS})
-endif ()
 
 if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)

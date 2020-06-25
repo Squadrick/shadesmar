@@ -5,7 +5,7 @@
 An IPC library that uses the system's shared memory to pass messages. 
 The communication paradigm is either publish-subscibe or RPC similar to ROS and ROS2.
 
-Required packages: Boost, Msgpack
+Required packages: Msgpack
 
 Caution: Pre-alpha software.
 
