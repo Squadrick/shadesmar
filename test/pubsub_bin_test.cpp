@@ -43,7 +43,7 @@ uint64_t lag = 0;
 
 struct Message {
   uint64_t timestamp;
-  void *data;
+  uint32_t *data;
 };
 
 template <typename T>
@@ -77,7 +77,7 @@ void callback(shm::memory::Ptr *shm_ptr) {
 }
 
 int main() {
-  if (fork() == 0) {
+  if (fork() != 0) {
     std::vector<int> counts;
     std::vector<double> lags;
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -124,7 +124,9 @@ int main() {
     shm::memory::DefaultCopier cpy;
     shm::pubsub::PublisherBin<QUEUE_SIZE> pub(topic, &cpy);
 
-    Message *msg = reinterpret_cast<Message *>(malloc(VECTOR_SIZE));
+    auto *rawptr = malloc(VECTOR_SIZE);
+    std::memset(rawptr, 255, VECTOR_SIZE);
+    Message *msg = reinterpret_cast<Message *>(rawptr);
 
     std::cout << "Number of bytes = " << VECTOR_SIZE << std::endl;
 

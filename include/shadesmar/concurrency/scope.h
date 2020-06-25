@@ -34,11 +34,17 @@ class ScopeGuard;
 template <typename LockT>
 class ScopeGuard<LockT, EXCLUSIVE> {
  public:
-  explicit ScopeGuard(LockT *lck) : lck_(lck) { lck_->lock(); }
+  explicit ScopeGuard(LockT *lck) : lck_(lck) {
+    if (lck_ != nullptr) {
+      lck_->lock();
+    }
+  }
 
   ~ScopeGuard() {
-    lck_->unlock();
-    lck_ = nullptr;
+    if (lck_ != nullptr) {
+      lck_->unlock();
+      lck_ = nullptr;
+    }
   }
 
  private:
@@ -51,8 +57,10 @@ class ScopeGuard<LockT, SHARED> {
   explicit ScopeGuard(LockT *lck) : lck_(lck) { lck_->lock_sharable(); }
 
   ~ScopeGuard() {
-    lck_->unlock_sharable();
-    lck_ = nullptr;
+    if (lck_ != nullptr) {
+      lck_->unlock_sharable();
+      lck_ = nullptr;
+    }
   }
 
  private:

@@ -11,42 +11,28 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install libboost-all-dev libmsgpack-dev ninja-build
-        ./install_deps.sh
+      run: ./scripts/install_deps.sh
     - name: Configure
       env:
         CXX: ${{ matrix.compiler }}
       run: ./configure
     - name: Build
       run: cmake --build build
-    - name: Binary pubsub test
-      run: ./build/pubsub_bin_test
-    - name: Serialized pubsub test
-      run: ./build/pubsub_test
-    - name: Dragons test
-      run: ./build/dragons_test
+    - name: Tests
+      run: ./scripts/run_tests.sh
 
   build-macos:
     runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v1
     - name: Install dependencies
-      run: |
-        brew update
-        brew install boost msgpack ninja
-        ./install_deps.sh
+      run: ./scripts/install_deps.sh
     - name: Configure
       run: ./configure
     - name: Build
       run: cmake --build build
-    - name: Binary pubsub test
-      run: ./build/pubsub_bin_test
-    - name: Serialized pubsub test
-      run: ./build/pubsub_test
-    - name: Dragons memory test
-      run: ./build/dragons_test
+    - name: Tests
+      run: ./scripts/run_tests.sh
 
   lint-check:
     runs-on: ubuntu-latest
@@ -54,7 +40,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions/setup-python@v1
       - run: pip install cpplint
-      - run: cpplint --filter=-build/c++11,-build/include_subdir --exclude="include/catch.hpp" --exclude="build/*" --recursive .
+      - run: ./scripts/lint.sh
 
   single-header-check:
     runs-on: ubuntu-latest
@@ -62,9 +48,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install dependencies
       run: |
-        sudo apt update
-        sudo apt install libboost-all-dev libmsgpack-dev ninja-build
-        ./install_deps.sh
+        ./scripts/install_deps.sh
         pip3 install -r simul/requirements.txt
     - name: Generate single header
       run: python3 simul/simul.py
@@ -80,4 +64,3 @@ jobs:
       if: success()
       with:
         path: include/shadesmar.h
-

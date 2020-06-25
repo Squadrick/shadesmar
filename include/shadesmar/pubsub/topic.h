@@ -41,22 +41,23 @@ SOFTWARE.
 namespace shm::pubsub {
 
 template <class LockT>
-struct _TopicElem : public memory::Element {
+struct TopicElemT : public memory::Element {
   LockT mutex;
 
-  _TopicElem() : Element(), mutex() {}
+  TopicElemT() : Element(), mutex() {}
 
-  _TopicElem(const _TopicElem &topic_elem) : Element(topic_elem) {
+  TopicElemT(const TopicElemT &topic_elem) : Element(topic_elem) {
     mutex = topic_elem.mutex;
   }
 };
 
 template <uint32_t queue_size = 1,
           class LockT = concurrent::PthreadReadWriteLock>
-class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
-  using TopicElem = _TopicElem<LockT>;
+class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
+  using TopicElem = TopicElemT<LockT>;
+
   template <concurrent::ExlOrShr type>
-  using ScopeGuardT = concurrent::ScopeGuard<LockT, type>;
+  using Scope = concurrent::ScopeGuard<LockT, type>;
 
   static_assert((queue_size & (queue_size - 1)) == 0,
                 "queue_size must be power of two");
@@ -77,13 +78,52 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
      * processes. The head of the queue is stored as a counter
      * on shared memory.
      */
-    if (size > this->raw_buf_->get_free_memory()) {
-      std::cerr << "Increase max_buffer_size" << std::endl;
+    if (size > this->allocator_->get_free_memory()) {
+      std::cerr << "Increase buffer_size" << std::endl;
       return false;
     }
     uint32_t q_pos = fetch_add_counter() & (queue_size - 1);
-    TopicElem &elem = this->shared_queue_->elements[q_pos];
-    return _write_rcu(data, size, &elem);
+    TopicElem *elem = &(this->shared_queue_->elements[q_pos]);
+
+    /*
+     * Code path:
+     *  1. Allocate shared memory buffer `new_address`
+     *  2. Copy msg data to `new_address`
+     *  3. Acquire exclusive lock
+     *  4. Complex "swap" of old and new fields
+     *  5. Release exclusive lock
+     *  6. If old buffer is empty, deallocate it
+     */
+
+    uint8_t *old_address = nullptr;
+    uint8_t *new_address = this->allocator_->alloc(size);
+    if (new_address == nullptr) {
+      return false;
+    }
+
+    _copy(new_address, data, size);
+
+    {
+      /*
+       * This locked block should *only* contain accesses
+       * to `elem`, any other expensive compute that doesn't
+       * include `elem` can be put outside this block.
+       */
+      Scope<concurrent::EXCLUSIVE> _(&elem->mutex);
+      if (!elem->empty) {
+        old_address = this->allocator_->handle_to_ptr(elem->address_handle);
+      }
+      elem->address_handle = this->allocator_->ptr_to_handle(new_address);
+      elem->size = size;
+      elem->empty = false;
+    }
+
+    if (old_address != nullptr) {
+      while (!this->allocator_->free(old_address)) {
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+      }
+    }
+    return true;
   }
 
   /*
@@ -102,10 +142,11 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
      */
     TopicElem *elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
 
-    if (copy_)
+    if (copy_) {
       return _read_with_copy(oh, elem);
-    else
+    } else {
       return _read_without_copy(oh, elem);
+    }
   }
 
   bool read(memory::Ptr *ptr, uint32_t pos) {
@@ -129,54 +170,9 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
     this->shared_queue_->counter.fetch_add(1);
   }
 
-  inline __attribute__((always_inline)) memory::Copier *copier() const {
-    return copier_;
-  }
+  inline memory::Copier *copier() const { return copier_; }
 
  private:
-  bool _write_rcu(void *data, size_t size, TopicElem *elem) {
-    /*
-     * Code path:
-     *  1. Allocate shared memory buffer `new_addr`
-     *  2. Copy msg data to `new_addr`
-     *  3. Acquire exclusive lock
-     *  4. Complex "swap" of old and new fields
-     *  5. Release exclusive lock
-     *  6. If old buffer is empty, deallocate it
-     */
-    void *new_addr = this->raw_buf_->allocate(size);
-    if (new_addr == nullptr) {
-      return false;
-    }
-
-    if (copier_ == nullptr) {
-      std::memcpy(new_addr, data, size);
-    } else {
-      copier_->user_to_shm(new_addr, data, size);
-    }
-
-    void *old_addr;
-    bool prev_empty;
-
-    {
-      /*
-       * This locked block should *only* contain accesses
-       * to `elem`, any other expensive compute that doesn't
-       * include `elem` can be put outside this block.
-       */
-      ScopeGuardT<concurrent::EXCLUSIVE> _(&elem->mutex);
-      old_addr = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
-      prev_empty = elem->empty;
-      elem->addr_hdl = this->raw_buf_->get_handle_from_address(new_addr);
-      elem->size = size;
-      elem->empty = false;
-    }
-
-    if (!prev_empty) this->raw_buf_->deallocate(old_addr);
-
-    return true;
-  }
-
   bool _read_without_copy(msgpack::object_handle *oh, TopicElem *elem) {
     /*
      * Code path:
@@ -185,12 +181,14 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
      *  3. Unpack shared memory into the object handle
      *  4. Release sharable lock
      */
-    ScopeGuardT<concurrent::SHARED> _(&elem->mutex);
+    Scope<concurrent::SHARED> _(&elem->mutex);
 
-    if (elem->empty) return false;
+    if (elem->empty) {
+      return false;
+    }
 
     const char *dst = reinterpret_cast<const char *>(
-        this->raw_buf_->get_address_from_handle(elem->addr_hdl));
+        this->allocator_->handle_to_ptr(elem->address_handle));
 
     *oh = msgpack::unpack(dst, elem->size);
     return true;
@@ -229,25 +227,39 @@ class Topic : public memory::Memory<_TopicElem<LockT>, queue_size> {
      *  3. Copy from shared memory to input param `msg`
      *  4. Release sharable lock
      */
-    ScopeGuardT<concurrent::SHARED> _(&elem->mutex);
+    Scope<concurrent::SHARED> _(&elem->mutex);
 
-    if (elem->empty) return false;
-
-    auto *dst = this->raw_buf_->get_address_from_handle(elem->addr_hdl);
-
-    ptr->size = elem->size;
-    if (copier_ != nullptr) {
-      ptr->ptr = copier_->alloc(ptr->size);
-      copier_->shm_to_user(ptr->ptr, dst, ptr->size);
-    } else {
-      ptr->ptr = malloc(ptr->size);
-      std::memcpy(ptr->ptr, dst, ptr->size);
+    if (elem->empty) {
+      return false;
     }
+
+    auto *dst = this->allocator_->handle_to_ptr(elem->address_handle);
+    ptr->size = elem->size;
+    ptr->ptr = _alloc(ptr->size);
+    _copy(ptr->ptr, dst, ptr->size);
 
     return true;
   }
 
-  memory::Copier *copier_;
+  void _copy(void *dst, void *src, size_t size) {
+    if (copier_ == nullptr) {
+      std::memcpy(dst, src, size);
+    } else {
+      copier_->user_to_shm(dst, src, size);
+    }
+  }
+
+  void *_alloc(size_t size) {
+    void *ptr = nullptr;
+    if (copier_ != nullptr) {
+      ptr = copier_->alloc(size);
+    } else {
+      ptr = malloc(size);
+    }
+    return ptr;
+  }
+
+  memory::Copier *copier_{};
   bool copy_{};
 };
 }  // namespace shm::pubsub

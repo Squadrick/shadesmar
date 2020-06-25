@@ -2,16 +2,12 @@ cmake_minimum_required(VERSION 3.10)
 
 project(shadesmar)
 
-find_package(Boost REQUIRED)
 find_package(msgpack REQUIRED)
 find_package(benchmark REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if (Boost_FOUND)
-  set(libs ${Boost_LIBRARIES})
-  include_directories(include ${Boost_INCLUDE_DIRS})
-endif ()
+include_directories(include)
 
 if (UNIX AND NOT APPLE)
   list(APPEND libs rt pthread stdc++fs)
@@ -45,6 +41,9 @@ target_link_libraries(rpc_test ${libs})
 
 add_executable(dragons_test test/dragons_test.cpp)
 target_link_libraries(dragons_test ${libs})
+
+add_executable(allocator_test test/allocator_test.cpp)
+target_link_libraries(allocator_test ${libs})
 
 # BENCHMARKS
 add_executable(dragons_bench benchmark/dragons.cpp)

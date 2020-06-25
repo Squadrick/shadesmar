@@ -24,69 +24,156 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
 #define INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
 
-#include <atomic>
+#include <cassert>
+
+#include "shadesmar/concurrency/lock.h"
+#include "shadesmar/concurrency/scope.h"
 
 namespace shm::memory {
-struct MemEntry {
-  size_t offset;
-  size_t size;
-  std::atomic<bool> free;
 
-  MemEntry() : offset(0), size(0), free(true) {}
-};
-
-/*
- * Assume that the underlying shared memory needs to be broken
- * into roughly equal sized segments. We allocate an array at the
- * start of the memory block for keeping track of block information.
- * Every time we allocate any memory, we add a new Node to our list.
- * We align to 16 bytes for the underlying memory space.
- */
 class Allocator {
  public:
-  Allocator(uint8_t *, size_t, uint32_t);
-  uint8_t *malloc(size_t size);
-  void free(uint8_t *ptr);
+  using handle = uint64_t;
+  template <concurrent::ExlOrShr type>
+  using Scope = concurrent::ScopeGuard<concurrent::PthreadWriteLock, type>;
 
-  size_t get_offset(uint8_t *addr) const;
-  uint8_t *set_offset(size_t offset) const;
+  Allocator(size_t offset, size_t size);
+  uint8_t *alloc(uint32_t bytes);
+  bool free(const uint8_t *ptr);
+  void reset();
+
+  inline handle ptr_to_handle(uint8_t *p) {
+    return p - reinterpret_cast<uint8_t *>(heap_());
+  }
+  uint8_t *handle_to_ptr(handle h) {
+    return reinterpret_cast<uint8_t *>(heap_()) + h;
+  }
+
+  size_t get_free_memory() {
+    // TODO(squadrick): Implement this properly
+    Scope<concurrent::EXCLUSIVE> _(&lock_);
+    return size_;
+  }
 
  private:
-  uint8_t *start_ptr_;
-  uint8_t *buffer_ptr_;
-  size_t total_size_, free_size_;
-  uint32_t elems_;
-  std::atomic<uint32_t> idx_;
-  MemEntry *table;
+  void validate_index(uint32_t index) const;
+  [[nodiscard]] uint32_t suggest_index(uint32_t header_index,
+                                       uint32_t payload_size) const;
+  uint32_t *__attribute__((always_inline)) heap_() {
+    return reinterpret_cast<uint32_t *>(reinterpret_cast<uint8_t *>(this) +
+                                        offset_);
+  }
+
+  concurrent::PthreadWriteLock lock_;
+
+  uint32_t alloc_index_;
+  volatile uint32_t free_index_;
+  size_t offset_;
+  size_t size_;
 };
 
-Allocator::Allocator(uint8_t *raw_buffer, size_t total_size, uint32_t elems)
-    : start_ptr_(raw_buffer),
-      buffer_ptr_(raw_buffer + elems * sizeof(MemEntry)),
-      total_size_(total_size),
-      free_size_(total_size),
-      elems_(elems),
-      idx_(0) {
-  table = new (start_ptr_) MemEntry[elems];
+Allocator::Allocator(size_t offset, size_t size)
+    : alloc_index_(0), free_index_(0), offset_(offset), size_(size) {
+  assert(!(size & (sizeof(int) - 1)));
 }
 
-uint8_t *Allocator::malloc(size_t size) {
-  if (size > free_size_) {
+void Allocator::validate_index(uint32_t index) const {
+  assert(index < (size_ / sizeof(int)));
+}
+
+uint32_t Allocator::suggest_index(uint32_t header_index,
+                                  uint32_t payload_size) const {
+  validate_index(header_index);
+
+  int32_t payload_index = header_index + 1;
+
+  if (payload_index + payload_size - 1 >= size_ / sizeof(int)) {
+    payload_index = 0;
+  }
+  validate_index(payload_index);
+  validate_index(payload_index + payload_size - 1);
+  return payload_index;
+}
+
+uint8_t *Allocator::alloc(uint32_t bytes) {
+  uint32_t payload_size = bytes;
+
+  if (payload_size == 0) {
+    payload_size = sizeof(int);
+  }
+
+  if (payload_size >= size_ - 2 * sizeof(int)) {
     return nullptr;
   }
 
-  int table_idx = idx_ & (elems_ - 1);
-  MemEntry *entry = &table[table_idx];
-  if (entry->free.load()) {
-    entry->free = false;
-    idx_.fetch_add(1);
-  } else {
+  if (payload_size & (sizeof(int) - 1)) {
+    payload_size &= ~(sizeof(int) - 1);
+    payload_size += sizeof(int);
   }
 
-  return nullptr;
+  payload_size /= sizeof(int);
+
+  Scope<concurrent::EXCLUSIVE> _(&lock_);
+
+  const auto payload_index = suggest_index(alloc_index_, payload_size);
+  const auto free_index_th = free_index_;
+  uint32_t new_alloc_index = payload_index + payload_size;
+
+  if (alloc_index_ < free_index_th && payload_index == 0) {
+    return nullptr;
+  }
+
+  if (payload_index <= free_index_th && free_index_th <= new_alloc_index) {
+    return nullptr;
+  }
+
+  if (new_alloc_index == size_ / sizeof(int)) {
+    new_alloc_index = 0;
+    if (new_alloc_index == free_index_th) {
+      return nullptr;
+    }
+  }
+
+  assert(new_alloc_index != alloc_index_);
+  validate_index(new_alloc_index);
+
+  heap_()[alloc_index_] = payload_size;
+  alloc_index_ = new_alloc_index;
+
+  return reinterpret_cast<uint8_t *>(heap_() + payload_index);
 }
 
-void Allocator::free(uint8_t *ptr) { return; }
+bool Allocator::free(const uint8_t *ptr) {
+  if (ptr == nullptr) {
+    return true;
+  }
+  auto *heap = reinterpret_cast<uint8_t *>(heap_());
+
+  Scope<concurrent::EXCLUSIVE> _(&lock_);
+
+  assert(ptr >= heap);
+  assert(ptr < heap + size_);
+  validate_index(free_index_);
+
+  uint32_t payload_size = heap_()[free_index_];
+  uint32_t payload_index = suggest_index(free_index_, payload_size);
+
+  if (ptr != reinterpret_cast<uint8_t *>(heap_() + payload_index)) {
+    return false;
+  }
+
+  uint32_t new_free_index = payload_index + payload_size;
+  if (new_free_index == size_ / sizeof(int)) {
+    new_free_index = 0;
+  }
+  free_index_ = new_free_index;
+  return true;
+}
+
+void Allocator::reset() {
+  alloc_index_ = 0;
+  free_index_ = 0;
+}
 
 }  // namespace shm::memory
 #endif  // INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_
