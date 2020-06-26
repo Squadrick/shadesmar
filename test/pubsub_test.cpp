@@ -135,7 +135,8 @@ void subscribe_loop() {
 }
 
 void publish_loop() {
-  shm::pubsub::SerializedPublisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
+  shm::pubsub::SerializedPublisher<BenchmarkMsg, QUEUE_SIZE> pub(topic,
+                                                                 nullptr);
 
   msgpack::sbuffer buf;
   msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
