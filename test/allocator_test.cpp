@@ -22,6 +22,8 @@ SOFTWARE.
 ==============================================================================*/
 
 #include <cstdlib>
+#include <cstring>
+#include <numeric>
 #include <thread>
 #include <vector>
 
@@ -148,35 +150,60 @@ void cyclic() {
   free(alloc);
 }
 
-void multithread(int nthreads) {
-  auto *alloc = new_alloc(128 * nthreads);
+void multithread(int nthreads, std::vector<int> &&allocs) {
+  auto *alloc = new_alloc(2 * std::accumulate(allocs.begin(), allocs.end(), 0) *
+                          nthreads);
 
   std::vector<std::thread> threads;
   threads.reserve(nthreads);
   for (int t = 0; t < nthreads; ++t) {
-    threads.emplace_back([&]() {
+    auto rand_sleep = [&t](uint32_t factor) {
+      uint32_t seed = t;
+      // Sleep between (0, factor) microseconds
+      // Seeded per thread.
+      uint32_t timeout =
+          static_cast<float>(rand_r(&seed) / static_cast<float>(RAND_MAX)) *
+          factor;
+      std::this_thread::sleep_for(std::chrono::microseconds(timeout));
+    };
+
+    threads.emplace_back([&, t]() {
       int iters = 100;
       while (iters--) {
-        auto *p1 = alloc->alloc(16);
-        auto *p2 = alloc->alloc(10);
+        std::vector<uint8_t *> ps(allocs.size());
 
-        assert(p1 != nullptr);
-        assert(p2 != nullptr);
+        for (int i = 0; i < allocs.size(); ++i) {
+          ps[i] = alloc->alloc(allocs[i]);
+          rand_sleep(10);
+        }
 
-        int max_tries = nthreads * nthreads;
+        for (int i = 0; i < ps.size(); ++i) {
+          assert(ps[i] != nullptr);
+          std::memset(ps[i], ps.size() * t + i, allocs[i]);
+        }
 
+        rand_sleep(100);
+
+        for (int i = 0; i < ps.size(); ++i) {
+          for (int l = 0; l < allocs[i]; ++i) {
+            assert(ps[i][l] == static_cast<uint8_t>(ps.size() * t + i));
+          }
+        }
+
+        int max_tries = std::max(nthreads * nthreads, 100);
         auto timed_free_loop = [&](uint8_t *p) -> bool {
           for (int i = 0; i < max_tries; ++i) {
             if (alloc->free(p)) {
               return true;
             }
-            std::this_thread::sleep_for(std::chrono::microseconds(50));
+            rand_sleep(50);
           }
           return false;
         };
 
-        assert(timed_free_loop(p1));
-        assert(timed_free_loop(p2));
+        for (auto p : ps) {
+          assert(timed_free_loop(p));
+        }
       }
     });
   }
@@ -194,5 +221,5 @@ int main() {
   wrap_around();
   cyclic();
 
-  multithread(128);  // FLAKY
+  multithread(128, {100, 2000, 30000});
 }
