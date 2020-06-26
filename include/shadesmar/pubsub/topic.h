@@ -31,8 +31,6 @@ SOFTWARE.
 #include <memory>
 #include <string>
 
-#include <msgpack.hpp>
-
 #include "shadesmar/concurrency/scope.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/copier.h"
@@ -63,22 +61,20 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
                 "queue_size must be power of two");
 
  public:
-  Topic(const std::string &topic, memory::Copier *copier, bool copy = false)
-      : memory::Memory<TopicElem, queue_size>(topic),
-        copy_(copy),
-        copier_(copier) {}
+  Topic(const std::string &topic, memory::Copier *copier)
+      : memory::Memory<TopicElem, queue_size>(topic), copier_(copier) {}
 
   explicit Topic(const std::string &topic, bool copy = false)
       : Topic(topic, nullptr, copy) {}
 
-  bool write(void *data, size_t size) {
+  bool write(memory::Ptr ptr) {
     /*
      * Writes always happen at the head of the circular queue, the
      * head is atomically incremented to prevent any race across
      * processes. The head of the queue is stored as a counter
      * on shared memory.
      */
-    if (size > this->allocator_->get_free_memory()) {
+    if (ptr.size > this->allocator_->get_free_memory()) {
       std::cerr << "Increase buffer_size" << std::endl;
       return false;
     }
@@ -96,12 +92,12 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
      */
 
     uint8_t *old_address = nullptr;
-    uint8_t *new_address = this->allocator_->alloc(size);
+    uint8_t *new_address = this->allocator_->alloc(ptr.size);
     if (new_address == nullptr) {
       return false;
     }
 
-    _copy(new_address, data, size);
+    _copy(new_address, ptr.ptr, ptr.size);
 
     {
       /*
@@ -114,7 +110,7 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
         old_address = this->allocator_->handle_to_ptr(elem->address_handle);
       }
       elem->address_handle = this->allocator_->ptr_to_handle(new_address);
-      elem->size = size;
+      elem->size = ptr.size;
       elem->empty = false;
     }
 
@@ -136,90 +132,12 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
    * logic to handle circular queue wrap around logic.
    */
 
-  bool read(msgpack::object_handle *oh, uint32_t pos) {
-    /*
-     * Read directly into object handle.
-     */
-    TopicElem *elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
-
-    if (copy_) {
-      return _read_with_copy(oh, elem);
-    } else {
-      return _read_without_copy(oh, elem);
-    }
-  }
-
   bool read(memory::Ptr *ptr, uint32_t pos) {
     /*
-     * Read into a raw array. We pass `size` as a reference to store
-     * the size of the message.
+     * Read into a raw array.
      */
     TopicElem *elem = &(this->shared_queue_->elements[pos & (queue_size - 1)]);
-    return _read_bin(ptr, elem);
-  }
 
-  inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
-    return this->shared_queue_->counter.fetch_add(1);
-  }
-
-  inline __attribute__((always_inline)) uint32_t counter() {
-    return this->shared_queue_->counter.load();
-  }
-
-  inline __attribute__((always_inline)) void inc_counter() {
-    this->shared_queue_->counter.fetch_add(1);
-  }
-
-  inline memory::Copier *copier() const { return copier_; }
-
- private:
-  bool _read_without_copy(msgpack::object_handle *oh, TopicElem *elem) {
-    /*
-     * Code path:
-     *  1. Acquire sharable lock
-     *  2. Check for emptiness
-     *  3. Unpack shared memory into the object handle
-     *  4. Release sharable lock
-     */
-    Scope<concurrent::SHARED> _(&elem->mutex);
-
-    if (elem->empty) {
-      return false;
-    }
-
-    const char *dst = reinterpret_cast<const char *>(
-        this->allocator_->handle_to_ptr(elem->address_handle));
-
-    *oh = msgpack::unpack(dst, elem->size);
-    return true;
-  }
-
-  bool _read_with_copy(msgpack::object_handle *oh, TopicElem *elem) {
-    /*
-     * Code path:
-     *  1. Create temporary buffer
-     *  2. Safe copy from shared memory to tmp buffer (`_read_bin`)
-     *  3. Unpack temporary buffer into the object handle
-     *
-     * Can't check for `elem->empty` here since we don't have a
-     * sharable lock. We can't have a sharable lock, since `_read_bin`
-     * also acquires a sharable lock, and it'll become recursive.
-     * So we bite the cost of the extra function call before checking
-     * for emptiness.
-     */
-
-    memory::Ptr ptr;
-
-    if (_read_bin(&ptr, elem)) {
-      *oh = msgpack::unpack(reinterpret_cast<const char *>(ptr.ptr), ptr.size);
-      free(ptr.ptr);
-      return true;
-    }
-
-    return false;
-  }
-
-  bool _read_bin(memory::Ptr *ptr, TopicElem *elem) {
     /*
      * Code path:
      *  1. Acquire sharable lock
@@ -241,6 +159,21 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
     return true;
   }
 
+  inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
+    return this->shared_queue_->counter.fetch_add(1);
+  }
+
+  inline __attribute__((always_inline)) uint32_t counter() {
+    return this->shared_queue_->counter.load();
+  }
+
+  inline __attribute__((always_inline)) void inc_counter() {
+    this->shared_queue_->counter.fetch_add(1);
+  }
+
+  inline memory::Copier *copier() const { return copier_; }
+
+ private:
   void _copy(void *dst, void *src, size_t size) {
     if (copier_ == nullptr) {
       std::memcpy(dst, src, size);
@@ -260,7 +193,6 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
   }
 
   memory::Copier *copier_{};
-  bool copy_{};
 };
 }  // namespace shm::pubsub
 #endif  // INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_

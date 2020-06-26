@@ -41,74 +41,45 @@ SOFTWARE.
 namespace shm::pubsub {
 
 template <uint32_t queue_size>
-class SubscriberBase {
+class Subscriber {
  public:
+  Subscriber(const std::string &topic_name,
+             std::function<void(memory::Ptr *)> callback,
+             memory::Copier *copier = nullptr);
+
+  memory::Ptr get_message();
   void spin_once();
   void spin();
 
-  virtual void _subscribe() = 0;
-
- protected:
-  SubscriberBase(std::string topic_name, memory::Copier *copier,
-                 bool extra_copy);
-
-  std::string topic_name_;
-  std::unique_ptr<Topic<queue_size>> topic;
-  std::atomic<uint32_t> counter{0};
-};
-
-template <uint32_t queue_size>
-class SubscriberBin : public SubscriberBase<queue_size> {
- public:
-  SubscriberBin(const std::string &topic_name, memory::Copier *copier,
-                std::function<void(memory::Ptr *)> callback)
-      : SubscriberBase<queue_size>(topic_name, copier, false),
-        callback_(std::move(callback)) {}
+  std::atomic<uint32_t> counter_{0};
 
  private:
   std::function<void(memory::Ptr *)> callback_;
-  void _subscribe();
-};
-
-template <typename msgT, uint32_t queue_size>
-class Subscriber : public SubscriberBase<queue_size> {
-  static_assert(std::is_base_of<BaseMsg, msgT>::value,
-                "msgT must derive from BaseMsg");
-
- public:
-  Subscriber(const std::string &topic_name,
-             std::function<void(const std::shared_ptr<msgT> &)> callback,
-             bool extra_copy = false)
-      : SubscriberBase<queue_size>(topic_name, nullptr, extra_copy),
-        callback_(std::move(callback)) {}
-
- private:
-  std::function<void(const std::shared_ptr<msgT> &)> callback_;
-  void _subscribe();
+  std::string topic_name_;
+  std::unique_ptr<Topic<queue_size>> topic_;
 };
 
 template <uint32_t queue_size>
-SubscriberBase<queue_size>::SubscriberBase(std::string topic_name,
-                                           memory::Copier *copier,
-                                           bool extra_copy)
-    : topic_name_(std::move(topic_name)) {
-  topic = std::make_unique<Topic<queue_size>>(topic_name_, copier, extra_copy);
-  counter = topic->counter();
+Subscriber<queue_size>::Subscriber(const std::string &topic_name,
+                                   std::function<void(memory::Ptr *)> callback,
+                                   memory::Copier *copier)
+    : topic_name_(topic_name), callback_(std::move(callback)) {
+  topic_ = std::make_unique<Topic<queue_size>>(topic_name_, copier);
 }
 
 template <uint32_t queue_size>
-void SubscriberBase<queue_size>::spin_once() {
+memory::Ptr Subscriber<queue_size>::get_message() {
   /*
    * topic's `counter` must be strictly greater than counter.
    * If they're equal, there have been no new writes.
    * If subscriber's counter is too far ahead, we need to catch up.
    */
-  if (topic->counter() <= counter) {
+  if (topic_->counter() <= counter_) {
     // no new messages
-    return;
+    return memory::Ptr();
   }
 
-  if (topic->counter() - counter > queue_size) {
+  if (topic_->counter() - counter_ > queue_size) {
     /*
      * If we have fallen behind by the size of the queue
      * in the case of overlap, we go to last existing
@@ -118,51 +89,41 @@ void SubscriberBase<queue_size>::spin_once() {
      * `write` we do a `fetch_add`, so the queue pointer is already
      * ahead of where it last wrote.
      */
-    counter = topic->counter() - queue_size;
+    counter_ = topic_->counter() - queue_size;
   }
 
-  _subscribe();
-  counter++;
-}
-
-template <uint32_t queue_size>
-void SubscriberBase<queue_size>::spin() {
-  // TODO(squadrick): Spin on different thread
-  while (true) {
-    spin_once();
-  }
-}
-
-template <uint32_t queue_size>
-void SubscriberBin<queue_size>::_subscribe() {
   memory::Ptr ptr;
   ptr.free = true;
 
-  if (!this->topic->read(&ptr, this->counter)) return;
+  if (!topic_->read(&ptr, counter_)) return memory::Ptr();
+
+  return ptr;
+}
+
+template <uint32_t queue_size>
+void Subscriber<queue_size>::spin_once() {
+  memory::Ptr ptr = get_message();
+
+  if (ptr.size == 0) {
+    return;
+  }
 
   callback_(&ptr);
 
   if (ptr.free) {
-    auto *copier = this->topic->copier();
+    auto *copier = topic_->copier();
     if (copier != nullptr) {
       copier->dealloc(ptr.ptr);
     } else {
       free(ptr.ptr);
     }
   }
+
+  counter_++;
 }
 
-template <typename msgT, uint32_t queue_size>
-void Subscriber<msgT, queue_size>::_subscribe() {
-  msgpack::object_handle oh;
-
-  if (!this->topic->read(&oh, this->counter)) return;
-
-  std::shared_ptr<msgT> msg = std::make_shared<msgT>();
-  oh.get().convert(*msg);
-  msg->seq = this->counter;
-  callback_(msg);
-}
+template <uint32_t queue_size>
+void Subscriber<queue_size>::spin() {}
 
 }  // namespace shm::pubsub
 #endif  // INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_
