@@ -20,8 +20,6 @@ Caution: Pre-alpha software.
 
 * Faster than using the network stack like in the case with ROS.
 
-* Read and write directly from GPU memory to shared memory.
-
 * Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
 
 * Allows for both serialized message passing (using `msgpack`) and to 
@@ -29,7 +27,6 @@ pass raw bytes.
 
 * No need to define external IDL files for messages. Use C++ classes as
 message definition.
-
 
 ---
 
@@ -165,7 +162,7 @@ int main() {
 
 ---
 
-#### RPC
+#### RPC (Currently broken)
 
 Server:
 ```c++
