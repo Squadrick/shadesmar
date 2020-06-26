@@ -33,7 +33,12 @@ def fuse_lines(text_lines):
 def read_file(filename):
   text_lines = []
   with open(filename) as f:
-    return f.readlines()
+    text_lines = f.readlines()
+
+  # Add newline at end of file
+  if len(text_lines) > 0:
+    text_lines[-1] += "\n"
+  return text_lines
 
 
 def crawl_src_folder(folder):

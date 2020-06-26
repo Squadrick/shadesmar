@@ -94,6 +94,7 @@ struct Ptr {
   bool free;
 
   Ptr() : ptr(nullptr), size(0), free(false) {}
+  Ptr(void *ptr, size_t size) : ptr(ptr), size(size), free(false) {}
 
   void no_delete() { free = false; }
 };

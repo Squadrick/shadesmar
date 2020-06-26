@@ -30,8 +30,8 @@ SOFTWARE.
 #include "shadesmar.h"
 #else
 #include "shadesmar/message.h"
-#include "shadesmar/pubsub/publisher.h"
-#include "shadesmar/pubsub/subscriber.h"
+#include "shadesmar/pubsub/serialized_publisher.h"
+#include "shadesmar/pubsub/serialized_subscriber.h"
 #endif
 
 const char topic[] = "benchmark_topic";
@@ -90,68 +90,76 @@ void callback(const std::shared_ptr<BenchmarkMsg> &msg) {
   }
 }
 
-int main() {
-  if (fork() == 0) {
-    std::vector<int> counts;
-    std::vector<double> lags;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    shm::pubsub::Subscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic, callback,
-                                                          EXTRA_COPY);
-    auto start = std::chrono::system_clock::now();
-    int seconds = 0;
-    while (true) {
-      sub.spin_once();
-      auto end = std::chrono::system_clock::now();
-      auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
+void subscribe_loop() {
+  std::vector<int> counts;
+  std::vector<double> lags;
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  shm::pubsub::SerializedSubscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic,
+                                                                  callback);
+  auto start = std::chrono::system_clock::now();
+  int seconds = 0;
+  while (true) {
+    sub.spin_once();
+    auto end = std::chrono::system_clock::now();
+    auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
 
-      if (diff.count() > TIMESCALE_COUNT) {
-        double lag_per_msg = static_cast<double>(lag) / count;
-        if (count != 0) {
-          std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
-          std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
-                    << std::endl;
-          counts.push_back(count);
-          lags.push_back(lag_per_msg);
-        } else {
-          std::cout << "Number of message sent: <1/s" << std::endl;
-        }
-
-        if (++seconds == SECONDS) break;
-        count = 0;
-        lag = 0;
-        start = std::chrono::system_clock::now();
+    if (diff.count() > TIMESCALE_COUNT) {
+      double lag_per_msg = static_cast<double>(lag) / count;
+      if (count != 0) {
+        std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
+        std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
+                  << std::endl;
+        counts.push_back(count);
+        lags.push_back(lag_per_msg);
+      } else {
+        std::cout << "Number of message sent: <1/s" << std::endl;
       }
-    }
 
-    std::cout << "Total msgs sent in 10 seconds: " << total_count << std::endl;
-
-    auto mean_count = get_mean(counts);
-    auto stdd_count = get_stddev(counts);
-    std::cout << "Msg: " << mean_count << " ± " << stdd_count << std::endl;
-
-    auto mean_lag = get_mean(lags);
-    auto stdd_lag = get_stddev(lags);
-    std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
-              << std::endl;
-
-  } else {
-    shm::pubsub::Publisher<BenchmarkMsg, QUEUE_SIZE> pub(topic);
-
-    msgpack::sbuffer buf;
-    msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
-
-    std::cout << "Number of bytes = " << buf.size() << std::endl;
-
-    auto start = std::chrono::system_clock::now();
-
-    int i = 0;
-    while (true) {
-      BenchmarkMsg msg(++i);
-      msg.init_time();
-      pub.publish(msg);
-      auto end = std::chrono::system_clock::now();
-      auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
-      if (diff.count() > (SECONDS + 1) * TIMESCALE_COUNT) break;
+      if (++seconds == SECONDS) break;
+      count = 0;
+      lag = 0;
+      start = std::chrono::system_clock::now();
     }
   }
+
+  std::cout << "Total msgs sent in 10 seconds: " << total_count << std::endl;
+
+  auto mean_count = get_mean(counts);
+  auto stdd_count = get_stddev(counts);
+  std::cout << "Msg: " << mean_count << " ± " << stdd_count << std::endl;
+
+  auto mean_lag = get_mean(lags);
+  auto stdd_lag = get_stddev(lags);
+  std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
+            << std::endl;
+}
+
+void publish_loop() {
+  shm::pubsub::SerializedPublisher<BenchmarkMsg, QUEUE_SIZE> pub(topic,
+                                                                 nullptr);
+
+  msgpack::sbuffer buf;
+  msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));
+
+  std::cout << "Number of bytes = " << buf.size() << std::endl;
+
+  auto start = std::chrono::system_clock::now();
+
+  int i = 0;
+  while (true) {
+    BenchmarkMsg msg(++i);
+    msg.init_time();
+    pub.publish(msg);
+    auto end = std::chrono::system_clock::now();
+    auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
+    if (diff.count() > (SECONDS + 1) * TIMESCALE_COUNT) break;
+  }
+}
+
+int main() {
+  std::thread subscribe_thread(subscribe_loop);
+  std::thread publish_thread(publish_loop);
+
+  subscribe_thread.join();
+  publish_thread.join();
 }

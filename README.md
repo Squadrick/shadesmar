@@ -20,8 +20,6 @@ Caution: Pre-alpha software.
 
 * Faster than using the network stack like in the case with ROS.
 
-* Read and write directly from GPU memory to shared memory.
-
 * Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
 
 * Allows for both serialized message passing (using `msgpack`) and to 
@@ -32,7 +30,61 @@ message definition.
 
 ---
 
+#### Publish-Subscribe
+
+Publisher:
+```c++
+#include <shadesmar/memory/copier.h>
+#include <shadesmar/pubsub/publisher.h>
+
+int main() {
+    shm::memory::DefaultCopier cpy;
+    shm::pubsub::Publisher<16 /* buffer size */ > pub("topic_name", &cpy);
+    const uint32_t data_size = 1024;
+    void *data = malloc(data_size);
+    
+    for (int i = 0; i < 1000; ++i) {
+        p.publish(msg, data_size);
+    }
+}  
+```
+
+Subscriber:
+```c++
+#include <shadesmar/memory/copier.h>
+#include <shadesmar/pubsub/subscriber.h>
+
+void callback(shm::memory::Ptr *msg) {
+  // `msg->ptr` to access `data`
+  // `msg->size` to access `size`
+
+  // The memory will be free'd at the end of this callback.
+  // Copy to another memory location if you want to persist the data.
+  // Alternatively, if you want to avoid the copy, you can call
+  // `msg->no_delete()` which prevents the memory from being deleted
+  // at the end of the callback.
+}
+
+int main() {
+    shm::memory::DefaultCopier cpy;
+    shm::pubsub::Subscriber<16 /* buffer size */ > sub("topic_name", &cpy, callback);
+    
+    // Using `spinOnce` with a manual loop
+    while(true) {
+        sub.spin_once();
+    }
+    // OR
+    // Using `spin`
+    sub.spin();
+}
+```
+
+---
+
+
 #### Publish-Subscribe (serialized messages)
+
+For plug-and-play convenience Shadesmar supports msgpack serialization. 
 
 Message Definition (`custom_message.h`):
 ```c++
@@ -68,11 +120,11 @@ class CustomMessage : public shm::BaseMsg {
 
 Publisher:
 ```c++
-#include <shadesmar/pubsub/publisher.h>
+#include <shadesmar/pubsub/serialized_publisher.h>
 #include <custom_message.h>
 
 int main() {
-    shm::pubsub::Publisher<CustomMessage, 16 /* buffer size */ > pub("topic_name");
+    shm::pubsub::SerializedPublisher<CustomMessage, 16 /* buffer size */ > pub("topic_name");
 
     CustomMessage msg;
     msg.val = 0;
@@ -88,7 +140,7 @@ int main() {
 Subscriber:
 ```c++
 #include <iostream>
-#include <shadesmar/pubsub/subscriber.h>
+#include <shadesmar/pubsub/serialized_subscriber.h>
 #include <custom_message.h>
 
 void callback(const std::shared_ptr<CustomMessage>& msg) {
@@ -96,11 +148,11 @@ void callback(const std::shared_ptr<CustomMessage>& msg) {
 }
 
 int main() {
-    shm::pubsub::Subscriber<CustomMessage, 16 /* buffer size */ > sub("topic_name", callback);
+    shm::pubsub::SerializedSubscriber<CustomMessage, 16> sub("topic_name", callback);
     
     // Using `spinOnce` with a manual loop
     while(true) {
-        sub.spinOnce();
+        sub.spin_once();
     }
     // OR
     // Using `spin`
@@ -110,58 +162,7 @@ int main() {
 
 ---
 
-#### Publish-Subscribe (raw bytes)
-
-Publisher:
-```c++
-#include <shadesmar/memory/copier.h>
-#include <shadesmar/pubsub/publisher.h>
-
-int main() {
-    shm::memory::DefaultCopier cpy;
-    shm::pubsub::PublisherBin<16 /* buffer size */ > pub("topic_name", &cpy);
-    const uint32_t data_size = 1024;
-    void *data = malloc(data_size);
-    
-    for (int i = 0; i < 1000; ++i) {
-        p.publish(msg, data_size);
-    }
-}  
-```
-
-Subscriber:
-```c++
-#include <shadesmar/memory/copier.h>
-#include <shadesmar/pubsub/subscriber.h>
-
-void callback(shm::memory::Ptr *msg) {
-  // `msg->ptr` to access `data`
-  // `msg->size` to access `size`
-
-  // The memory will be free'd at the end of this callback.
-  // Copy to another memory location if you want to persist the data.
-  // Alternatively, if you want to avoid the copy, you can call
-  // `msg->no_delete()` which prevents the memory from being deleted
-  // at the end of the callback.
-}
-
-int main() {
-    shm::memory::DefaultCopier cpy;
-    shm::pubsub::SubscriberBin<16 /* buffer size */ > sub("topic_name", &cpy, callback);
-    
-    // Using `spinOnce` with a manual loop
-    while(true) {
-        sub.spinOnce();
-    }
-    // OR
-    // Using `spin`
-    sub.spin();
-}
-```
-
----
-
-#### RPC
+#### RPC (Currently broken)
 
 Server:
 ```c++
@@ -198,8 +199,6 @@ int main() {
 ---
 
 **Note**: 
-
-* `shm::pubsub::Subscriber` has a boolean parameter called `extra_copy`. `extra_copy=true` is faster for smaller (<1MB) messages, and `extra_copy=false` is faster for larger (>1MB) messages. For message of 10MB, the throughput for `extra_copy=false` is nearly 50% more than `extra_copy=true`. See `_read_with_copy()` and `_read_without_copy()` in `include/shadesmar/pubsub/topic.h` for more information.
 
 * `queue_size` must be powers of 2. This is due to the underlying shared memory allocator which uses a red-black tree. See `include/shadesmar/memory/allocator.h` for more information.
 

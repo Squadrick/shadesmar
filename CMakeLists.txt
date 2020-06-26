@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 
 project(shadesmar)
 
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG_BUILD")
+
 find_package(msgpack REQUIRED)
 find_package(benchmark REQUIRED)
 
@@ -14,7 +18,6 @@ if (UNIX AND NOT APPLE)
 endif ()
 
 add_compile_options(-march=native)
-add_definitions(-DDEBUG_BUILD)
 IF(SINGLE_H)
   add_definitions(-DSINGLE_HEADER)
 ENDIF(SINGLE_H)
