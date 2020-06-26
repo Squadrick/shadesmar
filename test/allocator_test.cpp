@@ -154,20 +154,22 @@ void multithread(int nthreads, std::vector<int> &&allocs) {
   auto *alloc = new_alloc(2 * std::accumulate(allocs.begin(), allocs.end(), 0) *
                           nthreads);
 
-  auto rand_sleep = [](uint32_t factor) {
-    // Sleep between (0, factor) microseconds
-    uint32_t timeout =
-        static_cast<float>(rand() / static_cast<float>(RAND_MAX)) * factor;
-    std::this_thread::sleep_for(std::chrono::microseconds(timeout));
-  };
-
   std::vector<std::thread> threads;
   threads.reserve(nthreads);
   for (int t = 0; t < nthreads; ++t) {
+    auto rand_sleep = [&t](uint32_t factor) {
+      uint32_t seed = t;
+      // Sleep between (0, factor) microseconds
+      // Seeded per thread.
+      uint32_t timeout =
+          static_cast<float>(rand_r(&seed) / static_cast<float>(RAND_MAX)) *
+          factor;
+      std::this_thread::sleep_for(std::chrono::microseconds(timeout));
+    };
+
     threads.emplace_back([&, t]() {
       int iters = 100;
       while (iters--) {
-
         std::vector<uint8_t *> ps(allocs.size());
 
         for (int i = 0; i < allocs.size(); ++i) {
