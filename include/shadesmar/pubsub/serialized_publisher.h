@@ -21,8 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#ifndef INCLUDE_SHADESMAR_SERIALIZED_PUBLISHER_H_
-#define INCLUDE_SHADESMAR_SERIALIZED_PUBLISHER_H_
+#ifndef INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_PUBLISHER_H_
+#define INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_PUBLISHER_H_
+
+#include <memory>
+#include <string>
 
 #include <msgpack.hpp>
 
@@ -74,4 +77,4 @@ bool SerializedPublisher<msgT, queue_size>::publish(msgT *msg) {
 
 }  // namespace shm::pubsub
 
-#endif  // INCLUDE_SHADESMAR_SERIALIZED_PUBLISHER_H_
+#endif  // INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_PUBLISHER_H_

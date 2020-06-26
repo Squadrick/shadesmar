@@ -21,8 +21,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#ifndef INCLUDE_SHADESMAR_SERIALIZED_SUBSCRIBER_H_
-#define INCLUDE_SHADESMAR_SERIALIZED_SUBSCRIBER_H_
+#ifndef INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_SUBSCRIBER_H_
+#define INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_SUBSCRIBER_H_
+
+#include <memory>
+#include <string>
+#include <utility>
 
 #include <msgpack.hpp>
 
@@ -77,4 +81,4 @@ template <typename msgT, uint32_t queue_size>
 void SerializedSubscriber<msgT, queue_size>::spin() {}
 
 }  // namespace shm::pubsub
-#endif  // INCLUDE_SHADESMAR_SERIALIZED_SUBSCRIBER_H_
+#endif  // INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_SUBSCRIBER_H_
