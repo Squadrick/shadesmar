@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: Install dependencies
       run: ./scripts/install_deps.sh
-    - name: Configure
+    - name: Configure Release
       env:
         CXX: ${{ matrix.compiler }}
       run: ./configure
@@ -28,7 +28,7 @@ jobs:
     - name: Install dependencies
       run: ./scripts/install_deps.sh
     - name: Configure
-      run: ./configure
+      run: ./configure Release
     - name: Build
       run: cmake --build build
     - name: Tests
