@@ -1,5 +1,7 @@
 ### Shadesmar
 
+![C/C++ CI](https://github.com/Squadrick/shadesmar/workflows/C/C++%20CI/badge.svg)
+
 [Soulcast](https://stormlightarchive.fandom.com/wiki/Soulcasting) [hoid](https://stormlightarchive.fandom.com/wiki/Hoid) pointers.
 
 An IPC library that uses the system's shared memory to pass messages. 
