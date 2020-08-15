@@ -29,7 +29,6 @@ SOFTWARE.
 #include <immintrin.h>
 
 #include <cstdlib>
-
 #include <thread>
 #include <vector>
 

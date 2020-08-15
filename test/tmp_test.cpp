@@ -21,9 +21,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#include <iostream>
-
+#ifdef SINGLE_HEADER
+#include "shadesmar.h"
+#else
 #include "shadesmar/memory/tmp.h"
+#endif
+
+#include <iostream>
 
 int main() {
   for (int i = 0; i < 10; ++i) {

@@ -25,10 +25,9 @@ SOFTWARE.
 #define INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_SUBSCRIBER_H_
 
 #include <memory>
+#include <msgpack.hpp>
 #include <string>
 #include <utility>
-
-#include <msgpack.hpp>
 
 #include "shadesmar/pubsub/subscriber.h"
 
@@ -58,18 +57,19 @@ SerializedSubscriber<msgT, queue_size>::SerializedSubscriber(
     const std::string &topic_name,
     std::function<void(const std::shared_ptr<msgT> &)> callback,
     memory::Copier *copier)
-    : bin_sub_(topic_name, [](memory::Ptr *p) {}, copier),
+    : bin_sub_(
+          topic_name, [](memory::Memblock *) {}, copier),
       callback_(std::move(callback)) {}
 
 template <typename msgT, uint32_t queue_size>
 void SerializedSubscriber<msgT, queue_size>::spin_once() {
-  memory::Ptr ptr = bin_sub_.get_message();
+  memory::Memblock memblock = bin_sub_.get_message();
 
-  if (ptr.size == 0) {
+  if (memblock.size == 0) {
     return;
   }
-  msgpack::object_handle oh =
-      msgpack::unpack(reinterpret_cast<const char *>(ptr.ptr), ptr.size);
+  msgpack::object_handle oh = msgpack::unpack(
+      reinterpret_cast<const char *>(memblock.ptr), memblock.size);
 
   std::shared_ptr<msgT> msg = std::make_shared<msgT>();
   oh.get().convert(*msg);

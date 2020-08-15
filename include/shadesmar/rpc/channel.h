@@ -24,14 +24,12 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_RPC_CHANNEL_H_
 #define INCLUDE_SHADESMAR_RPC_CHANNEL_H_
 
+#include <atomic>
 #include <cstdint>
 #include <cstring>
-
-#include <atomic>
 #include <iostream>
-#include <string>
-
 #include <msgpack.hpp>
+#include <string>
 
 #include "shadesmar/concurrency/cond_var.h"
 #include "shadesmar/concurrency/lock.h"

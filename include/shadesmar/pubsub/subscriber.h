@@ -26,7 +26,6 @@ SOFTWARE.
 
 #include <cstdint>
 #include <cstring>
-
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -44,31 +43,31 @@ template <uint32_t queue_size>
 class Subscriber {
  public:
   Subscriber(const std::string &topic_name,
-             std::function<void(memory::Ptr *)> callback,
+             std::function<void(memory::Memblock *)> callback,
              memory::Copier *copier = nullptr);
 
-  memory::Ptr get_message();
+  memory::Memblock get_message();
   void spin_once();
   void spin();
 
   std::atomic<uint32_t> counter_{0};
 
  private:
-  std::function<void(memory::Ptr *)> callback_;
+  std::function<void(memory::Memblock *)> callback_;
   std::string topic_name_;
   std::unique_ptr<Topic<queue_size>> topic_;
 };
 
 template <uint32_t queue_size>
-Subscriber<queue_size>::Subscriber(const std::string &topic_name,
-                                   std::function<void(memory::Ptr *)> callback,
-                                   memory::Copier *copier)
+Subscriber<queue_size>::Subscriber(
+    const std::string &topic_name,
+    std::function<void(memory::Memblock *)> callback, memory::Copier *copier)
     : topic_name_(topic_name), callback_(std::move(callback)) {
   topic_ = std::make_unique<Topic<queue_size>>(topic_name_, copier);
 }
 
 template <uint32_t queue_size>
-memory::Ptr Subscriber<queue_size>::get_message() {
+memory::Memblock Subscriber<queue_size>::get_message() {
   /*
    * topic's `counter` must be strictly greater than counter.
    * If they're equal, there have been no new writes.
@@ -76,7 +75,7 @@ memory::Ptr Subscriber<queue_size>::get_message() {
    */
   if (topic_->counter() <= counter_) {
     // no new messages
-    return memory::Ptr();
+    return memory::Memblock();
   }
 
   if (topic_->counter() - counter_ > queue_size) {
@@ -92,30 +91,30 @@ memory::Ptr Subscriber<queue_size>::get_message() {
     counter_ = topic_->counter() - queue_size;
   }
 
-  memory::Ptr ptr;
-  ptr.free = true;
+  memory::Memblock memblock;
+  memblock.free = true;
 
-  if (!topic_->read(&ptr, counter_)) return memory::Ptr();
+  if (!topic_->read(&memblock, counter_)) return memory::Memblock();
 
-  return ptr;
+  return memblock;
 }
 
 template <uint32_t queue_size>
 void Subscriber<queue_size>::spin_once() {
-  memory::Ptr ptr = get_message();
+  memory::Memblock memblock = get_message();
 
-  if (ptr.size == 0) {
+  if (memblock.size == 0) {
     return;
   }
 
-  callback_(&ptr);
+  callback_(&memblock);
 
-  if (ptr.free) {
+  if (memblock.free) {
     auto *copier = topic_->copier();
     if (copier != nullptr) {
-      copier->dealloc(ptr.ptr);
+      copier->dealloc(memblock.ptr);
     } else {
-      free(ptr.ptr);
+      free(memblock.ptr);
     }
   }
 

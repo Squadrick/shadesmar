@@ -22,7 +22,6 @@ SOFTWARE.
 ==============================================================================*/
 
 #include <cstring>
-
 #include <iostream>
 
 #ifdef SINGLE_HEADER

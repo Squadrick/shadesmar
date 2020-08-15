@@ -25,9 +25,8 @@ SOFTWARE.
 #define INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_PUBLISHER_H_
 
 #include <memory>
-#include <string>
-
 #include <msgpack.hpp>
+#include <string>
 
 #include "shadesmar/pubsub/publisher.h"
 

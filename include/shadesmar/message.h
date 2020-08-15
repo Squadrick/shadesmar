@@ -27,9 +27,8 @@ SOFTWARE.
 #include <chrono>
 #include <cstdint>
 #include <cstring>
-#include <utility>
-
 #include <msgpack.hpp>
+#include <utility>
 
 #include "shadesmar/macros.h"
 

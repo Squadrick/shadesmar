@@ -29,6 +29,7 @@ SOFTWARE.
 #include "shadesmar.h"
 #else
 #include "shadesmar/memory/copier.h"
+#include "shadesmar/memory/dragons.h"
 #include "shadesmar/pubsub/publisher.h"
 #include "shadesmar/pubsub/subscriber.h"
 #endif
@@ -66,8 +67,8 @@ double get_stddev(const std::vector<T> &v) {
   return stddev;
 }
 
-void callback(shm::memory::Ptr *shm_ptr) {
-  auto *msg = reinterpret_cast<Message *>(shm_ptr->ptr);
+void callback(shm::memory::Memblock *memblock) {
+  auto *msg = reinterpret_cast<Message *>(memblock->ptr);
   ++count;
   ++total_count;
   lag += std::chrono::duration_cast<TIMESCALE>(
