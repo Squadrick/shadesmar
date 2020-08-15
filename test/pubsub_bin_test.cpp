@@ -21,8 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#include <shadesmar/memory/dragons.h>
-
 #include <chrono>
 #include <iostream>
 #include <numeric>
@@ -31,6 +29,7 @@ SOFTWARE.
 #include "shadesmar.h"
 #else
 #include "shadesmar/memory/copier.h"
+#include "shadesmar/memory/dragons.h"
 #include "shadesmar/pubsub/publisher.h"
 #include "shadesmar/pubsub/subscriber.h"
 #endif
