@@ -56,8 +56,5 @@ SOFTWARE.
 #endif
 
 #define DEBUG(str) DEBUG_IMPL(str, "\n");
-#define INFO_INIT 1337
-
-const int MAX_SHARED_OWNERS = 4;
 
 #endif  // INCLUDE_SHADESMAR_MACROS_H_

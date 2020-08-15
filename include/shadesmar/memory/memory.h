@@ -24,17 +24,15 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
 #define INCLUDE_SHADESMAR_MEMORY_MEMORY_H_
 
+#include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include <fcntl.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cerrno>
 #include <cstdint>
-
-#include <atomic>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -88,13 +86,13 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
   return reinterpret_cast<uint8_t *>(aligned_ptr);
 }
 
-struct Ptr {
+struct Memblock {
   void *ptr;
   size_t size;
   bool free;
 
-  Ptr() : ptr(nullptr), size(0), free(false) {}
-  Ptr(void *ptr, size_t size) : ptr(ptr), size(size), free(false) {}
+  Memblock() : ptr(nullptr), size(0), free(true) {}
+  Memblock(void *ptr, size_t size) : ptr(ptr), size(size), free(true) {}
 
   void no_delete() { free = false; }
 };
@@ -110,7 +108,7 @@ struct Element {
 template <class ElemT, uint32_t queue_size>
 class SharedQueue {
  public:
-  std::atomic<uint32_t> counter;
+  std::atomic<uint32_t> counter;  // 8 bytes
   std::array<ElemT, queue_size> elements;
 };
 

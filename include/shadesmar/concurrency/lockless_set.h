@@ -24,16 +24,17 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_CONCURRENCY_LOCKLESS_SET_H_
 #define INCLUDE_SHADESMAR_CONCURRENCY_LOCKLESS_SET_H_
 
-#include <cstring>
-
 #include <array>
 #include <atomic>
+#include <cstring>
 
 #include "shadesmar/macros.h"
 
 #ifdef __APPLE__
 #define __pid_t __darwin_pid_t
 #endif
+
+const int MAX_SHARED_OWNERS = 8;
 
 namespace shm::concurrent {
 class LocklessSet {

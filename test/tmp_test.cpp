@@ -21,9 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
-#include <iostream>
-
 #include "shadesmar/memory/tmp.h"
+
+#include <iostream>
 
 int main() {
   for (int i = 0; i < 10; ++i) {

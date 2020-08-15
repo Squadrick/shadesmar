@@ -25,10 +25,9 @@ SOFTWARE.
 #define INCLUDE_SHADESMAR_RPC_CLIENT_H_
 
 #include <iostream>
+#include <msgpack.hpp>
 #include <string>
 #include <tuple>
-
-#include <msgpack.hpp>
 
 #include "shadesmar/rpc/channel.h"
 #include "shadesmar/template_magic.h"

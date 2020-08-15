@@ -25,7 +25,6 @@ SOFTWARE.
 #define INCLUDE_SHADESMAR_PUBSUB_PUBLISHER_H_
 
 #include <cstdint>
-
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -57,8 +56,8 @@ Publisher<queue_size>::Publisher(const std::string &topic_name,
 
 template <uint32_t queue_size>
 bool Publisher<queue_size>::publish(void *data, size_t size) {
-  memory::Ptr ptr(data, size);
-  return topic_->write(ptr);
+  memory::Memblock memblock(data, size);
+  return topic_->write(memblock);
 }
 
 }  // namespace shm::pubsub

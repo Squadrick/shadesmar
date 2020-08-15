@@ -24,9 +24,8 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_
 #define INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_
 
-#include <cstring>
-
 #include <atomic>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -67,14 +66,14 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
   explicit Topic(const std::string &topic, bool copy = false)
       : Topic(topic, nullptr, copy) {}
 
-  bool write(memory::Ptr ptr) {
+  bool write(memory::Memblock memblock) {
     /*
      * Writes always happen at the head of the circular queue, the
      * head is atomically incremented to prevent any race across
      * processes. The head of the queue is stored as a counter
      * on shared memory.
      */
-    if (ptr.size > this->allocator_->get_free_memory()) {
+    if (memblock.size > this->allocator_->get_free_memory()) {
       std::cerr << "Increase buffer_size" << std::endl;
       return false;
     }
@@ -92,12 +91,12 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
      */
 
     uint8_t *old_address = nullptr;
-    uint8_t *new_address = this->allocator_->alloc(ptr.size);
+    uint8_t *new_address = this->allocator_->alloc(memblock.size);
     if (new_address == nullptr) {
       return false;
     }
 
-    _copy(new_address, ptr.ptr, ptr.size);
+    _copy(new_address, memblock.ptr, memblock.size);
 
     {
       /*
@@ -110,7 +109,7 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
         old_address = this->allocator_->handle_to_ptr(elem->address_handle);
       }
       elem->address_handle = this->allocator_->ptr_to_handle(new_address);
-      elem->size = ptr.size;
+      elem->size = memblock.size;
       elem->empty = false;
     }
 
@@ -132,7 +131,7 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
    * logic to handle circular queue wrap around logic.
    */
 
-  bool read(memory::Ptr *ptr, uint32_t pos) {
+  bool read(memory::Memblock *memblock, uint32_t pos) {
     /*
      * Read into a raw array.
      */
@@ -152,9 +151,9 @@ class Topic : public memory::Memory<TopicElemT<LockT>, queue_size> {
     }
 
     auto *dst = this->allocator_->handle_to_ptr(elem->address_handle);
-    ptr->size = elem->size;
-    ptr->ptr = _alloc(ptr->size);
-    _copy(ptr->ptr, dst, ptr->size);
+    memblock->size = elem->size;
+    memblock->ptr = _alloc(memblock->size);
+    _copy(memblock->ptr, dst, memblock->size);
 
     return true;
   }

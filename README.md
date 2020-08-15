@@ -56,7 +56,7 @@ Subscriber:
 #include <shadesmar/memory/copier.h>
 #include <shadesmar/pubsub/subscriber.h>
 
-void callback(shm::memory::Ptr *msg) {
+void callback(shm::memory::Memblock *msg) {
   // `msg->ptr` to access `data`
   // `msg->size` to access `size`
 
