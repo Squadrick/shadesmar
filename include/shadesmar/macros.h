@@ -31,22 +31,22 @@ SOFTWARE.
 #define TIMESCALE_COUNT 1e6
 #define TIMESCALE_NAME "us"
 
-#define TIMEIT(cmd, name)                                                   \
-  do {                                                                      \
-    auto start = std::chrono::system_clock::now();                          \
-    cmd;                                                                    \
-    auto end = std::chrono::system_clock::now();                            \
-    auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count(); \
-    std::cout << "Time for " << name << ": " << diff << TIMESCALE_NAME      \
-              << std::endl;                                                 \
-  } while (0);
-
 namespace shm {
 uint64_t current_time() {
   auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();
   auto casted_time = std::chrono::duration_cast<TIMESCALE>(time_since_epoch);
   return casted_time.count();
 }
+
+#define TIMEIT(cmd, name)                                              \
+  do {                                                                 \
+    auto start = shm::current_time();                                  \
+    cmd;                                                               \
+    auto end = shm::current_time();                                    \
+    auto diff = end - start;                                           \
+    std::cout << "Time for " << name << ": " << diff << TIMESCALE_NAME \
+              << std::endl;                                            \
+  } while (0);
 }  // namespace shm
 
 #endif  // INCLUDE_SHADESMAR_MACROS_H_
