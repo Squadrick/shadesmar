@@ -57,8 +57,12 @@ class Topic {
   using Scope = concurrent::ScopeGuard<LockType, type>;
 
  public:
-  Topic(const std::string &topic, memory::Copier *copier)
-      : memory_(topic), copier_(copier) {}
+  Topic(const std::string &topic, memory::Copier *copier) : memory_(topic) {
+    if (copier == nullptr) {
+      copier = new memory::DefaultCopier();
+    }
+    copier_ = copier;
+  }
 
   bool write(memory::Memblock memblock) {
     /*
@@ -90,7 +94,7 @@ class Topic {
       return false;
     }
 
-    _copy(new_address, memblock.ptr, memblock.size);
+    copier_->user_to_shm(new_address, memblock.ptr, memblock.size);
 
     {
       /*
@@ -147,8 +151,9 @@ class Topic {
 
     auto *dst = memory_.allocator_->handle_to_ptr(elem->address_handle);
     memblock->size = elem->size;
-    memblock->ptr = _alloc(memblock->size);
-    _copy(memblock->ptr, dst, memblock->size);
+    memblock->ptr = copier_->alloc(memblock->size);
+
+    copier_->shm_to_user(memblock->ptr, dst, memblock->size);
 
     return true;
   }
@@ -166,24 +171,6 @@ class Topic {
   inline memory::Copier *copier() const { return copier_; }
 
  private:
-  void _copy(void *dst, void *src, size_t size) {
-    if (copier_ == nullptr) {
-      std::memcpy(dst, src, size);
-    } else {
-      copier_->user_to_shm(dst, src, size);
-    }
-  }
-
-  void *_alloc(size_t size) {
-    void *ptr = nullptr;
-    if (copier_ != nullptr) {
-      ptr = copier_->alloc(size);
-    } else {
-      ptr = malloc(size);
-    }
-    return ptr;
-  }
-
   memory::Memory<TopicElem> memory_;
   memory::Copier *copier_{};
 };

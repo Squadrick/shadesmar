@@ -106,12 +106,7 @@ void Subscriber::spin_once() {
   callback_(&memblock);
 
   if (memblock.free) {
-    auto *copier = topic_->copier();
-    if (copier != nullptr) {
-      copier->dealloc(memblock.ptr);
-    } else {
-      free(memblock.ptr);
-    }
+    topic_->copier()->dealloc(memblock.ptr);
   }
 
   counter_++;
