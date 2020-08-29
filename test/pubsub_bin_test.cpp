@@ -23,7 +23,6 @@ SOFTWARE.
 
 #include <chrono>
 #include <iostream>
-#include <numeric>
 
 #ifdef SINGLE_HEADER
 #include "shadesmar.h"
@@ -32,93 +31,46 @@ SOFTWARE.
 #include "shadesmar/memory/dragons.h"
 #include "shadesmar/pubsub/publisher.h"
 #include "shadesmar/pubsub/subscriber.h"
+#include "shadesmar/stats.h"
 #endif
 
 const char topic[] = "raw_benchmark_topic";
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
 
-int count = 0, total_count = 0;
-uint64_t lag = 0;
+shm::stats::Welford per_second_lag;
 
 struct Message {
   uint64_t timestamp;
-  uint32_t *data;
+  uint8_t *data;
 };
-
-template <typename T>
-double get_mean(const std::vector<T> &v) {
-  double sum = std::accumulate(v.begin(), v.end(), 0.0);
-  double mean = sum / v.size();
-  return mean;
-}
-
-template <typename T>
-double get_stddev(const std::vector<T> &v) {
-  double mean = get_mean(v);
-  std::vector<double> diff(v.size());
-  std::transform(v.begin(), v.end(), diff.begin(),
-                 [mean](double x) { return x - mean; });
-  double sq_sum =
-      std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-
-  double stddev = std::sqrt(sq_sum / v.size());
-  return stddev;
-}
 
 void callback(shm::memory::Memblock *memblock) {
   auto *msg = reinterpret_cast<Message *>(memblock->ptr);
-  ++count;
-  ++total_count;
-  lag += std::chrono::duration_cast<TIMESCALE>(
-             std::chrono::system_clock::now().time_since_epoch())
-             .count() -
-         msg->timestamp;
+  auto lag = shm::current_time() - msg->timestamp;
+  per_second_lag.add(lag);
 }
 
 void subscribe_loop() {
-  std::vector<int> counts;
-  std::vector<double> lags;
   std::this_thread::sleep_for(std::chrono::seconds(1));
   shm::memory::DefaultCopier cpy;
   shm::pubsub::Subscriber sub(topic, callback, &cpy);
-  auto start = std::chrono::system_clock::now();
   int seconds = 0;
+
+  auto start = shm::current_time();
   while (true) {
     sub.spin_once();
-    auto end = std::chrono::system_clock::now();
-    auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
+    auto end = shm::current_time();
+    auto diff = end - start;
 
-    if (diff.count() > TIMESCALE_COUNT) {
-      double lag_per_msg = static_cast<double>(lag) / count;
-      if (count != 0) {
-        std::cout << "Number of msgs sent: " << count << "/s" << std::endl;
-        std::cout << "Average Lag: " << lag_per_msg << TIMESCALE_NAME
-                  << std::endl;
-
-        counts.push_back(count);
-        lags.push_back(lag_per_msg);
-      } else {
-        std::cout << "Number of message sent: <1/s" << std::endl;
-      }
-
+    if (diff > TIMESCALE_COUNT) {
+      std::cout << "Lag (" << TIMESCALE_NAME << "): " << per_second_lag
+                << std::endl;
       if (++seconds == SECONDS) break;
-      count = 0;
-      lag = 0;
-      start = std::chrono::system_clock::now();
+      start = shm::current_time();
+      per_second_lag.clear();
     }
   }
-
-  std::cout << "Total msgs sent in 10 seconds: " << total_count << std::endl;
-
-  auto mean_count = get_mean(counts);
-  auto stdd_count = get_stddev(counts);
-  std::cout << "Msg: " << mean_count << " ± " << stdd_count << std::endl;
-
-  auto mean_lag = get_mean(lags);
-  auto stdd_lag = get_stddev(lags);
-  std::cout << "Lag: " << mean_lag << " ± " << stdd_lag << TIMESCALE_NAME
-            << std::endl;
 }
 
 void publish_loop() {
@@ -131,15 +83,13 @@ void publish_loop() {
 
   std::cout << "Number of bytes = " << VECTOR_SIZE << std::endl;
 
-  auto start = std::chrono::system_clock::now();
+  auto start = shm::current_time();
   while (true) {
-    msg->timestamp = std::chrono::duration_cast<TIMESCALE>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
+    msg->timestamp = shm::current_time();
     pub.publish(msg, VECTOR_SIZE);
-    auto end = std::chrono::system_clock::now();
-    auto diff = std::chrono::duration_cast<TIMESCALE>(end - start);
-    if (diff.count() > (SECONDS + 2) * TIMESCALE_COUNT) break;
+    auto end = shm::current_time();
+    auto diff = end - start;
+    if (diff > (SECONDS + 1) * TIMESCALE_COUNT) break;
   }
   free(msg);
 }

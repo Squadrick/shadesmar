@@ -31,12 +31,6 @@ SOFTWARE.
 #define TIMESCALE_COUNT 1e6
 #define TIMESCALE_NAME "us"
 
-#ifdef DEBUG_BUILD
-#define DEBUG_IMPL(str, eol) \
-  do {                       \
-    std::cout << str << eol; \
-  } while (0);
-
 #define TIMEIT(cmd, name)                                                   \
   do {                                                                      \
     auto start = std::chrono::system_clock::now();                          \
@@ -47,15 +41,12 @@ SOFTWARE.
               << std::endl;                                                 \
   } while (0);
 
-#else
-
-#define DEBUG_IMPL(str, eol) \
-  do {                       \
-  } while (0);
-
-#define TIMEIT(cmd, name) cmd;
-#endif
-
-#define DEBUG(str) DEBUG_IMPL(str, "\n");
+namespace shm {
+uint64_t current_time() {
+  auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();
+  auto casted_time = std::chrono::duration_cast<TIMESCALE>(time_since_epoch);
+  return casted_time.count();
+}
+}  // namespace shm
 
 #endif  // INCLUDE_SHADESMAR_MACROS_H_

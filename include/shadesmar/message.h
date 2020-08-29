@@ -46,11 +46,7 @@ class BaseMsg {
   void init_time();
 };
 
-void BaseMsg::init_time() {
-  timestamp = std::chrono::duration_cast<TIMESCALE>(
-                  std::chrono::system_clock::now().time_since_epoch())
-                  .count();
-}
+void BaseMsg::init_time() { timestamp = current_time(); }
 }  // namespace shm
 
 #endif  // INCLUDE_SHADESMAR_MESSAGE_H_
