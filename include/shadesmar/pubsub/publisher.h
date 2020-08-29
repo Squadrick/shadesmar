@@ -36,7 +36,6 @@ SOFTWARE.
 
 namespace shm::pubsub {
 
-template <uint32_t queue_size>
 class Publisher {
  public:
   explicit Publisher(const std::string &topic_name, memory::Copier *copier);
@@ -44,18 +43,15 @@ class Publisher {
 
  private:
   std::string topic_name_;
-  std::unique_ptr<Topic<queue_size>> topic_;
+  std::unique_ptr<Topic> topic_;
 };
 
-template <uint32_t queue_size>
-Publisher<queue_size>::Publisher(const std::string &topic_name,
-                                 memory::Copier *copier)
+Publisher::Publisher(const std::string &topic_name, memory::Copier *copier)
     : topic_name_(topic_name) {
-  topic_ = std::make_unique<Topic<queue_size>>(topic_name, copier);
+  topic_ = std::make_unique<Topic>(topic_name, copier);
 }
 
-template <uint32_t queue_size>
-bool Publisher<queue_size>::publish(void *data, size_t size) {
+bool Publisher::publish(void *data, size_t size) {
   memory::Memblock memblock(data, size);
   return topic_->write(memblock);
 }

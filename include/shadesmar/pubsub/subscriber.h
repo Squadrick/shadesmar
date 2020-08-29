@@ -39,7 +39,6 @@ SOFTWARE.
 
 namespace shm::pubsub {
 
-template <uint32_t queue_size>
 class Subscriber {
  public:
   Subscriber(const std::string &topic_name,
@@ -55,19 +54,17 @@ class Subscriber {
  private:
   std::function<void(memory::Memblock *)> callback_;
   std::string topic_name_;
-  std::unique_ptr<Topic<queue_size>> topic_;
+  std::unique_ptr<Topic> topic_;
 };
 
-template <uint32_t queue_size>
-Subscriber<queue_size>::Subscriber(
-    const std::string &topic_name,
-    std::function<void(memory::Memblock *)> callback, memory::Copier *copier)
+Subscriber::Subscriber(const std::string &topic_name,
+                       std::function<void(memory::Memblock *)> callback,
+                       memory::Copier *copier)
     : topic_name_(topic_name), callback_(std::move(callback)) {
-  topic_ = std::make_unique<Topic<queue_size>>(topic_name_, copier);
+  topic_ = std::make_unique<Topic>(topic_name_, copier);
 }
 
-template <uint32_t queue_size>
-memory::Memblock Subscriber<queue_size>::get_message() {
+memory::Memblock Subscriber::get_message() {
   /*
    * topic's `counter` must be strictly greater than counter.
    * If they're equal, there have been no new writes.
@@ -78,7 +75,7 @@ memory::Memblock Subscriber<queue_size>::get_message() {
     return memory::Memblock();
   }
 
-  if (topic_->counter() - counter_ > queue_size) {
+  if (topic_->counter() - counter_ > topic_->queue_size()) {
     /*
      * If we have fallen behind by the size of the queue
      * in the case of overlap, we go to last existing
@@ -88,7 +85,7 @@ memory::Memblock Subscriber<queue_size>::get_message() {
      * `write` we do a `fetch_add`, so the queue pointer is already
      * ahead of where it last wrote.
      */
-    counter_ = topic_->counter() - queue_size;
+    counter_ = topic_->counter() - topic_->queue_size();
   }
 
   memory::Memblock memblock;
@@ -99,8 +96,7 @@ memory::Memblock Subscriber<queue_size>::get_message() {
   return memblock;
 }
 
-template <uint32_t queue_size>
-void Subscriber<queue_size>::spin_once() {
+void Subscriber::spin_once() {
   memory::Memblock memblock = get_message();
 
   if (memblock.size == 0) {
@@ -121,8 +117,7 @@ void Subscriber<queue_size>::spin_once() {
   counter_++;
 }
 
-template <uint32_t queue_size>
-void Subscriber<queue_size>::spin() {}
+void Subscriber::spin() {}
 
 }  // namespace shm::pubsub
 #endif  // INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_

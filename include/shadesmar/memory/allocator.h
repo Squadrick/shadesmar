@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include <cassert>
 
-#include "shadesmar/concurrency/lock.h"
+#include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/concurrency/scope.h"
 
 namespace shm::memory {
@@ -35,7 +35,7 @@ class Allocator {
  public:
   using handle = uint64_t;
   template <concurrent::ExlOrShr type>
-  using Scope = concurrent::ScopeGuard<concurrent::PthreadWriteLock, type>;
+  using Scope = concurrent::ScopeGuard<concurrent::RobustLock, type>;
 
   Allocator(size_t offset, size_t size);
   uint8_t *alloc(uint32_t bytes);
@@ -64,7 +64,7 @@ class Allocator {
                                         offset_);
   }
 
-  concurrent::PthreadWriteLock lock_;
+  concurrent::RobustLock lock_;
 
   uint32_t alloc_index_;
   volatile uint32_t free_index_;

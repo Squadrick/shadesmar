@@ -67,7 +67,9 @@ void PthreadReadWriteLock::lock_sharable() { pthread_rwlock_rdlock(&rwlock); }
 bool PthreadReadWriteLock::try_lock_sharable() {
   return (!pthread_rwlock_tryrdlock(&rwlock));
 }
-void PthreadReadWriteLock::unlock_sharable() { pthread_rwlock_unlock(&rwlock); }
+void PthreadReadWriteLock::unlock_sharable() {
+  pthread_rwlock_unlock(&rwlock);
+}
 
 }  // namespace shm::concurrent
 #endif  // INCLUDE_SHADESMAR_CONCURRENCY_RW_LOCK_H_

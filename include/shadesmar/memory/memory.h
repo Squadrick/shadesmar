@@ -105,27 +105,26 @@ struct Element {
   Element() : size(0), address_handle(0), empty(true) {}
 };
 
-template <class ElemT, uint32_t queue_size>
+static constexpr size_t QUEUE_SIZE = 128;
+
+template <class ElemT>
 class SharedQueue {
  public:
-  std::atomic<uint32_t> counter;  // 8 bytes
-  std::array<ElemT, queue_size> elements;
+  std::atomic<uint32_t> counter;
+  std::array<ElemT, QUEUE_SIZE> elements;
 };
 
 static size_t buffer_size = (1U << 28);  // 256mb
 static size_t GAP = 1024;                // safety gaps
 
-template <class ElemT, uint32_t queue_size = 1>
+template <class ElemT>
 class Memory {
   static_assert(std::is_base_of<Element, ElemT>::value,
                 "ElemT must be a subclass of Element");
 
-  static_assert((queue_size & (queue_size - 1)) == 0,
-                "queue_size must be power of two");
-
  public:
   explicit Memory(const std::string &name) : name_(name) {
-    auto shared_queue_size = sizeof(SharedQueue<ElemT, queue_size>);
+    auto shared_queue_size = sizeof(SharedQueue<ElemT>);
     auto allocator_size = sizeof(Allocator);
 
     auto total_size =
@@ -144,8 +143,7 @@ class Memory {
     auto *buffer_address = allocator_address + allocator_size + GAP;
 
     if (new_segment) {
-      shared_queue_ =
-          new (shared_queue_address) SharedQueue<ElemT, queue_size>();
+      shared_queue_ = new (shared_queue_address) SharedQueue<ElemT>();
       allocator_ = new (allocator_address)
           Allocator(buffer_address - allocator_address, buffer_size);
       init_shared_queue();
@@ -157,8 +155,8 @@ class Memory {
        * The exact time to sleep is just a guess: depends on file IO.
        * Currently: 10ms.
        */
-      shared_queue_ = reinterpret_cast<SharedQueue<ElemT, queue_size> *>(
-          shared_queue_address);
+      shared_queue_ =
+          reinterpret_cast<SharedQueue<ElemT> *>(shared_queue_address);
       allocator_ = reinterpret_cast<Allocator *>(allocator_address);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -175,9 +173,11 @@ class Memory {
     tmp::write(name_);
   }
 
+  size_t queue_size() const { return QUEUE_SIZE; }
+
   std::string name_;
   Allocator *allocator_;
-  SharedQueue<ElemT, queue_size> *shared_queue_;
+  SharedQueue<ElemT> *shared_queue_;
 };
 
 }  // namespace shm::memory

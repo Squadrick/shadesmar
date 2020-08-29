@@ -36,8 +36,6 @@ SOFTWARE.
 #include "shadesmar/concurrency/scope.h"
 #include "shadesmar/memory/memory.h"
 
-#define RPC_QUEUE_SIZE 32
-
 namespace shm::rpc {
 
 struct ChannelElem : public memory::Element {
@@ -58,13 +56,13 @@ struct ChannelElem : public memory::Element {
   }
 };
 
-class Channel : public memory::Memory<ChannelElem, RPC_QUEUE_SIZE> {
+class Channel {
   using ScopeGuardT = concurrent::ScopeGuard<concurrent::PthreadWriteLock,
                                              concurrent::EXCLUSIVE>;
 
  public:
   Channel(const std::string &name, bool caller)
-      : Memory<ChannelElem, RPC_QUEUE_SIZE>(name), caller_(caller), idx_(0) {}
+      : memory_(name), caller_(caller), idx_(0) {}
 
   bool write(void *data, size_t size);
   bool read(msgpack::object_handle *oh);
@@ -72,21 +70,26 @@ class Channel : public memory::Memory<ChannelElem, RPC_QUEUE_SIZE> {
   bool _write_caller(void *data, size_t size);
   bool _write_server(void *data, size_t size);
   void _write(ChannelElem *elem, void *data, size_t size);
-  inline __attribute__((always_inline)) uint32_t fetch_add_counter() {
-    return this->shared_queue_->counter.fetch_add(1);
+
+  inline __attribute__((always_inline)) uint32_t fetch_add_counter() const {
+    return memory_.shared_queue_->counter.fetch_add(1);
   }
-  inline __attribute__((always_inline)) uint32_t counter() {
-    return this->shared_queue_->counter.load();
+
+  inline __attribute__((always_inline)) uint32_t counter() const {
+    return memory_.shared_queue_->counter.load();
   }
+
+  size_t queue_size() const { return memory_.queue_size(); }
 
   int32_t idx_;
 
  private:
   bool caller_;
+  memory::Memory<ChannelElem> memory_;
 };
 
 bool Channel::write(void *data, size_t size) {
-  if (size > this->allocator_->get_free_memory()) {
+  if (size > memory_.allocator_->get_free_memory()) {
     std::cerr << "Increase max_buffer_size" << std::endl;
     return false;
   }
@@ -100,8 +103,8 @@ bool Channel::write(void *data, size_t size) {
 
 bool Channel::_write_caller(void *data, size_t size) {
   idx_ = this->fetch_add_counter();
-  uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
-  ChannelElem &elem = this->shared_queue_->elements[pos];
+  uint32_t pos = idx_ & (memory_.queue_size() - 1);
+  ChannelElem &elem = memory_.shared_queue_->elements[pos];
 
   if (elem.empty) {
     return false;
@@ -115,11 +118,12 @@ bool Channel::_write_caller(void *data, size_t size) {
 }
 
 bool Channel::_write_server(void *data, size_t size) {
-  uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
-  ChannelElem &elem = this->shared_queue_->elements[pos];
+  uint32_t pos = idx_ & (memory_.queue_size() - 1);
+  ChannelElem &elem = memory_.shared_queue_->elements[pos];
 
   ScopeGuardT _(&elem.mutex);
-  this->allocator_->free(this->allocator_->handle_to_ptr(elem.address_handle));
+  memory_.allocator_->free(
+      memory_.allocator_->handle_to_ptr(elem.address_handle));
 
   _write(&elem, data, size);
   elem.ready = true;
@@ -128,15 +132,15 @@ bool Channel::_write_server(void *data, size_t size) {
 }
 
 void Channel::_write(ChannelElem *elem, void *data, size_t size) {
-  uint8_t *new_address = this->allocator_->alloc(size);
+  uint8_t *new_address = memory_.allocator_->alloc(size);
   std::memcpy(new_address, data, size);
-  elem->address_handle = this->allocator_->ptr_to_handle(new_address);
+  elem->address_handle = memory_.allocator_->ptr_to_handle(new_address);
   elem->size = size;
 }
 
 bool Channel::read(msgpack::object_handle *oh) {
-  uint32_t pos = idx_ & (RPC_QUEUE_SIZE - 1);
-  ChannelElem &elem = this->shared_queue_->elements[pos];
+  uint32_t pos = idx_ & (memory_.queue_size() - 1);
+  ChannelElem &elem = memory_.shared_queue_->elements[pos];
 
   if (caller_) {
     bool exp = true;
@@ -148,7 +152,7 @@ bool Channel::read(msgpack::object_handle *oh) {
   ScopeGuardT _(&elem.mutex);
 
   const char *dst = reinterpret_cast<const char *>(
-      this->allocator_->handle_to_ptr(elem.address_handle));
+      memory_.allocator_->handle_to_ptr(elem.address_handle));
 
   *oh = msgpack::unpack(dst, elem.size);
 

@@ -43,7 +43,8 @@ SOFTWARE.
     cmd;                                                                    \
     auto end = std::chrono::system_clock::now();                            \
     auto diff = std::chrono::duration_cast<TIMESCALE>(end - start).count(); \
-    DEBUG("Time for " << name << ": " << diff << TIMESCALE_NAME);           \
+    std::cout << "Time for " << name << ": " << diff << TIMESCALE_NAME      \
+              << std::endl;                                                 \
   } while (0);
 
 #else

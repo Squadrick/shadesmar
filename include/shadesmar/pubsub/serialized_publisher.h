@@ -32,7 +32,7 @@ SOFTWARE.
 
 namespace shm::pubsub {
 
-template <typename msgT, uint32_t queue_size>
+template <typename msgT>
 class SerializedPublisher {
  public:
   explicit SerializedPublisher(const std::string &topic_name,
@@ -42,29 +42,29 @@ class SerializedPublisher {
   bool publish(msgT *msg);
 
  private:
-  Publisher<queue_size> bin_pub_;
+  Publisher bin_pub_;
 };
 
-template <typename msgT, uint32_t queue_size>
-SerializedPublisher<msgT, queue_size>::SerializedPublisher(
-    const std::string &topic_name, memory::Copier *copier)
+template <typename msgT>
+SerializedPublisher<msgT>::SerializedPublisher(const std::string &topic_name,
+                                               memory::Copier *copier)
     : bin_pub_(topic_name, copier) {
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
 }
 
-template <typename msgT, uint32_t queue_size>
-bool SerializedPublisher<msgT, queue_size>::publish(std::shared_ptr<msgT> msg) {
+template <typename msgT>
+bool SerializedPublisher<msgT>::publish(std::shared_ptr<msgT> msg) {
   return publish(msg.get());
 }
 
-template <typename msgT, uint32_t queue_size>
-bool SerializedPublisher<msgT, queue_size>::publish(msgT &msg) {  // NOLINT
+template <typename msgT>
+bool SerializedPublisher<msgT>::publish(msgT &msg) {  // NOLINT
   return publish(&msg);
 }
 
-template <typename msgT, uint32_t queue_size>
-bool SerializedPublisher<msgT, queue_size>::publish(msgT *msg) {
+template <typename msgT>
+bool SerializedPublisher<msgT>::publish(msgT *msg) {
   msgpack::sbuffer buf;
   try {
     msgpack::pack(buf, *msg);
