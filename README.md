@@ -41,14 +41,14 @@ Publisher:
 
 int main() {
     shm::memory::DefaultCopier cpy;
-    shm::pubsub::Publisher<16 /* buffer size */ > pub("topic_name", &cpy);
+    shm::pubsub::Publisher pub("topic_name", &cpy);
     const uint32_t data_size = 1024;
     void *data = malloc(data_size);
     
     for (int i = 0; i < 1000; ++i) {
         p.publish(msg, data_size);
     }
-}  
+}
 ```
 
 Subscriber:
@@ -69,8 +69,8 @@ void callback(shm::memory::Memblock *msg) {
 
 int main() {
     shm::memory::DefaultCopier cpy;
-    shm::pubsub::Subscriber<16 /* buffer size */ > sub("topic_name", &cpy, callback);
-    
+    shm::pubsub::Subscriber sub("topic_name", &cpy, callback);
+
     // Using `spinOnce` with a manual loop
     while(true) {
         sub.spin_once();
@@ -82,7 +82,6 @@ int main() {
 ```
 
 ---
-
 
 #### Publish-Subscribe (serialized messages)
 
@@ -126,17 +125,17 @@ Publisher:
 #include <custom_message.h>
 
 int main() {
-    shm::pubsub::SerializedPublisher<CustomMessage, 16 /* buffer size */ > pub("topic_name");
+    shm::pubsub::SerializedPublisher<CustomMessage> pub("topic_name");
 
     CustomMessage msg;
     msg.val = 0;
-    
+
     for (int i = 0; i < 1000; ++i) {
         msg.init_time(shm::SYSTEM); // add system time as the timestamp
         p.publish(msg);
         msg.val++;
     }
-}   
+}
 ```
 
 Subscriber:
@@ -150,8 +149,8 @@ void callback(const std::shared_ptr<CustomMessage>& msg) {
 }
 
 int main() {
-    shm::pubsub::SerializedSubscriber<CustomMessage, 16> sub("topic_name", callback);
-    
+    shm::pubsub::SerializedSubscriber<CustomMessage> sub("topic_name", callback);
+
     // Using `spinOnce` with a manual loop
     while(true) {
         sub.spin_once();
@@ -198,10 +197,3 @@ int main() {
 }
 ```
 
----
-
-**Note**: 
-
-* `queue_size` must be powers of 2. This is due to the underlying shared memory allocator which uses a red-black tree. See `include/shadesmar/memory/allocator.h` for more information.
-
-* You may get this error while publishing: `Increase max_buffer_size`. This occurs when the default memory allocated to the topic buffer cannot store all the messages. The default buffer size for every topic is 256MB. You can access and modify `shm::memory::max_buffer_size`. The value must be set before creating a publisher.
