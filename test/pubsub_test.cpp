@@ -35,7 +35,6 @@ SOFTWARE.
 #endif
 
 const char topic[] = "benchmark_topic";
-const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
 
@@ -93,8 +92,7 @@ void subscribe_loop() {
   std::vector<int> counts;
   std::vector<double> lags;
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  shm::pubsub::SerializedSubscriber<BenchmarkMsg, QUEUE_SIZE> sub(topic,
-                                                                  callback);
+  shm::pubsub::SerializedSubscriber<BenchmarkMsg> sub(topic, callback);
   auto start = std::chrono::system_clock::now();
   int seconds = 0;
   while (true) {
@@ -134,8 +132,7 @@ void subscribe_loop() {
 }
 
 void publish_loop() {
-  shm::pubsub::SerializedPublisher<BenchmarkMsg, QUEUE_SIZE> pub(topic,
-                                                                 nullptr);
+  shm::pubsub::SerializedPublisher<BenchmarkMsg> pub(topic, nullptr);
 
   msgpack::sbuffer buf;
   msgpack::pack(buf, BenchmarkMsg(VECTOR_SIZE));

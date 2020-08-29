@@ -36,8 +36,8 @@ SOFTWARE.
 
 shm::memory::Allocator *new_alloc(size_t size) {
   auto *memory = malloc(size + sizeof(shm::memory::Allocator));
-  auto *alloc =
-      new (memory) shm::memory::Allocator(sizeof(shm::memory::Allocator), size);
+  auto *alloc = new (memory)
+      shm::memory::Allocator(sizeof(shm::memory::Allocator), size);
   return alloc;
 }
 
@@ -151,8 +151,8 @@ void cyclic() {
 }
 
 void multithread(int nthreads, std::vector<int> &&allocs) {
-  auto *alloc = new_alloc(2 * std::accumulate(allocs.begin(), allocs.end(), 0) *
-                          nthreads);
+  auto *alloc = new_alloc(
+      2 * std::accumulate(allocs.begin(), allocs.end(), 0) * nthreads);
 
   std::vector<std::thread> threads;
   threads.reserve(nthreads);

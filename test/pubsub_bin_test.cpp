@@ -35,7 +35,6 @@ SOFTWARE.
 #endif
 
 const char topic[] = "raw_benchmark_topic";
-const int QUEUE_SIZE = 16;
 const int SECONDS = 10;
 const int VECTOR_SIZE = 10 * 1024 * 1024;
 
@@ -82,7 +81,7 @@ void subscribe_loop() {
   std::vector<double> lags;
   std::this_thread::sleep_for(std::chrono::seconds(1));
   shm::memory::DefaultCopier cpy;
-  shm::pubsub::Subscriber<QUEUE_SIZE> sub(topic, callback, &cpy);
+  shm::pubsub::Subscriber sub(topic, callback, &cpy);
   auto start = std::chrono::system_clock::now();
   int seconds = 0;
   while (true) {
@@ -124,7 +123,7 @@ void subscribe_loop() {
 
 void publish_loop() {
   shm::memory::DefaultCopier cpy;
-  shm::pubsub::Publisher<QUEUE_SIZE> pub(topic, &cpy);
+  shm::pubsub::Publisher pub(topic, &cpy);
 
   auto *rawptr = malloc(VECTOR_SIZE);
   std::memset(rawptr, 255, VECTOR_SIZE);

@@ -33,7 +33,7 @@ SOFTWARE.
 
 namespace shm::pubsub {
 
-template <typename msgT, uint32_t queue_size>
+template <typename msgT>
 class SerializedSubscriber {
   static_assert(std::is_base_of<BaseMsg, msgT>::value,
                 "msgT must derive from BaseMsg");
@@ -49,11 +49,11 @@ class SerializedSubscriber {
 
  private:
   std::function<void(const std::shared_ptr<msgT> &)> callback_;
-  Subscriber<queue_size> bin_sub_;
+  Subscriber bin_sub_;
 };
 
-template <typename msgT, uint32_t queue_size>
-SerializedSubscriber<msgT, queue_size>::SerializedSubscriber(
+template <typename msgT>
+SerializedSubscriber<msgT>::SerializedSubscriber(
     const std::string &topic_name,
     std::function<void(const std::shared_ptr<msgT> &)> callback,
     memory::Copier *copier)
@@ -61,8 +61,8 @@ SerializedSubscriber<msgT, queue_size>::SerializedSubscriber(
           topic_name, [](memory::Memblock *) {}, copier),
       callback_(std::move(callback)) {}
 
-template <typename msgT, uint32_t queue_size>
-void SerializedSubscriber<msgT, queue_size>::spin_once() {
+template <typename msgT>
+void SerializedSubscriber<msgT>::spin_once() {
   memory::Memblock memblock = bin_sub_.get_message();
 
   if (memblock.size == 0) {
@@ -77,8 +77,8 @@ void SerializedSubscriber<msgT, queue_size>::spin_once() {
   callback_(msg);
 }
 
-template <typename msgT, uint32_t queue_size>
-void SerializedSubscriber<msgT, queue_size>::spin() {}
+template <typename msgT>
+void SerializedSubscriber<msgT>::spin() {}
 
 }  // namespace shm::pubsub
 #endif  // INCLUDE_SHADESMAR_PUBSUB_SERIALIZED_SUBSCRIBER_H_

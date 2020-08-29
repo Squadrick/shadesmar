@@ -103,7 +103,7 @@ void bench_lock() {
    * All take ~1500ns
    * Peaks at ~100us when prune_sharable is called
    */
-  shm::concurrent::RobustLock lock;
+  shm::concurrent::PthreadReadWriteLock lock;
 
   TIMEIT({ lock.lock(); }, "lock");
   TIMEIT({ lock.unlock(); }, "unlock");
