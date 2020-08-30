@@ -24,7 +24,6 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
 #define INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
 
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -56,17 +55,8 @@ class RobustLock {
   void prune_readers();
   PthreadReadWriteLock mutex_;
   std::atomic<__pid_t> exclusive_owner{0};
-  LocklessSet shared_owners;
+  LocklessSet<8> shared_owners;
 };
-
-inline bool proc_dead(__pid_t proc) {
-  if (proc == 0) {
-    return false;
-  }
-  std::string pid_path = "/proc/" + std::to_string(proc);
-  struct stat sts {};
-  return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
-}
 
 RobustLock::RobustLock() = default;
 

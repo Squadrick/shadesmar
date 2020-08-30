@@ -37,6 +37,7 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
+#include "shadesmar/concurrency/lockless_set.h"
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/allocator.h"
@@ -46,8 +47,19 @@ namespace shm::memory {
 
 #define SHMALIGN(s, a) (((s - 1) | (a - 1)) + 1)
 
-uint8_t *create_memory_segment(const std::string &name, size_t size,
-                               bool *new_segment, size_t alignment = 32) {
+static constexpr size_t QUEUE_SIZE = 128;
+static size_t buffer_size = (1U << 28);  // 256mb
+static size_t GAP = 1024;                // safety gap
+
+inline uint8_t *align_address(void *ptr, size_t alignment) {
+  auto int_ptr = reinterpret_cast<uintptr_t>(ptr);
+  auto aligned_int_ptr = SHMALIGN(int_ptr, alignment);
+  return reinterpret_cast<uint8_t *>(aligned_int_ptr);
+}
+
+inline uint8_t *create_memory_segment(const std::string &name, size_t size,
+                                      bool *new_segment,
+                                      size_t alignment = 32) {
   /*
    * Create a new shared memory segment. The segment is created
    * under a name. We check if an existing segment is found under
@@ -81,9 +93,7 @@ uint8_t *create_memory_segment(const std::string &name, size_t size,
 
   auto *ptr = mmap(nullptr, size + alignment, PROT_READ | PROT_WRITE,
                    MAP_SHARED, fd, 0);
-  auto intptr = reinterpret_cast<uintptr_t>(ptr);
-  uintptr_t aligned_ptr = SHMALIGN(intptr, alignment);
-  return reinterpret_cast<uint8_t *>(aligned_ptr);
+  return align_address(ptr, alignment);
 }
 
 struct Memblock {
@@ -97,6 +107,36 @@ struct Memblock {
   void no_delete() { free = false; }
 };
 
+class PIDSet {
+ public:
+  bool any_alive() {
+    bool alive = false;
+    for (auto &i : pid_set.__array) {
+      uint32_t pid = i.load();
+
+      if (pid == 0) continue;
+
+      if (proc_dead(pid)) {
+        while (!pid_set.remove(pid)) {
+        }
+      } else {
+        alive = true;
+      }
+    }
+    return alive;
+  }
+
+  bool insert(uint32_t pid) { return pid_set.insert(pid); }
+
+  void lock() { lck.lock(); }
+
+  void unlock() { lck.unlock(); }
+
+ private:
+  concurrent::LocklessSet<32> pid_set;
+  concurrent::RobustLock lck;
+};
+
 struct Element {
   size_t size;
   bool empty;
@@ -105,17 +145,12 @@ struct Element {
   Element() : size(0), address_handle(0), empty(true) {}
 };
 
-static constexpr size_t QUEUE_SIZE = 128;
-
 template <class ElemT>
 class SharedQueue {
  public:
   std::atomic<uint32_t> counter;
   std::array<ElemT, QUEUE_SIZE> elements;
 };
-
-static size_t buffer_size = (1U << 28);  // 256mb
-static size_t GAP = 1024;                // safety gaps
 
 template <class ElemT>
 class Memory {
@@ -124,13 +159,13 @@ class Memory {
 
  public:
   explicit Memory(const std::string &name) : name_(name) {
+    auto pid_set_size = sizeof(PIDSet);
     auto shared_queue_size = sizeof(SharedQueue<ElemT>);
     auto allocator_size = sizeof(Allocator);
 
-    auto total_size =
-        shared_queue_size + allocator_size + buffer_size + 3 * GAP;
+    auto total_size = pid_set_size + shared_queue_size + allocator_size +
+                      buffer_size + 4 * GAP;
     bool new_segment = false;
-
     auto *base_address = create_memory_segment(name, total_size, &new_segment);
 
     if (base_address == nullptr) {
@@ -138,11 +173,13 @@ class Memory {
       exit(1);
     }
 
-    auto *shared_queue_address = base_address;
+    auto *pid_set_address = base_address;
+    auto *shared_queue_address = pid_set_address + pid_set_size + GAP;
     auto *allocator_address = shared_queue_address + shared_queue_size + GAP;
     auto *buffer_address = allocator_address + allocator_size + GAP;
 
     if (new_segment) {
+      pid_set_ = new (pid_set_address) PIDSet();
       shared_queue_ = new (shared_queue_address) SharedQueue<ElemT>();
       allocator_ = new (allocator_address)
           Allocator(buffer_address - allocator_address, buffer_size);
@@ -155,11 +192,26 @@ class Memory {
        * The exact time to sleep is just a guess: depends on file IO.
        * Currently: 10ms.
        */
+      pid_set_ = reinterpret_cast<PIDSet *>(pid_set_address);
       shared_queue_ =
           reinterpret_cast<SharedQueue<ElemT> *>(shared_queue_address);
       allocator_ = reinterpret_cast<Allocator *>(allocator_address);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+      /*
+       * Check if any of the participating PIDs are up and running.
+       */
+      pid_set_->lock();
+      if (!pid_set_->any_alive()) {
+        allocator_->reset();
+        for (auto &elem : shared_queue_->elements) {
+          elem.empty = true;
+        }
+        shared_queue_->counter = 0;
+      }
+      pid_set_->unlock();
     }
+    pid_set_->insert(getpid());
   }
 
   ~Memory() = default;
@@ -176,6 +228,7 @@ class Memory {
   size_t queue_size() const { return QUEUE_SIZE; }
 
   std::string name_;
+  PIDSet *pid_set_;
   Allocator *allocator_;
   SharedQueue<ElemT> *shared_queue_;
 };

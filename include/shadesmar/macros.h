@@ -24,8 +24,11 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_MACROS_H_
 #define INCLUDE_SHADESMAR_MACROS_H_
 
+#include <sys/stat.h>
+
 #include <chrono>
 #include <iostream>
+#include <string>
 
 #define TIMESCALE std::chrono::microseconds
 #define TIMESCALE_COUNT 1e6
@@ -48,5 +51,14 @@ uint64_t current_time() {
               << std::endl;                                            \
   } while (0);
 }  // namespace shm
+
+inline bool proc_dead(__pid_t proc) {
+  if (proc == 0) {
+    return false;
+  }
+  std::string pid_path = "/proc/" + std::to_string(proc);
+  struct stat sts {};
+  return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
+}
 
 #endif  // INCLUDE_SHADESMAR_MACROS_H_

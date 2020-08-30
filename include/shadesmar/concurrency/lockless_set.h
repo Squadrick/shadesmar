@@ -34,9 +34,8 @@ SOFTWARE.
 #define __pid_t __darwin_pid_t
 #endif
 
-const int MAX_SHARED_OWNERS = 8;
-
 namespace shm::concurrent {
+template <uint32_t Size>
 class LocklessSet {
  public:
   LocklessSet();
@@ -45,20 +44,23 @@ class LocklessSet {
   bool insert(uint32_t elem);
   bool remove(uint32_t elem);
 
-  std::array<std::atomic_uint32_t, MAX_SHARED_OWNERS> __array = {};
+  std::array<std::atomic_uint32_t, Size> __array = {};
 };
 
-LocklessSet::LocklessSet() = default;
+template <uint32_t Size>
+LocklessSet<Size>::LocklessSet() = default;
 
-LocklessSet &LocklessSet::operator=(const LocklessSet &set) {
-  for (uint32_t idx = 0; idx < MAX_SHARED_OWNERS; ++idx) {
+template <uint32_t Size>
+LocklessSet<Size> &LocklessSet<Size>::operator=(const LocklessSet &set) {
+  for (uint32_t idx = 0; idx < Size; ++idx) {
     __array[idx].store(set.__array[idx].load());
   }
   return *this;
 }
 
-bool LocklessSet::insert(uint32_t elem) {
-  for (uint32_t idx = 0; idx < MAX_SHARED_OWNERS; ++idx) {
+template <uint32_t Size>
+bool LocklessSet<Size>::insert(uint32_t elem) {
+  for (uint32_t idx = 0; idx < Size; ++idx) {
     auto probedElem = __array[idx].load();
 
     if (probedElem != elem) {
@@ -77,8 +79,9 @@ bool LocklessSet::insert(uint32_t elem) {
   return false;
 }
 
-bool LocklessSet::remove(uint32_t elem) {
-  for (uint32_t idx = 0; idx < MAX_SHARED_OWNERS; ++idx) {
+template <uint32_t Size>
+bool LocklessSet<Size>::remove(uint32_t elem) {
+  for (uint32_t idx = 0; idx < Size; ++idx) {
     auto probedElem = __array[idx].load();
 
     if (probedElem == elem) {
