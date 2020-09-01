@@ -42,6 +42,7 @@ class PthreadReadWriteLock {
   void lock_sharable();
   bool try_lock_sharable();
   void unlock_sharable();
+  void reset();
 
  private:
   pthread_rwlock_t rwlock{};
@@ -69,6 +70,11 @@ bool PthreadReadWriteLock::try_lock_sharable() {
 }
 void PthreadReadWriteLock::unlock_sharable() {
   pthread_rwlock_unlock(&rwlock);
+}
+
+void PthreadReadWriteLock::reset() {
+  pthread_rwlock_destroy(&rwlock);
+  pthread_rwlock_init(&rwlock, &attr);
 }
 
 }  // namespace shm::concurrent

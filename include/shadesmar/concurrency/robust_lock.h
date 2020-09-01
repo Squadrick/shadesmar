@@ -24,7 +24,6 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
 #define INCLUDE_SHADESMAR_CONCURRENCY_ROBUST_LOCK_H_
 
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -51,22 +50,14 @@ class RobustLock {
   void lock_sharable();
   bool try_lock_sharable();
   void unlock_sharable();
+  void reset();
 
  private:
   void prune_readers();
   PthreadReadWriteLock mutex_;
   std::atomic<__pid_t> exclusive_owner{0};
-  LocklessSet shared_owners;
+  LocklessSet<8> shared_owners;
 };
-
-inline bool proc_dead(__pid_t proc) {
-  if (proc == 0) {
-    return false;
-  }
-  std::string pid_path = "/proc/" + std::to_string(proc);
-  struct stat sts {};
-  return (stat(pid_path.c_str(), &sts) == -1 && errno == ENOENT);
-}
 
 RobustLock::RobustLock() = default;
 
@@ -80,7 +71,7 @@ RobustLock::~RobustLock() { exclusive_owner = 0; }
 
 void RobustLock::lock() {
   while (!mutex_.try_lock()) {
-    if (exclusive_owner != 0) {
+    if (exclusive_owner.load() != 0) {
       auto ex_proc = exclusive_owner.load();
       if (proc_dead(ex_proc)) {
         if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
@@ -177,8 +168,10 @@ void RobustLock::unlock_sharable() {
   }
 }
 
+void RobustLock::reset() { mutex_.reset(); }
+
 void RobustLock::prune_readers() {
-  for (auto &i : shared_owners.__array) {
+  for (auto &i : shared_owners.array_) {
     uint32_t shared_owner = i.load();
 
     if (shared_owner == 0) continue;

@@ -39,6 +39,7 @@ class PthreadWriteLock {
   void lock();
   bool try_lock();
   void unlock();
+  void reset();
 
   pthread_mutex_t *get_mutex() { return &mutex; }
 
@@ -74,6 +75,11 @@ void PthreadWriteLock::lock() {
 bool PthreadWriteLock::try_lock() { return pthread_mutex_trylock(&mutex); }
 
 void PthreadWriteLock::unlock() { pthread_mutex_unlock(&mutex); }
+
+void PthreadWriteLock::reset() {
+  pthread_mutex_destroy(&mutex);
+  pthread_mutex_init(&mutex, &attr);
+}
 
 }  // namespace shm::concurrent
 #endif  // INCLUDE_SHADESMAR_CONCURRENCY_LOCK_H_
