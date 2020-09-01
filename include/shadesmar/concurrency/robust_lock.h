@@ -168,9 +168,7 @@ void RobustLock::unlock_sharable() {
   }
 }
 
-void RobustLock::reset() {
-  mutex_.reset();
-}
+void RobustLock::reset() { mutex_.reset(); }
 
 void RobustLock::prune_readers() {
   for (auto &i : shared_owners.array_) {

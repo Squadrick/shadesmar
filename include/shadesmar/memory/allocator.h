@@ -66,7 +66,6 @@ class Allocator {
                                         offset_);
   }
 
-
   uint32_t alloc_index_;
   volatile uint32_t free_index_;
   size_t offset_;

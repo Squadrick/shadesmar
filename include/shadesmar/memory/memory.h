@@ -110,7 +110,7 @@ struct Memblock {
 class PIDSet {
  public:
   bool any_alive() {
-    // TODO: Make sure it is atomic
+    // TODO(squadrick): Make sure it is atomic
     bool alive = false;
     uint32_t current_pid = getpid();
     for (auto &i : pid_set.array_) {
@@ -134,9 +134,7 @@ class PIDSet {
     return alive;
   }
 
-  bool insert(uint32_t pid) {
-    return pid_set.insert(pid);
-  }
+  bool insert(uint32_t pid) { return pid_set.insert(pid); }
 
   void lock() { lck.lock(); }
 
