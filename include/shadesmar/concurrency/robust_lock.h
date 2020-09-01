@@ -50,6 +50,7 @@ class RobustLock {
   void lock_sharable();
   bool try_lock_sharable();
   void unlock_sharable();
+  void reset();
 
  private:
   void prune_readers();
@@ -70,7 +71,7 @@ RobustLock::~RobustLock() { exclusive_owner = 0; }
 
 void RobustLock::lock() {
   while (!mutex_.try_lock()) {
-    if (exclusive_owner != 0) {
+    if (exclusive_owner.load() != 0) {
       auto ex_proc = exclusive_owner.load();
       if (proc_dead(ex_proc)) {
         if (exclusive_owner.compare_exchange_strong(ex_proc, 0)) {
@@ -167,8 +168,12 @@ void RobustLock::unlock_sharable() {
   }
 }
 
+void RobustLock::reset() {
+  mutex_.reset();
+}
+
 void RobustLock::prune_readers() {
-  for (auto &i : shared_owners.__array) {
+  for (auto &i : shared_owners.array_) {
     uint32_t shared_owner = i.load();
 
     if (shared_owner == 0) continue;

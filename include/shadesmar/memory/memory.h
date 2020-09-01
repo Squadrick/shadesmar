@@ -110,11 +110,19 @@ struct Memblock {
 class PIDSet {
  public:
   bool any_alive() {
+    // TODO: Make sure it is atomic
     bool alive = false;
-    for (auto &i : pid_set.__array) {
+    uint32_t current_pid = getpid();
+    for (auto &i : pid_set.array_) {
       uint32_t pid = i.load();
 
       if (pid == 0) continue;
+
+      if (pid == current_pid) {
+        // intra-process communication
+        // two threads of the same process
+        alive = true;
+      }
 
       if (proc_dead(pid)) {
         while (!pid_set.remove(pid)) {
@@ -126,7 +134,9 @@ class PIDSet {
     return alive;
   }
 
-  bool insert(uint32_t pid) { return pid_set.insert(pid); }
+  bool insert(uint32_t pid) {
+    return pid_set.insert(pid);
+  }
 
   void lock() { lck.lock(); }
 
@@ -183,6 +193,8 @@ class Memory {
       shared_queue_ = new (shared_queue_address) SharedQueue<ElemT>();
       allocator_ = new (allocator_address)
           Allocator(buffer_address - allocator_address, buffer_size);
+
+      pid_set_->insert(getpid());
       init_shared_queue();
     } else {
       /*
@@ -200,18 +212,32 @@ class Memory {
 
       /*
        * Check if any of the participating PIDs are up and running.
+       * If all participating PIDs are dead, reset the underlying memory
+       * structures:
+       * - Reset the allocator's underlying buffer
+       *   - Set the free, allocation indices to 0
+       * - Reset the shared queue
+       *   - Set the counter to 0
+       *   - Set all underlying elements of queue to be empty
+       * - Reset all mutexes/locks
        */
       pid_set_->lock();
       if (!pid_set_->any_alive()) {
-        allocator_->reset();
+        allocator_->lock_.reset();
         for (auto &elem : shared_queue_->elements) {
           elem.empty = true;
+          elem.size = 0;
+          elem.address_handle = 0;
+          elem.mutex.reset();
         }
         shared_queue_->counter = 0;
+        allocator_->reset();
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       pid_set_->unlock();
+      pid_set_->insert(getpid());
     }
-    pid_set_->insert(getpid());
   }
 
   ~Memory() = default;

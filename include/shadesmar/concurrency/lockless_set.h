@@ -44,7 +44,7 @@ class LocklessSet {
   bool insert(uint32_t elem);
   bool remove(uint32_t elem);
 
-  std::array<std::atomic_uint32_t, Size> __array = {};
+  std::array<std::atomic_uint32_t, Size> array_ = {};
 };
 
 template <uint32_t Size>
@@ -53,7 +53,7 @@ LocklessSet<Size>::LocklessSet() = default;
 template <uint32_t Size>
 LocklessSet<Size> &LocklessSet<Size>::operator=(const LocklessSet &set) {
   for (uint32_t idx = 0; idx < Size; ++idx) {
-    __array[idx].store(set.__array[idx].load());
+    array_[idx].store(set.array_[idx].load());
   }
   return *this;
 }
@@ -61,14 +61,14 @@ LocklessSet<Size> &LocklessSet<Size>::operator=(const LocklessSet &set) {
 template <uint32_t Size>
 bool LocklessSet<Size>::insert(uint32_t elem) {
   for (uint32_t idx = 0; idx < Size; ++idx) {
-    auto probedElem = __array[idx].load();
+    auto probedElem = array_[idx].load();
 
     if (probedElem != elem) {
       if (probedElem != 0) {
         continue;
       }
       uint32_t exp = 0;
-      if (__array[idx].compare_exchange_strong(exp, elem)) {
+      if (array_[idx].compare_exchange_strong(exp, elem)) {
         return true;
       } else {
         continue;
@@ -82,10 +82,10 @@ bool LocklessSet<Size>::insert(uint32_t elem) {
 template <uint32_t Size>
 bool LocklessSet<Size>::remove(uint32_t elem) {
   for (uint32_t idx = 0; idx < Size; ++idx) {
-    auto probedElem = __array[idx].load();
+    auto probedElem = array_[idx].load();
 
     if (probedElem == elem) {
-      return __array[idx].compare_exchange_strong(elem, 0);
+      return array_[idx].compare_exchange_strong(elem, 0);
     }
   }
 

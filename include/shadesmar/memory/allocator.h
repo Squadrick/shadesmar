@@ -55,6 +55,8 @@ class Allocator {
     return size_;
   }
 
+  concurrent::RobustLock lock_;
+
  private:
   void validate_index(uint32_t index) const;
   [[nodiscard]] uint32_t suggest_index(uint32_t header_index,
@@ -64,7 +66,6 @@ class Allocator {
                                         offset_);
   }
 
-  concurrent::RobustLock lock_;
 
   uint32_t alloc_index_;
   volatile uint32_t free_index_;
