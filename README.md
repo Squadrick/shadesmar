@@ -131,7 +131,6 @@ int main() {
     msg.val = 0;
 
     for (int i = 0; i < 1000; ++i) {
-        msg.init_time(shm::SYSTEM); // add system time as the timestamp
         p.publish(msg);
         msg.val++;
     }
