@@ -45,17 +45,9 @@ SOFTWARE.
 
 namespace shm::memory {
 
-#define SHMALIGN(s, a) (((s - 1) | (a - 1)) + 1)
-
-static constexpr size_t QUEUE_SIZE = 128;
+static constexpr size_t QUEUE_SIZE = 32;
 static size_t buffer_size = (1U << 28);  // 256mb
 static size_t GAP = 1024;                // safety gap
-
-inline uint8_t *align_address(void *ptr, size_t alignment) {
-  auto int_ptr = reinterpret_cast<uintptr_t>(ptr);
-  auto aligned_int_ptr = SHMALIGN(int_ptr, alignment);
-  return reinterpret_cast<uint8_t *>(aligned_int_ptr);
-}
 
 inline uint8_t *create_memory_segment(const std::string &name, size_t size,
                                       bool *new_segment,

@@ -36,13 +36,13 @@ SOFTWARE.
 
 const char topic[] = "benchmark_topic";
 const int SECONDS = 10;
-const int VECTOR_SIZE = 10 * 1024 * 1024;
+const int VECTOR_SIZE = 1024 * 1024;
 
 shm::stats::Welford per_second_lag;
 
 class BenchmarkMsg : public shm::BaseMsg {
  public:
-  int number{};
+  uint8_t number{};
   std::vector<uint8_t> arr;
   SHM_PACK(number, arr);
   explicit BenchmarkMsg(int n) : number(n) {

@@ -88,7 +88,6 @@ class Topic {
      *  6. If old buffer is empty, deallocate it
      */
 
-    uint8_t *old_address = nullptr;
     uint8_t *new_address = memory_.allocator_->alloc(memblock.size);
     if (new_address == nullptr) {
       return false;
@@ -96,6 +95,7 @@ class Topic {
 
     copier_->user_to_shm(new_address, memblock.ptr, memblock.size);
 
+    uint8_t *old_address = nullptr;
     {
       /*
        * This locked block should *only* contain accesses
@@ -111,10 +111,8 @@ class Topic {
       elem->empty = false;
     }
 
-    if (old_address != nullptr) {
-      while (!memory_.allocator_->free(old_address)) {
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
-      }
+    while (!memory_.allocator_->free(old_address)) {
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     return true;
   }
