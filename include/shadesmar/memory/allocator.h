@@ -31,14 +31,24 @@ SOFTWARE.
 
 namespace shm::memory {
 
+#define SHMALIGN(s, a) (((s - 1) | (a - 1)) + 1)
+
+inline uint8_t *align_address(void *ptr, size_t alignment) {
+  auto int_ptr = reinterpret_cast<uintptr_t>(ptr);
+  auto aligned_int_ptr = SHMALIGN(int_ptr, alignment);
+  return reinterpret_cast<uint8_t *>(aligned_int_ptr);
+}
+
 class Allocator {
  public:
   using handle = uint64_t;
-  template <concurrent::ExlOrShr type>
-  using Scope = concurrent::ScopeGuard<concurrent::RobustLock, type>;
+  using Scope =
+      concurrent::ScopeGuard<concurrent::RobustLock, concurrent::EXCLUSIVE>;
 
   Allocator(size_t offset, size_t size);
+
   uint8_t *alloc(uint32_t bytes);
+  uint8_t *alloc(uint32_t bytes, size_t alignment);
   bool free(const uint8_t *ptr);
   void reset();
 
@@ -50,9 +60,17 @@ class Allocator {
   }
 
   size_t get_free_memory() {
-    // TODO(squadrick): Implement this properly
-    Scope<concurrent::EXCLUSIVE> _(&lock_);
-    return size_;
+    Scope _(&lock_);
+
+    size_t free_size;
+    size_t size = size_ / sizeof(int);
+    if (free_index_ <= alloc_index_) {
+      free_size = size - alloc_index_ + free_index_;
+    } else {
+      free_size = free_index_ - alloc_index_;
+    }
+
+    return free_size * sizeof(int);
   }
 
   concurrent::RobustLock lock_;
@@ -95,8 +113,10 @@ uint32_t Allocator::suggest_index(uint32_t header_index,
   return payload_index;
 }
 
-uint8_t *Allocator::alloc(uint32_t bytes) {
-  uint32_t payload_size = bytes;
+uint8_t *Allocator::alloc(uint32_t bytes) { return alloc(bytes, 1); }
+
+uint8_t *Allocator::alloc(uint32_t bytes, size_t alignment) {
+  uint32_t payload_size = bytes + alignment;
 
   if (payload_size == 0) {
     payload_size = sizeof(int);
@@ -113,7 +133,7 @@ uint8_t *Allocator::alloc(uint32_t bytes) {
 
   payload_size /= sizeof(int);
 
-  Scope<concurrent::EXCLUSIVE> _(&lock_);
+  Scope _(&lock_);
 
   const auto payload_index = suggest_index(alloc_index_, payload_size);
   const auto free_index_th = free_index_;
@@ -140,7 +160,8 @@ uint8_t *Allocator::alloc(uint32_t bytes) {
   heap_()[alloc_index_] = payload_size;
   alloc_index_ = new_alloc_index;
 
-  return reinterpret_cast<uint8_t *>(heap_() + payload_index);
+  auto heap_ptr = reinterpret_cast<void *>(heap_() + payload_index);
+  return align_address(heap_ptr, alignment);
 }
 
 bool Allocator::free(const uint8_t *ptr) {
@@ -149,7 +170,7 @@ bool Allocator::free(const uint8_t *ptr) {
   }
   auto *heap = reinterpret_cast<uint8_t *>(heap_());
 
-  Scope<concurrent::EXCLUSIVE> _(&lock_);
+  Scope _(&lock_);
 
   assert(ptr >= heap);
   assert(ptr < heap + size_);
