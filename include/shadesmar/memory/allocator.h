@@ -42,8 +42,9 @@ inline uint8_t *align_address(void *ptr, size_t alignment) {
 class Allocator {
  public:
   using handle = uint64_t;
-  using Scope =
-      concurrent::ScopeGuard<concurrent::RobustLock, concurrent::EXCLUSIVE>;
+
+  template <concurrent::ExlOrShr type>
+  using Scope = concurrent::ScopeGuard<concurrent::RobustLock, type>;
 
   Allocator(size_t offset, size_t size);
 
@@ -60,7 +61,7 @@ class Allocator {
   }
 
   size_t get_free_memory() {
-    Scope _(&lock_);
+    Scope<concurrent::SHARED> _(&lock_);
 
     size_t free_size;
     size_t size = size_ / sizeof(int);
@@ -133,7 +134,7 @@ uint8_t *Allocator::alloc(uint32_t bytes, size_t alignment) {
 
   payload_size /= sizeof(int);
 
-  Scope _(&lock_);
+  Scope<concurrent::EXCLUSIVE> _(&lock_);
 
   const auto payload_index = suggest_index(alloc_index_, payload_size);
   const auto free_index_th = free_index_;
@@ -170,7 +171,7 @@ bool Allocator::free(const uint8_t *ptr) {
   }
   auto *heap = reinterpret_cast<uint8_t *>(heap_());
 
-  Scope _(&lock_);
+  Scope<concurrent::EXCLUSIVE> _(&lock_);
 
   assert(ptr >= heap);
   assert(ptr < heap + size_);

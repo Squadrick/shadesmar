@@ -45,7 +45,7 @@ class BenchmarkMsg : public shm::BaseMsg {
   uint8_t number{};
   std::vector<uint8_t> arr;
   SHM_PACK(number, arr);
-  explicit BenchmarkMsg(uint8_t n) : number(n) {
+  explicit BenchmarkMsg(int n) : number(n) {
     for (int i = 0; i < VECTOR_SIZE; ++i) arr.push_back(n);
   }
   BenchmarkMsg() = default;
