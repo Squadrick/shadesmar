@@ -70,7 +70,7 @@ void test(size_t mem_size, int num, bool mt = true) {
 }
 
 int main() {
-  for (uint32_t i = 11; i < 30; i += 3) {
+  for (uint32_t i = 4; i < 15; i += 3) {
     size_t mem_size = 1 << i;
     std::cout << "Memory size: 2 ^ " << i << std::endl;
     test<shm::memory::DefaultCopier>(mem_size, i);
