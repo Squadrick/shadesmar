@@ -1,22 +1,4 @@
 #!/bin/sh
-case "$(uname -s)" in
-
-   Darwin)
-      brew update
-      brew install ninja
-     ;;
-
-   Linux)
-      sudo apt update
-      sudo apt install ninja-build
-     ;;
-
-   *)
-     echo 'Not supported'
-     exit 1
-     ;;
-esac
-
 # Google benchmark
 git clone https://github.com/google/benchmark.git google_benchmark
 cd google_benchmark
