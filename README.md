@@ -7,8 +7,6 @@
 An IPC library that uses the system's shared memory to pass messages. 
 The communication paradigm is either publish-subscibe or RPC similar to ROS and ROS2.
 
-Required packages: Msgpack
-
 Caution: Pre-alpha software.
 
 
@@ -23,9 +21,6 @@ Caution: Pre-alpha software.
 * Faster than using the network stack like in the case with ROS.
 
 * Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
-
-* Allows for both serialized message passing (using `msgpack`) and to 
-pass raw bytes.
 
 * No need to define external IDL files for messages. Use C++ classes as
 message definition.
@@ -70,85 +65,6 @@ void callback(shm::memory::Memblock *msg) {
 int main() {
     shm::memory::DefaultCopier cpy;
     shm::pubsub::Subscriber sub("topic_name", &cpy, callback);
-
-    // Using `spinOnce` with a manual loop
-    while(true) {
-        sub.spin_once();
-    }
-    // OR
-    // Using `spin`
-    sub.spin();
-}
-```
-
----
-
-#### Publish-Subscribe (serialized messages)
-
-For plug-and-play convenience Shadesmar supports msgpack serialization. 
-
-Message Definition (`custom_message.h`):
-```c++
-#include <shadesmar/message.h>
-
-class InnerMessage : public shm::BaseMsg {
-  public:
-    int inner_val{};
-    std::string inner_str{};
-    SHM_PACK(inner_val, inner_str);
-
-    InnerMessage() = default;
-};
-
-class CustomMessage : public shm::BaseMsg {
-  public:
-    int val{};
-    std::vector<int> arr;
-    InnerMessage im;
-    SHM_PACK(val, arr, im);
-
-    explicit CustomMessage(int n) {
-      val = n;
-      for (int i = 0; i < 1000; ++i) {
-        arr.push_back(val);
-      }
-    }
-
-    // MUST BE INCLUDED
-    CustomMessage() = default;
-};
-```
-
-Publisher:
-```c++
-#include <shadesmar/pubsub/serialized_publisher.h>
-#include <custom_message.h>
-
-int main() {
-    shm::pubsub::SerializedPublisher<CustomMessage> pub("topic_name");
-
-    CustomMessage msg;
-    msg.val = 0;
-
-    for (int i = 0; i < 1000; ++i) {
-        p.publish(msg);
-        msg.val++;
-    }
-}
-```
-
-Subscriber:
-```c++
-#include <iostream>
-#include <shadesmar/pubsub/serialized_subscriber.h>
-#include <custom_message.h>
-
-void callback(const std::shared_ptr<CustomMessage>& msg) {
-    std::cout << msg->val << std::endl;
-}
-
-int main() {
-    shm::pubsub::SerializedSubscriber<CustomMessage> sub("topic_name", callback);
 
     // Using `spinOnce` with a manual loop
     while(true) {

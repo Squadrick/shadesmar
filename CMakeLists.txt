@@ -6,7 +6,6 @@ project(shadesmar)
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG_BUILD")
 
-find_package(msgpack REQUIRED)
 find_package(benchmark REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -27,8 +26,6 @@ add_executable(flush_tmp src/flush_tmp.cpp)
 target_link_libraries(flush_tmp ${libs})
 
 # TESTS
-add_executable(pubsub_test test/pubsub_test.cpp)
-target_link_libraries(pubsub_test ${libs})
 
 add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
 target_link_libraries(pubsub_bin_test ${libs})
@@ -38,9 +35,6 @@ target_link_libraries(micro_benchmark ${libs})
 
 add_executable(tmp_test test/tmp_test.cpp)
 target_link_libraries(tmp_test ${libs})
-
-add_executable(rpc_test test/rpc_test.cpp)
-target_link_libraries(rpc_test ${libs})
 
 add_executable(dragons_test test/dragons_test.cpp)
 target_link_libraries(dragons_test ${libs})

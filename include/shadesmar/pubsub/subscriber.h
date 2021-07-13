@@ -34,7 +34,6 @@ SOFTWARE.
 #include <utility>
 
 #include "shadesmar/memory/copier.h"
-#include "shadesmar/message.h"
 #include "shadesmar/pubsub/topic.h"
 
 namespace shm::pubsub {

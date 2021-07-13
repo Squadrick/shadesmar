@@ -22,7 +22,6 @@ SOFTWARE.
 ==============================================================================*/
 
 #include <iostream>
-#include <msgpack.hpp>
 
 #ifdef SINGLE_HEADER
 #include "shadesmar.h"
@@ -30,47 +29,9 @@ SOFTWARE.
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/memory.h"
-#include "shadesmar/message.h"
 #endif
 
 const size_t mem_size = 10 * 1024 * 1024;
-
-class TestMessage : shm::BaseMsg {
- public:
-  std::vector<uint32_t> arr;
-  SHM_PACK(arr);
-
-  TestMessage() = default;
-
-  void create(int n) { arr = std::vector<uint32_t>(n); }
-};
-
-void bench_msgpack() {
-  /*
-   * Serialization, Deserialization time
-   *  1kB = 2.5us, 17us
-   *  1MB = 2.5ms, 17ms
-   *  10MB = 25ms, 170ms
-   */
-  TestMessage t;
-  t.create(mem_size);
-
-  msgpack::sbuffer buf;
-  msgpack::object_handle oh;
-
-  TIMEIT({ msgpack::pack(buf, t); }, "serialize");
-
-  msgpack::object_handle res;
-  msgpack::object obj;
-  TestMessage t_new;
-  TIMEIT(
-      {
-        res = msgpack::unpack(buf.data(), buf.size());
-        obj = res.get();
-        obj.convert(t_new);
-      },
-      "deserialize");
-}
 
 void bench_memcpy() {
   /*
@@ -130,7 +91,6 @@ void bench_new_lock() {
  * 10MB = 33ms, 175ms (write: 30/s, read: 5/s)
  */
 int main() {
-  bench_msgpack();
   bench_memcpy();
   bench_lock();
   bench_new_lock();
