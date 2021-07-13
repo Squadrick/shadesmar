@@ -5,3 +5,4 @@ cmake-build-release
 cmake-build-release_ninja
 build
 include/shadesmar.h
+google_benchmark
