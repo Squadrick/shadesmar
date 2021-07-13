@@ -33,14 +33,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-#ifdef __cpp_lib_filesystem
-#include <filesystem>
-#else
-#include <experimental/filesystem>
-namespace std {
-namespace filesystem = experimental::filesystem;
-}
-#endif
+#include "shadesmar/memory/filesystem.h"
 
 namespace shm::memory::tmp {
 char const default_chars[] =
