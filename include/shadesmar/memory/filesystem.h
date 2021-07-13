@@ -1,3 +1,29 @@
+/* MIT License
+
+Copyright (c) 2020 Dheeraj R Reddy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+==============================================================================*/
+
+#ifndef INCLUDE_SHADESMAR_MEMORY_FILESYSTEM_H_
+#define INCLUDE_SHADESMAR_MEMORY_FILESYSTEM_H_
+
 #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
 
 // Check for feature test macro for <filesystem>
@@ -16,7 +42,8 @@
 // Check if the header "<filesystem>" exists
 #   elif __has_include(<filesystem>)
 
-// If we're compiling on Visual Studio and are not compiling with C++17, we need to use experimental
+// If we're compiling on Visual Studio and are not compiling with C++17,
+// we need to use experimental
 #       ifdef _MSC_VER
 
 // Check and include header that defines "_HAS_CXX17"
@@ -30,13 +57,14 @@
 #               endif
 #           endif
 
-// If the marco isn't defined yet, that means any of the other VS specific checks failed, so we need to use experimental
+// If the marco isn't defined yet, that means any of the other VS specific
+// checks failed, so we need to use experimental
 #           ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
 #               define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
 #           endif
 
 // Not on Visual Studio. Let's use the normal version
-#       else // #ifdef _MSC_VER
+#       else  // #ifdef _MSC_VER
 #           define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
 #       endif
 
@@ -46,7 +74,7 @@
 
 // Fail if neither header is available with a nice error message
 #   else
-#       error Could not find system header "<filesystem>" or "<experimental/filesystem>"
+#       error Could not find system header "<filesystem>"
 #   endif
 
 // We priously determined that we need the exprimental version
@@ -65,5 +93,6 @@ namespace std {
 #       include <filesystem>
 #   endif
 
-#endif // #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
+#endif  // #ifndef INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
 
+#endif  // INCLUDE_SHADESMAR_MEMORY_FILESYSTEM_H_
