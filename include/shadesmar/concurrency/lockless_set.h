@@ -30,10 +30,6 @@ SOFTWARE.
 
 #include "shadesmar/macros.h"
 
-#ifdef __APPLE__
-#define __pid_t __darwin_pid_t
-#endif
-
 namespace shm::concurrent {
 template <uint32_t Size>
 class LocklessSet {
