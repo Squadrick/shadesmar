@@ -44,6 +44,10 @@ class Subscriber {
              std::function<void(memory::Memblock *)> callback,
              memory::Copier *copier = nullptr);
 
+  Subscriber(const Subscriber &other) = delete;
+
+  Subscriber(Subscriber&& other);
+
   memory::Memblock get_message();
   void spin_once();
   void spin();
@@ -61,6 +65,11 @@ Subscriber::Subscriber(const std::string &topic_name,
                        memory::Copier *copier)
     : topic_name_(topic_name), callback_(std::move(callback)) {
   topic_ = std::make_unique<Topic>(topic_name_, copier);
+}
+
+Subscriber::Subscriber(Subscriber&& other) {
+  callback_ = std::move(other.callback_);
+  topic_ = std::move(other.topic_);
 }
 
 memory::Memblock Subscriber::get_message() {

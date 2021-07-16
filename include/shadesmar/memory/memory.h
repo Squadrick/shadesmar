@@ -52,6 +52,9 @@ static size_t GAP = 1024;                // safety gap
 inline uint8_t *create_memory_segment(const std::string &name, size_t size,
                                       bool *new_segment,
                                       size_t alignment = 32) {
+  std::cout << "Creating memory segment. "
+            << "Name: " << name << "; "
+            << "Size: " << size << std::endl;
   /*
    * Create a new shared memory segment. The segment is created
    * under a name. We check if an existing segment is found under
@@ -65,22 +68,25 @@ inline uint8_t *create_memory_segment(const std::string &name, size_t size,
     fd = shm_open(name.c_str(), O_RDWR | O_CREAT | O_EXCL, 0644);
     if (fd >= 0) {
       fchmod(fd, 0644);
-    }
-    if (errno == EEXIST) {
+    } else if (errno == EEXIST) {
       fd = shm_open(name.c_str(), O_RDWR, 0644);
       if (fd < 0 && errno == ENOENT) {
         // the memory segment was deleted in the mean time
         continue;
       }
       *new_segment = false;
+    } else {
+      return nullptr;
     }
     break;
   }
 
-  // We allocate an extra `alignment` bytes as padding
-  int result = ftruncate(fd, size + alignment);
-  if (result == EINVAL) {
-    return nullptr;
+  if (*new_segment) {
+    // Allocate an extra `alignment` bytes as padding
+    int result = ftruncate(fd, size + alignment);
+    if (result == EINVAL) {
+      return nullptr;
+    }
   }
 
   auto *ptr = mmap(nullptr, size + alignment, PROT_READ | PROT_WRITE,
@@ -166,10 +172,11 @@ class Memory {
     auto total_size = pid_set_size + shared_queue_size + allocator_size +
                       buffer_size + 4 * GAP;
     bool new_segment = false;
-    auto *base_address = create_memory_segment(name, total_size, &new_segment);
+    auto *base_address = create_memory_segment("/SHM_" + name,
+      total_size, &new_segment);
 
     if (base_address == nullptr) {
-      std::cerr << "Could not create shared memory buffer" << std::endl;
+      std::cerr << "Could not create/open shared memory segment.\n";
       exit(1);
     }
 
@@ -235,10 +242,9 @@ class Memory {
   void init_shared_queue() {
     /*
      * This is only called by the first process. It initializes the
-     * counter to 0, and writes to name of the topic to tmp system.
+     * counter to 0.
      */
     shared_queue_->counter = 0;
-    tmp::write(name_);
   }
 
   size_t queue_size() const { return QUEUE_SIZE; }

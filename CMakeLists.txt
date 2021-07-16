@@ -27,6 +27,9 @@ target_link_libraries(flush_tmp ${libs})
 
 # TESTS
 
+add_executable(pubsub_test test/pubsub_test.cpp)
+target_link_libraries(pubsub_test ${libs})
+
 add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
 target_link_libraries(pubsub_bin_test ${libs})
 

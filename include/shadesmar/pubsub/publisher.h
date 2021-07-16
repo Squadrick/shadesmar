@@ -29,6 +29,7 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "shadesmar/memory/copier.h"
 #include "shadesmar/pubsub/topic.h"
@@ -38,6 +39,8 @@ namespace shm::pubsub {
 class Publisher {
  public:
   explicit Publisher(const std::string &topic_name, memory::Copier *copier);
+  Publisher(const Publisher &) = delete;
+  Publisher(Publisher&&);
   bool publish(void *data, size_t size);
 
  private:
@@ -48,6 +51,11 @@ class Publisher {
 Publisher::Publisher(const std::string &topic_name, memory::Copier *copier)
     : topic_name_(topic_name) {
   topic_ = std::make_unique<Topic>(topic_name, copier);
+}
+
+Publisher::Publisher(Publisher&& other) {
+  topic_name_ = other.topic_name_;
+  topic_ = std::move(other.topic_);
 }
 
 bool Publisher::publish(void *data, size_t size) {

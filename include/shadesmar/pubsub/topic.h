@@ -64,6 +64,12 @@ class Topic {
     copier_ = copier;
   }
 
+  ~Topic() {
+    if (copier_) {
+      delete copier_;
+    }
+  }
+
   bool write(memory::Memblock memblock) {
     /*
      * Writes always happen at the head of the circular queue, the
