@@ -53,8 +53,7 @@ void callback(shm::memory::Memblock *memblock) {
 
 void subscribe_loop() {
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  shm::memory::DefaultCopier cpy;
-  shm::pubsub::Subscriber sub(topic, callback, &cpy);
+  shm::pubsub::Subscriber sub(topic, callback, nullptr);
   int seconds = 0;
 
   auto start = shm::current_time();
@@ -74,8 +73,7 @@ void subscribe_loop() {
 }
 
 void publish_loop() {
-  shm::memory::DefaultCopier cpy;
-  shm::pubsub::Publisher pub(topic, &cpy);
+  shm::pubsub::Publisher pub(topic, nullptr);
 
   auto *rawptr = malloc(VECTOR_SIZE);
   std::memset(rawptr, 255, VECTOR_SIZE);
