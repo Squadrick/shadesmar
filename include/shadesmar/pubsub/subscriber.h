@@ -99,25 +99,29 @@ memory::Memblock Subscriber::get_message() {
   memory::Memblock memblock;
   memblock.free = true;
 
-  if (!topic_->read(&memblock, counter_)) return memory::Memblock();
+  if (!topic_->read(&memblock, counter_)) {
+    return memory::Memblock();
+  }
 
   return memblock;
 }
 
+// Not thread-safe. Should be called from a single thread.
 void Subscriber::spin_once() {
   memory::Memblock memblock = get_message();
 
-  if (memblock.size == 0) {
+  if (memblock.is_empty()) {
     return;
   }
 
   callback_(&memblock);
+  counter_++;
 
   if (memblock.free) {
     topic_->copier()->dealloc(memblock.ptr);
+    memblock.ptr = nullptr;
+    memblock.size = 0;
   }
-
-  counter_++;
 }
 
 void Subscriber::spin() {}

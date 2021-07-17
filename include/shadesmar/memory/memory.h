@@ -103,6 +103,10 @@ struct Memblock {
   Memblock(void *ptr, size_t size) : ptr(ptr), size(size), free(true) {}
 
   void no_delete() { free = false; }
+
+  bool is_empty() const {
+    return ptr == nullptr && size == 0;
+  }
 };
 
 class PIDSet {

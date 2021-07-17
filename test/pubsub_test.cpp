@@ -196,3 +196,36 @@ TEST_CASE("multiple_pub_single_sub") {
 
   REQUIRE(expected == answers);
 }
+
+TEST_CASE("spin_without_new_msg") {
+  std::string topic = "spin_without_new_msg";
+
+  int message = 3;
+  shm::pubsub::Publisher pub(topic, nullptr);
+
+  int count = 0, answer;
+  auto callback = [&count, &answer](shm::memory::Memblock *memblock) {
+    answer = *(reinterpret_cast<int *>(memblock->ptr));
+    ++count;
+  };
+  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+
+  pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
+  sub.spin_once();
+  REQUIRE(answer == 3);
+  REQUIRE(count == 1);
+  ++message;
+  sub.spin_once();
+  REQUIRE(count == 1);
+  ++message;
+  pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
+  sub.spin_once();
+  REQUIRE(answer == 5);
+  REQUIRE(count == 2);
+}
+
+// TODO(squadricK): Add tests
+// - multiple_pub_multiple_sub
+// - All the multiple pub/sub tests with parallelism
+// - Test wrap around logic for subscriber
+// - Subscribe to messages after publisher has been destructed
