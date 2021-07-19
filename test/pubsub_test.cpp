@@ -166,7 +166,6 @@ TEST_CASE("multiple_pub_single_sub") {
     int answer = *(reinterpret_cast<int *>(memblock->ptr));
     answers.push_back(answer);
   };
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
 
   SECTION("messages by publishers") {
     int msg = 1;
@@ -188,6 +187,7 @@ TEST_CASE("multiple_pub_single_sub") {
     }
   }
 
+  shm::pubsub::Subscriber sub(topic, callback, nullptr);
   std::vector<int> expected;
   for (int i = 0; i < n_messages * n_pubs; ++i) {
     sub.spin_once();
@@ -195,6 +195,56 @@ TEST_CASE("multiple_pub_single_sub") {
   }
 
   REQUIRE(expected == answers);
+}
+
+TEST_CASE("multiple_pub_multiple_sub") {
+  std::string topic = "multiple_pub_multiple_sub";
+
+  int n_pubs = 3, n_subs = 3, n_messages = 5;
+  REQUIRE(n_pubs == n_subs);
+
+  std::vector<shm::pubsub::Publisher> pubs;
+  for (int i = 0; i < n_pubs; ++i) {
+    shm::pubsub::Publisher pub(topic, nullptr);
+    pubs.push_back(std::move(pub));
+  }
+
+  std::vector<int> messages;
+  int msg = 1;
+  for (int p = 0; p < n_pubs; ++p) {
+    for (int m = 0; m < n_messages; ++m) {
+      messages.push_back(msg);
+      pubs[p].publish(reinterpret_cast<void *>(&msg), sizeof(int));
+      msg++;
+    }
+  }
+
+  std::vector<std::vector<int>> vec_answers;
+  for (int i = 0; i < n_subs; ++i) {
+    std::vector<int> answers;
+    vec_answers.push_back(answers);
+  }
+
+  std::vector<shm::pubsub::Subscriber> subs;
+
+  for (int i = 0; i < n_subs; i++) {
+    auto callback = [idx = i, &vec_answers](shm::memory::Memblock *memblock) {
+      int answer = *(reinterpret_cast<int *>(memblock->ptr));
+      vec_answers[idx].push_back(answer);
+    };
+    shm::pubsub::Subscriber sub(topic, callback, nullptr);
+    subs.push_back(std::move(sub));
+  }
+
+  for (int s = 0; s < n_subs; ++s) {
+    for (int i = 0; i < messages.size(); ++i) {
+      subs[s].spin_once();
+    }
+  }
+
+  for (int i = 0; i < n_subs; ++i) {
+    REQUIRE(vec_answers[i] == messages);
+  }
 }
 
 TEST_CASE("spin_without_new_msg") {
@@ -252,6 +302,5 @@ TEST_CASE("sub_counter_jump") {
 }
 
 // TODO(squadricK): Add tests
-// - multiple_pub_multiple_sub
 // - All the multiple pub/sub tests with parallelism
 // - Subscribe to messages after publisher has been destructed
