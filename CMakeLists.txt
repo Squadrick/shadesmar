@@ -33,9 +33,6 @@ target_link_libraries(pubsub_test ${libs})
 add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
 target_link_libraries(pubsub_bin_test ${libs})
 
-add_executable(tmp_test test/tmp_test.cpp)
-target_link_libraries(tmp_test ${libs})
-
 add_executable(dragons_test test/dragons_test.cpp)
 target_link_libraries(dragons_test ${libs})
 
