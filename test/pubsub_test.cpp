@@ -224,8 +224,34 @@ TEST_CASE("spin_without_new_msg") {
   REQUIRE(count == 2);
 }
 
+TEST_CASE("sub_counter_jump") {
+  std::string topic = "sub_counter_jump";
+  shm::pubsub::Publisher pub(topic, nullptr);
+
+  int answer;
+  auto callback = [&answer](shm::memory::Memblock *memblock) {
+    answer = *(reinterpret_cast<int *>(memblock->ptr));
+  };
+  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+
+  for (int i = 0; i < shm::memory::QUEUE_SIZE; ++i) {
+    pub.publish(reinterpret_cast<void *>(&i), sizeof(int));
+  }
+
+  sub.spin_once();
+  REQUIRE(answer == 0);
+
+  int moveahead = 0.5 * shm::memory::QUEUE_SIZE;
+  for (int i = 0; i < moveahead; ++i) {
+    int message = shm::memory::QUEUE_SIZE + i;
+    pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
+  }
+
+  sub.spin_once();
+  REQUIRE(answer == moveahead);
+}
+
 // TODO(squadricK): Add tests
 // - multiple_pub_multiple_sub
 // - All the multiple pub/sub tests with parallelism
-// - Test wrap around logic for subscriber
 // - Subscribe to messages after publisher has been destructed
