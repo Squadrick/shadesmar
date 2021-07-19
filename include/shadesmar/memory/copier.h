@@ -30,6 +30,7 @@ SOFTWARE.
 namespace shm::memory {
 class Copier {
  public:
+  virtual ~Copier() = default;
   // Each derived class of `Copier` needs to also add `PtrT` for compatibility
   // with`MTCopier`. See `DefaultCopier` for example.
   virtual void *alloc(size_t) = 0;
