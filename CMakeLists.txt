@@ -33,9 +33,6 @@ target_link_libraries(pubsub_test ${libs})
 add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
 target_link_libraries(pubsub_bin_test ${libs})
 
-add_executable(micro_benchmark test/micro_benchmark.cpp)
-target_link_libraries(micro_benchmark ${libs})
-
 add_executable(tmp_test test/tmp_test.cpp)
 target_link_libraries(tmp_test ${libs})
 

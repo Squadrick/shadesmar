@@ -44,16 +44,6 @@ uint64_t current_time() {
   auto casted_time = std::chrono::duration_cast<TIMESCALE>(time_since_epoch);
   return casted_time.count();
 }
-
-#define TIMEIT(cmd, name)                                              \
-  do {                                                                 \
-    auto start = shm::current_time();                                  \
-    cmd;                                                               \
-    auto end = shm::current_time();                                    \
-    auto diff = end - start;                                           \
-    std::cout << "Time for " << name << ": " << diff << TIMESCALE_NAME \
-              << std::endl;                                            \
-  } while (0);
 }  // namespace shm
 
 inline bool proc_dead(__pid_t proc) {
