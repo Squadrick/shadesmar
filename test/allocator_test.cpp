@@ -30,9 +30,11 @@ SOFTWARE.
 #ifdef SINGLE_HEADER
 #include "shadesmar.h"
 #else
-#include "shadesmar/concurrency/lock.h"
 #include "shadesmar/memory/allocator.h"
 #endif
+
+#define CATCH_CONFIG_MAIN
+#include "catch.hpp"
 
 shm::memory::Allocator *new_alloc(size_t size) {
   auto *memory = malloc(size + sizeof(shm::memory::Allocator));
@@ -41,7 +43,7 @@ shm::memory::Allocator *new_alloc(size_t size) {
   return alloc;
 }
 
-void basic() {
+TEST_CASE("basic") {
   auto *alloc = new_alloc(1024 * 1024);
 
   auto *x = alloc->alloc(100);
@@ -52,105 +54,107 @@ void basic() {
   auto yh = alloc->ptr_to_handle(y);
   auto zh = alloc->ptr_to_handle(z);
 
-  assert(yh - xh > 100);
-  assert(zh - yh > 250);
+  REQUIRE(yh - xh > 100);
+  REQUIRE(zh - yh > 250);
 
-  assert(!alloc->free(z));
-  assert(!alloc->free(y));
-  assert(alloc->free(x));
+  REQUIRE(!alloc->free(z));
+  REQUIRE(!alloc->free(y));
+  REQUIRE(alloc->free(x));
 
-  assert(!alloc->free(z));
-  assert(alloc->free(y));
-  assert(alloc->free(z));
+  REQUIRE(!alloc->free(z));
+  REQUIRE(alloc->free(y));
+  REQUIRE(alloc->free(z));
 
   free(alloc);
 }
 
-void size_limit() {
+TEST_CASE("size_limit") {
   auto *alloc = new_alloc(100);
 
   auto *x = alloc->alloc(50);
   auto *y = alloc->alloc(32);
   auto *z = alloc->alloc(50);
 
-  assert(x != nullptr);
-  assert(y != nullptr);
-  assert(z == nullptr);
+  REQUIRE(x != nullptr);
+  REQUIRE(y != nullptr);
+  REQUIRE(z == nullptr);
 
   free(alloc);
 }
 
-void perfect_wrap_around() {
+TEST_CASE("perfect_wrap_around") {
   auto *alloc = new_alloc(100);
 
   auto *x = alloc->alloc(50);
   auto *y = alloc->alloc(32);
   auto *z = alloc->alloc(50);
 
-  assert(x != nullptr);
-  assert(y != nullptr);
-  assert(z == nullptr);
+  REQUIRE(x != nullptr);
+  REQUIRE(y != nullptr);
+  REQUIRE(z == nullptr);
 
-  assert(alloc->free(x));
-  assert(alloc->free(y));
+  REQUIRE(alloc->free(x));
+  REQUIRE(alloc->free(y));
 
   z = alloc->alloc(50);
-  assert(z != nullptr);
+  REQUIRE(z != nullptr);
 
   free(alloc);
 }
 
-void wrap_around() {
+TEST_CASE("wrap_around") {
   auto *alloc = new_alloc(100);
 
   auto *x = alloc->alloc(50);
   auto *y = alloc->alloc(32);
 
-  assert(x != nullptr);
-  assert(y != nullptr);
+  REQUIRE(x != nullptr);
+  REQUIRE(y != nullptr);
 
-  assert(alloc->free(x));
+  REQUIRE(alloc->free(x));
 
   auto *z = alloc->alloc(40);
-  assert(z != nullptr);
+  REQUIRE(z != nullptr);
 
-  assert(alloc->free(y));
-  assert(alloc->free(z));
+  REQUIRE(alloc->free(y));
+  REQUIRE(alloc->free(z));
 
   free(alloc);
 }
 
-void cyclic() {
+TEST_CASE("cyclic") {
   auto *alloc = new_alloc(256);
 
   auto *it1 = alloc->alloc(40);
   auto *it2 = alloc->alloc(40);
 
-  assert(it1 != nullptr);
-  assert(it2 != nullptr);
+  REQUIRE(it1 != nullptr);
+  REQUIRE(it2 != nullptr);
 
   int iterations = 100;
   while (iterations--) {
     auto *it3 = alloc->alloc(40);
     auto *it4 = alloc->alloc(40);
 
-    assert(it3 != nullptr);
-    assert(it4 != nullptr);
+    REQUIRE(it3 != nullptr);
+    REQUIRE(it4 != nullptr);
 
-    assert(alloc->free(it1));
-    assert(alloc->free(it2));
+    REQUIRE(alloc->free(it1));
+    REQUIRE(alloc->free(it2));
 
     it1 = it3;
     it2 = it4;
   }
 
-  assert(alloc->free(it1));
-  assert(alloc->free(it2));
+  REQUIRE(alloc->free(it1));
+  REQUIRE(alloc->free(it2));
 
   free(alloc);
 }
 
-void multithread(int nthreads, std::vector<int> &&allocs) {
+TEST_CASE("multithread") {
+  int nthreads = 32;
+  std::vector<int> allocs = {10, 200, 3000};
   auto *alloc = new_alloc(
       2 * std::accumulate(allocs.begin(), allocs.end(), 0) * nthreads);
 
@@ -178,7 +182,7 @@ void multithread(int nthreads, std::vector<int> &&allocs) {
         }
 
         for (int i = 0; i < ps.size(); ++i) {
-          assert(ps[i] != nullptr);
+          REQUIRE(ps[i] != nullptr);
           std::memset(ps[i], ps.size() * t + i, allocs[i]);
         }
 
@@ -186,7 +190,7 @@ void multithread(int nthreads, std::vector<int> &&allocs) {
 
         for (int i = 0; i < ps.size(); ++i) {
           for (int l = 0; l < allocs[i]; ++i) {
-            assert(ps[i][l] == static_cast<uint8_t>(ps.size() * t + i));
+            REQUIRE(ps[i][l] == static_cast<uint8_t>(ps.size() * t + i));
           }
         }
 
@@ -202,7 +206,7 @@ void multithread(int nthreads, std::vector<int> &&allocs) {
         };
 
         for (auto p : ps) {
-          assert(timed_free_loop(p));
+          REQUIRE(timed_free_loop(p));
         }
       }
     });
@@ -212,14 +216,4 @@ void multithread(int nthreads, std::vector<int> &&allocs) {
   }
 
   free(alloc);
-}
-
-int main() {
-  basic();
-  size_limit();
-  perfect_wrap_around();
-  wrap_around();
-  cyclic();
-
-  multithread(128, {100, 2000, 30000});
 }
