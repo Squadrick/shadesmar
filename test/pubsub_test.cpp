@@ -301,6 +301,34 @@ TEST_CASE("sub_counter_jump") {
   REQUIRE(answer == moveahead);
 }
 
+TEST_CASE("sub_after_pub_dtor") {
+  std::string topic = "sub_after_pub_dtor";
+
+  std::vector<int> messages = {1, 2, 3, 4, 5};
+  std::vector<int> answers;
+
+  {
+    shm::pubsub::Publisher pub(topic, nullptr);
+    for (int message : messages) {
+      std::cout << "Publishing: " << message << std::endl;
+      pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
+    }
+  }
+
+  {
+    auto callback = [&answers](shm::memory::Memblock *memblock) {
+      int answer = *(reinterpret_cast<int *>(memblock->ptr));
+      answers.push_back(answer);
+    };
+    shm::pubsub::Subscriber sub(topic, callback, nullptr);
+
+    for (int i = 0; i < messages.size(); ++i) {
+      sub.spin_once();
+    }
+  }
+
+  REQUIRE(answers == messages);
+}
+
 // TODO(squadricK): Add tests
 // - All the multiple pub/sub tests with parallelism
-// - Subscribe to messages after publisher has been destructed
