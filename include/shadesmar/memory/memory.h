@@ -45,9 +45,9 @@ SOFTWARE.
 
 namespace shm::memory {
 
-static constexpr size_t QUEUE_SIZE = 32;
-static size_t buffer_size = (1U << 28);  // 256mb
-static size_t GAP = 1024;                // safety gap
+static constexpr size_t QUEUE_SIZE = 1024;
+static size_t buffer_size = (1U << 28);    // 256mb
+static size_t GAP = 1024;                  // 1kb safety gap
 
 inline uint8_t *create_memory_segment(const std::string &name, size_t size,
                                       bool *new_segment,
