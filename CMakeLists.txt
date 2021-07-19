@@ -30,9 +30,6 @@ target_link_libraries(flush_tmp ${libs})
 add_executable(pubsub_test test/pubsub_test.cpp)
 target_link_libraries(pubsub_test ${libs})
 
-add_executable(pubsub_bin_test test/pubsub_bin_test.cpp)
-target_link_libraries(pubsub_bin_test ${libs})
-
 add_executable(dragons_test test/dragons_test.cpp)
 target_link_libraries(dragons_test ${libs})
 
@@ -42,3 +39,7 @@ target_link_libraries(allocator_test ${libs})
 # BENCHMARKS
 add_executable(dragons_bench benchmark/dragons.cpp)
 target_link_libraries(dragons_bench ${libs} benchmark::benchmark)
+
+add_executable(pubsub_bench benchmark/pubsub.cpp)
+target_link_libraries(pubsub_bench ${libs})
+

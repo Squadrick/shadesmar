@@ -36,7 +36,7 @@ SOFTWARE.
 
 const char topic[] = "raw_benchmark_topic";
 const int SECONDS = 10;
-const int VECTOR_SIZE = 1024 * 1024;
+const int VECTOR_SIZE = 32 * 1024;
 
 shm::stats::Welford per_second_lag;
 
