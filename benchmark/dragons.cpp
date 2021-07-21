@@ -21,7 +21,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 #include "shadesmar/memory/dragons.h"
+
 #include <benchmark/benchmark.h>
+
 #include <cstring>
 
 #define STARTRANGE 1 << 5  // 32 bytes
@@ -44,7 +46,8 @@ void CopyBench(benchmark::State &state) {  // NOLINT
   state.SetBytesProcessed(size * static_cast<int64_t>(state.iterations()));
 }
 
-#define SHM_COPY_BENCHMARK(c) BENCHMARK_TEMPLATE(CopyBench, c)->Range(SHMRANGE);
+#define SHM_COPY_BENCHMARK(c) \
+  BENCHMARK_TEMPLATE(CopyBench, c)->Range(SHMRANGE);
 
 SHM_COPY_BENCHMARK(shm::memory::DefaultCopier);
 #ifdef __x86_64__
