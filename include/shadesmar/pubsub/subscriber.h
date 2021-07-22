@@ -83,23 +83,29 @@ memory::Memblock Subscriber::get_message() {
     return memory::Memblock();
   }
 
-  if (topic_->counter() - counter_ > topic_->queue_size()) {
+  if (topic_->counter() - counter_ >= topic_->queue_size()) {
     /*
+     * Why is the check >= (not >)? This is because in topic's
+     * `write` we do an `inc` at the end, so the write head
+     * (topic_->counter()) is currently under-write.
+     *
      * If we have fallen behind by the size of the queue
      * in the case of overlap, we go to last existing
      * element in the queue.
      *
-     * Why is the check > (not >=)? This is because in topic's
-     * `write` we do a `fetch_add`, so the queue pointer is already
-     * ahead of where it last wrote.
+     *
+     * Rather than going to the last valid location:
+     *    topic_->counter() - topic_->queue_size()
+     * We move to a more optimistic location (see `jumpahead`), to prevent
+     * hitting a case of always trying to keep up with the publisher.
      */
-    counter_ = topic_->counter() - topic_->queue_size();
+    counter_ = jumpahead(topic_->counter(), topic_->queue_size());
   }
 
   memory::Memblock memblock;
   memblock.free = true;
 
-  if (!topic_->read(&memblock, counter_)) {
+  if (!topic_->read(&memblock, &counter_)) {
     return memory::Memblock();
   }
 

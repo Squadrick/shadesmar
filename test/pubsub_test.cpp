@@ -289,11 +289,13 @@ TEST_CASE("sub_counter_jump") {
   }
 
   sub.spin_once();
-  REQUIRE(answer == 0);
+  int lookback =
+      shm::pubsub::jumpahead(shm::memory::QUEUE_SIZE, shm::memory::QUEUE_SIZE);
+  REQUIRE(answer == lookback);
 
-  int moveahead = 0.5 * shm::memory::QUEUE_SIZE;
+  int moveahead = shm::memory::QUEUE_SIZE - lookback + 1;
   for (int i = 0; i < moveahead; ++i) {
-    int message = shm::memory::QUEUE_SIZE + i;
+    int message = lookback + i;
     pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
   }
 

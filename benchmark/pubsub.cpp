@@ -21,6 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ==============================================================================*/
 
+#include <cassert>
 #include <chrono>
 #include <iostream>
 
@@ -35,66 +36,69 @@ SOFTWARE.
 #endif
 
 const char topic[] = "raw_benchmark_topic";
-const int SECONDS = 10;
-const int VECTOR_SIZE = 32 * 1024;
 
 shm::stats::Welford per_second_lag;
 
 struct Message {
+  uint64_t count;
   uint64_t timestamp;
   uint8_t *data;
 };
 
+uint64_t current_count = 0;
+
 void callback(shm::memory::Memblock *memblock) {
+  if (memblock->is_empty()) {
+    return;
+  }
   auto *msg = reinterpret_cast<Message *>(memblock->ptr);
   auto lag = shm::current_time() - msg->timestamp;
+  // assert(current_count == msg->count - 1);
+  assert(current_count < msg->count);
+  current_count = msg->count;
   per_second_lag.add(lag);
 }
 
-void subscribe_loop() {
-  std::this_thread::sleep_for(std::chrono::seconds(1));
+void subscribe_loop(int seconds) {
   shm::pubsub::Subscriber sub(topic, callback, nullptr);
-  int seconds = 0;
 
-  auto start = shm::current_time();
-  while (true) {
-    sub.spin_once();
-    auto end = shm::current_time();
-    auto diff = end - start;
-
-    if (diff > TIMESCALE_COUNT) {
-      std::cout << "Lag (" << TIMESCALE_NAME << "): " << per_second_lag
-                << std::endl;
-      if (++seconds == SECONDS) break;
-      start = shm::current_time();
-      per_second_lag.clear();
+  for (int sec = 0; sec < seconds; ++sec) {
+    auto start = std::chrono::steady_clock::now();
+    for (auto now = start; now < start + std::chrono::seconds(1);
+         now = std::chrono::steady_clock::now()) {
+      sub.spin_once();
     }
+    std::cout << per_second_lag << std::endl;
+    per_second_lag.clear();
   }
 }
 
-void publish_loop() {
+void publish_loop(int seconds, int vector_size) {
+  std::cout << "Number of bytes = " << vector_size << std::endl;
+  std::cout << "Time unit = " << TIMESCALE_NAME << std::endl;
+
+  auto *rawptr = malloc(vector_size);
+  std::memset(rawptr, 255, vector_size);
+  Message *msg = reinterpret_cast<Message *>(rawptr);
+  msg->count = 0;
+
   shm::pubsub::Publisher pub(topic, nullptr);
 
-  auto *rawptr = malloc(VECTOR_SIZE);
-  std::memset(rawptr, 255, VECTOR_SIZE);
-  Message *msg = reinterpret_cast<Message *>(rawptr);
-
-  std::cout << "Number of bytes = " << VECTOR_SIZE << std::endl;
-
-  auto start = shm::current_time();
-  while (true) {
+  auto start = std::chrono::steady_clock::now();
+  for (auto now = start; now < start + std::chrono::seconds(seconds);
+       now = std::chrono::steady_clock::now()) {
+    msg->count++;
     msg->timestamp = shm::current_time();
-    pub.publish(msg, VECTOR_SIZE);
-    auto end = shm::current_time();
-    auto diff = end - start;
-    if (diff > (SECONDS + 1) * TIMESCALE_COUNT) break;
+    pub.publish(msg, vector_size);
   }
   free(msg);
 }
 
 int main() {
-  std::thread subscribe_thread(subscribe_loop);
-  std::thread publish_thread(publish_loop);
+  const int SECONDS = 10;
+  const int VECTOR_SIZE = 32 * 1024;
+  std::thread subscribe_thread(subscribe_loop, SECONDS);
+  std::thread publish_thread(publish_loop, SECONDS, VECTOR_SIZE);
 
   subscribe_thread.join();
   publish_thread.join();

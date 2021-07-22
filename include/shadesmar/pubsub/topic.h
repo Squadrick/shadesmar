@@ -37,6 +37,13 @@ SOFTWARE.
 
 namespace shm::pubsub {
 
+// The logic for optimistically jumping ahead, if the current read
+// logic has fallen behind (circular wrap around). `counter` is the
+// current write head location.
+inline uint32_t jumpahead(uint32_t counter, uint32_t queue_size) {
+  return counter - queue_size / 2;
+}
+
 template <class LockT>
 struct TopicElemT : public memory::Element {
   LockT mutex;
@@ -81,7 +88,7 @@ class Topic {
       std::cerr << "Increase buffer_size" << std::endl;
       return false;
     }
-    uint32_t q_pos = fetch_add_counter() & (queue_size() - 1);
+    uint32_t q_pos = counter() & (queue_size() - 1);
     TopicElem *elem = &(memory_.shared_queue_->elements[q_pos]);
 
     /*
@@ -120,6 +127,7 @@ class Topic {
     while (!memory_.allocator_->free(old_address)) {
       std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+    inc_counter();
     return true;
   }
 
@@ -129,19 +137,17 @@ class Topic {
    * defaults to the head of the queue. Reads requires an explicit
    * position in the queue to read(`pos`). We use this position
    * argument since we need to support multiple subscribers each
-   * reading at their own pace. Look at `subscriber.h` to see the
-   * logic to handle circular queue wrap around logic.
+   * reading at their own pace. Between picking the element at pos to
+   * read from and acquiring a read lock, the publisher may write a new
+   * value at pos. In this case, we implement a slow path to jump ahead.
    */
 
-  bool read(memory::Memblock *memblock, uint32_t pos) {
-    /*
-     * Read into a raw array.
-     */
+  bool read(memory::Memblock *memblock, std::atomic<uint32_t> *pos) {
     TopicElem *elem =
-        &(memory_.shared_queue_->elements[pos & (queue_size() - 1)]);
+        &(memory_.shared_queue_->elements[*pos & (queue_size() - 1)]);
 
     /*
-     * Code path:
+     * Code path (without the slow path for lag):
      *  1. Acquire sharable lock
      *  2. Check for emptiness
      *  3. Copy from shared memory to input param `msg`
@@ -149,21 +155,44 @@ class Topic {
      */
     Scope<concurrent::SHARED> _(&elem->mutex);
 
-    if (elem->empty) {
-      return false;
+    // Using a lambda for this reduced throughput.
+    #define MOVE_ELEM(_elem)                                                \
+      if (_elem->empty) {                                                   \
+        return false;                                                       \
+      }                                                                     \
+      auto *dst = memory_.allocator_->handle_to_ptr(_elem->address_handle); \
+      memblock->size = _elem->size;                                         \
+      memblock->ptr = copier_->alloc(memblock->size);                       \
+      copier_->shm_to_user(memblock->ptr, dst, memblock->size);
+
+    if (queue_size() > counter() - *pos) {
+      // Fast path.
+      MOVE_ELEM(elem);
+      return true;
     }
 
-    auto *dst = memory_.allocator_->handle_to_ptr(elem->address_handle);
-    memblock->size = elem->size;
-    memblock->ptr = copier_->alloc(memblock->size);
-
-    copier_->shm_to_user(memblock->ptr, dst, memblock->size);
-
+    // See comment in `pubsub/subscriber.h`, in function `get_function()` for
+    // more info. *pos is outdated, the publisher has already written here
+    // before the reader lock was held. Jump ahead optimisically.
+    //
+    // Q: Why no lock on `next_best_elem`?
+    // A: `elem` is behind `next_best_elem`. With a lock on the former, the
+    //    publisher cannot cross `elem` to get to `next_best_elem`.
+    //
+    // Q: Why is the jump ahead implemented again in `get_message()`?
+    // A: `get_message()` can jump ahead outside of holding a lock. If a
+    //     lag can be detected there, it is more performant. This is a slow
+    //     path under a read lock.
+    *pos = jumpahead(counter(), queue_size());
+    TopicElem *next_best_elem =
+        &(memory_.shared_queue_->elements[*pos & (queue_size() - 1)]);
+    MOVE_ELEM(next_best_elem);
     return true;
+    #undef MOVE_ELEM
   }
 
-  inline __attribute__((always_inline)) uint32_t fetch_add_counter() const {
-    return memory_.shared_queue_->counter.fetch_add(1);
+  inline __attribute__((always_inline)) void inc_counter() const {
+    memory_.shared_queue_->counter++;
   }
 
   inline __attribute__((always_inline)) uint32_t counter() const {
