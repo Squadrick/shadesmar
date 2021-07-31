@@ -5,7 +5,7 @@
 [Soulcast](https://stormlightarchive.fandom.com/wiki/Soulcasting) [hoid](https://stormlightarchive.fandom.com/wiki/Hoid) pointers.
 
 An IPC library that uses the system's shared memory to pass messages. 
-The communication paradigm is either publish-subscibe or RPC similar to ROS and ROS2.
+The communication paradigm is either publish-subscibe or RPC.
 
 Caution: Pre-alpha software.
 
@@ -14,16 +14,11 @@ Caution: Pre-alpha software.
 
 * Multiple subscribers and publishers.
 
-* Multithreaded RPC support.
-
 * Uses a circular buffer to pass messages between processes.
 
-* Faster than using the network stack like in the case with ROS.
+* Faster than using the network stack.
 
 * Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
-
-* No need to define external IDL files for messages. Use C++ classes as
-message definition.
 
 ---
 
