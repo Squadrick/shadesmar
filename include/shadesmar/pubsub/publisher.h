@@ -40,7 +40,7 @@ class Publisher {
  public:
   explicit Publisher(const std::string &topic_name, memory::Copier *copier);
   Publisher(const Publisher &) = delete;
-  Publisher(Publisher&&);
+  Publisher(Publisher &&);
   bool publish(void *data, size_t size);
 
  private:
@@ -53,7 +53,7 @@ Publisher::Publisher(const std::string &topic_name, memory::Copier *copier)
   topic_ = std::make_unique<Topic>(topic_name, copier);
 }
 
-Publisher::Publisher(Publisher&& other) {
+Publisher::Publisher(Publisher &&other) {
   topic_name_ = other.topic_name_;
   topic_ = std::move(other.topic_);
 }

@@ -155,15 +155,15 @@ class Topic {
      */
     Scope<concurrent::SHARED> _(&elem->mutex);
 
-    // Using a lambda for this reduced throughput.
-    #define MOVE_ELEM(_elem)                                                \
-      if (_elem->empty) {                                                   \
-        return false;                                                       \
-      }                                                                     \
-      auto *dst = memory_.allocator_->handle_to_ptr(_elem->address_handle); \
-      memblock->size = _elem->size;                                         \
-      memblock->ptr = copier_->alloc(memblock->size);                       \
-      copier_->shm_to_user(memblock->ptr, dst, memblock->size);
+// Using a lambda for this reduced throughput.
+#define MOVE_ELEM(_elem)                                                \
+  if (_elem->empty) {                                                   \
+    return false;                                                       \
+  }                                                                     \
+  auto *dst = memory_.allocator_->handle_to_ptr(_elem->address_handle); \
+  memblock->size = _elem->size;                                         \
+  memblock->ptr = copier_->alloc(memblock->size);                       \
+  copier_->shm_to_user(memblock->ptr, dst, memblock->size);
 
     if (queue_size() > counter() - *pos) {
       // Fast path.
@@ -188,7 +188,7 @@ class Topic {
         &(memory_.shared_queue_->elements[*pos & (queue_size() - 1)]);
     MOVE_ELEM(next_best_elem);
     return true;
-    #undef MOVE_ELEM
+#undef MOVE_ELEM
   }
 
   inline __attribute__((always_inline)) void inc_counter() {

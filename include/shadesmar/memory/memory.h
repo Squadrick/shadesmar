@@ -46,8 +46,8 @@ SOFTWARE.
 namespace shm::memory {
 
 static constexpr size_t QUEUE_SIZE = 1024;
-static size_t buffer_size = (1U << 28);    // 256mb
-static size_t GAP = 1024;                  // 1kb safety gap
+static size_t buffer_size = (1U << 28);  // 256mb
+static size_t GAP = 1024;                // 1kb safety gap
 
 inline uint8_t *create_memory_segment(const std::string &name, size_t size,
                                       bool *new_segment,
@@ -104,9 +104,7 @@ struct Memblock {
 
   void no_delete() { free = false; }
 
-  bool is_empty() const {
-    return ptr == nullptr && size == 0;
-  }
+  bool is_empty() const { return ptr == nullptr && size == 0; }
 };
 
 class PIDSet {
@@ -176,8 +174,8 @@ class Memory {
     auto total_size = pid_set_size + shared_queue_size + allocator_size +
                       buffer_size + 4 * GAP;
     bool new_segment = false;
-    auto *base_address = create_memory_segment("/SHM_" + name,
-      total_size, &new_segment);
+    auto *base_address =
+        create_memory_segment("/SHM_" + name, total_size, &new_segment);
 
     if (base_address == nullptr) {
       std::cerr << "Could not create/open shared memory segment.\n";

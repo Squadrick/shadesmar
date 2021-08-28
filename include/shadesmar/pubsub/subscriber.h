@@ -46,7 +46,7 @@ class Subscriber {
 
   Subscriber(const Subscriber &other) = delete;
 
-  Subscriber(Subscriber&& other);
+  Subscriber(Subscriber &&other);
 
   memory::Memblock get_message();
   void spin_once();
@@ -67,7 +67,7 @@ Subscriber::Subscriber(const std::string &topic_name,
   topic_ = std::make_unique<Topic>(topic_name_, copier);
 }
 
-Subscriber::Subscriber(Subscriber&& other) {
+Subscriber::Subscriber(Subscriber &&other) {
   callback_ = std::move(other.callback_);
   topic_ = std::move(other.topic_);
 }

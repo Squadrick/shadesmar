@@ -26,40 +26,40 @@ SOFTWARE.
 
 // Check for feature test macro for <filesystem>
 #if defined(__cpp_lib_filesystem)
-  #define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
+#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
 
 // Check for feature test macro for <experimental/filesystem>
 #elif defined(__cpp_lib_experimental_filesystem)
-  #define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
+#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
 
 // Check if the header "<filesystem>" exists
 #elif __has_include(<filesystem>)
-  #define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
+#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
 
 // Check if the header "<filesystem>" exists
 #elif __has_include(<experimental/filesystem>)
-  #define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
+#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
 
 // Fail if neither header is available with a nice error message
 #else
-  #error Could not find system header "<filesystem>"
+#error Could not find system header "<filesystem>"
 
 #endif  // defined(__cpp_lib_filesystem)
 
 // We priously determined that we need the exprimental version
 #if INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
-  // Include it
-  #include <experimental/filesystem>
+// Include it
+#include <experimental/filesystem>
 
-  // We need the alias from std::experimental::filesystem to std::filesystem
-  namespace std {
-    namespace filesystem = experimental::filesystem;
-  }
+// We need the alias from std::experimental::filesystem to std::filesystem
+namespace std {
+namespace filesystem = experimental::filesystem;
+}
 
 // We have a decent compiler and can use the normal version
 #else
-  // Include it
-  #include <filesystem>
+// Include it
+#include <filesystem>
 #endif  // INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
 
 #endif  // INCLUDE_SHADESMAR_MEMORY_FILESYSTEM_H_
