@@ -191,7 +191,7 @@ class Topic {
     #undef MOVE_ELEM
   }
 
-  inline __attribute__((always_inline)) void inc_counter() const {
+  inline __attribute__((always_inline)) void inc_counter() {
     memory_.shared_queue_->counter++;
   }
 
