@@ -152,7 +152,7 @@ TEST_CASE("cyclic") {
   free(alloc);
 }
 
-TEST_CASE("multithread") {
+TEST_CASE("multithread", "[!mayfail]") {
   int nthreads = 32;
   std::vector<int> allocs = {10, 200, 3000};
   auto *alloc = new_alloc(
