@@ -60,7 +60,7 @@ void callback(shm::memory::Memblock *memblock) {
 }
 
 void subscribe_loop(int seconds) {
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
 
   for (int sec = 0; sec < seconds; ++sec) {
     auto start = std::chrono::steady_clock::now();
@@ -82,7 +82,7 @@ void publish_loop(int seconds, int vector_size) {
   Message *msg = reinterpret_cast<Message *>(rawptr);
   msg->count = 0;
 
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   auto start = std::chrono::steady_clock::now();
   for (auto now = start; now < start + std::chrono::seconds(seconds);

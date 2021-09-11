@@ -30,8 +30,7 @@ Publisher:
 #include <shadesmar/pubsub/publisher.h>
 
 int main() {
-    shm::memory::DefaultCopier cpy;
-    shm::pubsub::Publisher pub("topic_name", &cpy);
+    shm::pubsub::Publisher pub("topic_name");
     const uint32_t data_size = 1024;
     void *data = malloc(data_size);
     
@@ -58,8 +57,7 @@ void callback(shm::memory::Memblock *msg) {
 }
 
 int main() {
-    shm::memory::DefaultCopier cpy;
-    shm::pubsub::Subscriber sub("topic_name", &cpy, callback);
+    shm::pubsub::Subscriber sub("topic_name", callback);
 
     // Using `spinOnce` with a manual loop
     while(true) {

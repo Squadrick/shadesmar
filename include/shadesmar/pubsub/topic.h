@@ -64,18 +64,17 @@ class Topic {
   using Scope = concurrent::ScopeGuard<LockType, type>;
 
  public:
-  Topic(const std::string &topic, memory::Copier *copier) : memory_(topic) {
+  explicit Topic(const std::string &topic)
+      : Topic(topic, std::make_shared<memory::DefaultCopier>()) {}
+  Topic(const std::string &topic, std::shared_ptr<memory::Copier> copier)
+      : memory_(topic) {
     if (copier == nullptr) {
-      copier = new memory::DefaultCopier();
+      copier = std::make_shared<memory::DefaultCopier>();
     }
     copier_ = copier;
   }
 
-  ~Topic() {
-    if (copier_) {
-      delete copier_;
-    }
-  }
+  ~Topic() = default;
 
   bool write(memory::Memblock memblock) {
     /*
@@ -201,11 +200,11 @@ class Topic {
 
   size_t queue_size() const { return memory_.queue_size(); }
 
-  inline memory::Copier *copier() const { return copier_; }
+  inline std::shared_ptr<memory::Copier> copier() const { return copier_; }
 
  private:
   memory::Memory<TopicElem> memory_;
-  memory::Copier *copier_{};
+  std::shared_ptr<memory::Copier> copier_;
 };
 }  // namespace shm::pubsub
 #endif  // INCLUDE_SHADESMAR_PUBSUB_TOPIC_H_

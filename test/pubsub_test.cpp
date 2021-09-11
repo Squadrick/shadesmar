@@ -38,13 +38,13 @@ TEST_CASE("single_message") {
   std::string topic = "single_message";
 
   int message = 3;
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   int answer;
   auto callback = [&answer](shm::memory::Memblock *memblock) {
     answer = *(reinterpret_cast<int *>(memblock->ptr));
   };
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
 
   pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
   sub.spin_once();
@@ -56,14 +56,14 @@ TEST_CASE("multiple_messages") {
   std::string topic = "multiple_messages";
 
   std::vector<int> messages = {1, 2, 3, 4, 5};
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   std::vector<int> answers;
   auto callback = [&answers](shm::memory::Memblock *memblock) {
     int answer = *(reinterpret_cast<int *>(memblock->ptr));
     answers.push_back(answer);
   };
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
 
   for (int message : messages) {
     std::cout << "Publishing: " << message << std::endl;
@@ -80,13 +80,13 @@ TEST_CASE("alternating_pub_sub") {
   std::string topic = "alternating_pub_sub";
 
   int message = 3;
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   int answer;
   auto callback = [&answer](shm::memory::Memblock *memblock) {
     answer = *(reinterpret_cast<int *>(memblock->ptr));
   };
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
 
   for (int i = 0; i < 10; i++) {
     pub.publish(reinterpret_cast<void *>(&i), sizeof(int));
@@ -99,7 +99,7 @@ TEST_CASE("single_pub_multiple_sub") {
   std::string topic = "single_pub_multiple_sub";
 
   std::vector<int> messages = {1, 2, 3, 4, 5};
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   int n_subs = 3;
   std::vector<std::vector<int>> vec_answers;
@@ -115,7 +115,7 @@ TEST_CASE("single_pub_multiple_sub") {
       int answer = *(reinterpret_cast<int *>(memblock->ptr));
       vec_answers[idx].push_back(answer);
     };
-    shm::pubsub::Subscriber sub(topic, callback, nullptr);
+    shm::pubsub::Subscriber sub(topic, callback);
     subs.push_back(std::move(sub));
   }
 
@@ -157,7 +157,7 @@ TEST_CASE("multiple_pub_single_sub") {
 
   std::vector<shm::pubsub::Publisher> pubs;
   for (int i = 0; i < n_pubs; ++i) {
-    shm::pubsub::Publisher pub(topic, nullptr);
+    shm::pubsub::Publisher pub(topic);
     pubs.push_back(std::move(pub));
   }
 
@@ -187,7 +187,7 @@ TEST_CASE("multiple_pub_single_sub") {
     }
   }
 
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
   std::vector<int> expected;
   for (int i = 0; i < n_messages * n_pubs; ++i) {
     sub.spin_once();
@@ -205,7 +205,7 @@ TEST_CASE("multiple_pub_multiple_sub") {
 
   std::vector<shm::pubsub::Publisher> pubs;
   for (int i = 0; i < n_pubs; ++i) {
-    shm::pubsub::Publisher pub(topic, nullptr);
+    shm::pubsub::Publisher pub(topic);
     pubs.push_back(std::move(pub));
   }
 
@@ -232,7 +232,7 @@ TEST_CASE("multiple_pub_multiple_sub") {
       int answer = *(reinterpret_cast<int *>(memblock->ptr));
       vec_answers[idx].push_back(answer);
     };
-    shm::pubsub::Subscriber sub(topic, callback, nullptr);
+    shm::pubsub::Subscriber sub(topic, callback);
     subs.push_back(std::move(sub));
   }
 
@@ -251,14 +251,14 @@ TEST_CASE("spin_without_new_msg") {
   std::string topic = "spin_without_new_msg";
 
   int message = 3;
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   int count = 0, answer;
   auto callback = [&count, &answer](shm::memory::Memblock *memblock) {
     answer = *(reinterpret_cast<int *>(memblock->ptr));
     ++count;
   };
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
 
   pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
   sub.spin_once();
@@ -276,13 +276,13 @@ TEST_CASE("spin_without_new_msg") {
 
 TEST_CASE("sub_counter_jump") {
   std::string topic = "sub_counter_jump";
-  shm::pubsub::Publisher pub(topic, nullptr);
+  shm::pubsub::Publisher pub(topic);
 
   int answer;
   auto callback = [&answer](shm::memory::Memblock *memblock) {
     answer = *(reinterpret_cast<int *>(memblock->ptr));
   };
-  shm::pubsub::Subscriber sub(topic, callback, nullptr);
+  shm::pubsub::Subscriber sub(topic, callback);
 
   for (int i = 0; i < shm::memory::QUEUE_SIZE; ++i) {
     pub.publish(reinterpret_cast<void *>(&i), sizeof(int));
@@ -310,7 +310,7 @@ TEST_CASE("sub_after_pub_dtor") {
   std::vector<int> answers;
 
   {
-    shm::pubsub::Publisher pub(topic, nullptr);
+    shm::pubsub::Publisher pub(topic);
     for (int message : messages) {
       std::cout << "Publishing: " << message << std::endl;
       pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
@@ -322,7 +322,7 @@ TEST_CASE("sub_after_pub_dtor") {
       int answer = *(reinterpret_cast<int *>(memblock->ptr));
       answers.push_back(answer);
     };
-    shm::pubsub::Subscriber sub(topic, callback, nullptr);
+    shm::pubsub::Subscriber sub(topic, callback);
 
     for (int i = 0; i < messages.size(); ++i) {
       sub.spin_once();

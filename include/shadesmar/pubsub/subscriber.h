@@ -41,8 +41,10 @@ namespace shm::pubsub {
 class Subscriber {
  public:
   Subscriber(const std::string &topic_name,
+             std::function<void(memory::Memblock *)> callback);
+  Subscriber(const std::string &topic_name,
              std::function<void(memory::Memblock *)> callback,
-             memory::Copier *copier = nullptr);
+             std::shared_ptr<memory::Copier> copier);
 
   Subscriber(const Subscriber &other) = delete;
 
@@ -61,8 +63,14 @@ class Subscriber {
 };
 
 Subscriber::Subscriber(const std::string &topic_name,
+                       std::function<void(memory::Memblock *)> callback)
+    : topic_name_(topic_name), callback_(std::move(callback)) {
+  topic_ = std::make_unique<Topic>(topic_name_);
+}
+
+Subscriber::Subscriber(const std::string &topic_name,
                        std::function<void(memory::Memblock *)> callback,
-                       memory::Copier *copier)
+                       std::shared_ptr<memory::Copier> copier)
     : topic_name_(topic_name), callback_(std::move(callback)) {
   topic_ = std::make_unique<Topic>(topic_name_, copier);
 }

@@ -38,7 +38,9 @@ namespace shm::pubsub {
 
 class Publisher {
  public:
-  explicit Publisher(const std::string &topic_name, memory::Copier *copier);
+  explicit Publisher(const std::string &topic_name);
+  Publisher(const std::string &topic_name,
+            std::shared_ptr<memory::Copier> copier);
   Publisher(const Publisher &) = delete;
   Publisher(Publisher &&);
   bool publish(void *data, size_t size);
@@ -48,7 +50,12 @@ class Publisher {
   std::unique_ptr<Topic> topic_;
 };
 
-Publisher::Publisher(const std::string &topic_name, memory::Copier *copier)
+Publisher::Publisher(const std::string &topic_name) : topic_name_(topic_name) {
+  topic_ = std::make_unique<Topic>(topic_name);
+}
+
+Publisher::Publisher(const std::string &topic_name,
+                     std::shared_ptr<memory::Copier> copier)
     : topic_name_(topic_name) {
   topic_ = std::make_unique<Topic>(topic_name, copier);
 }
