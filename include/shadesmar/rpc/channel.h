@@ -87,11 +87,11 @@ class Channel {
 
   bool read_server(memory::Memblock *memblock, uint32_t *pos) { return false; }
 
-  inline __attribute__((always_line)) void inc_counter() {
+  inline __attribute__((always_inline)) void inc_counter() {
     memory_.shared_queue_->counter++;
   }
 
-  inline __attribute__((always_line)) uint32_t counter() const {
+  inline __attribute__((always_inline)) uint32_t counter() const {
     return memory_.shared_queue_->counter.load();
   }
 
