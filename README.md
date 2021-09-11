@@ -35,7 +35,7 @@ int main() {
     void *data = malloc(data_size);
     
     for (int i = 0; i < 1000; ++i) {
-        p.publish(msg, data_size);
+        p.publish(data, data_size);
     }
 }
 ```
@@ -47,7 +47,7 @@ Subscriber:
 
 void callback(shm::memory::Memblock *msg) {
   // `msg->ptr` to access `data`
-  // `msg->size` to access `size`
+  // `msg->size` to access `data_size`
 
   // The memory will be free'd at the end of this callback.
   // Copy to another memory location if you want to persist the data.
@@ -59,7 +59,7 @@ void callback(shm::memory::Memblock *msg) {
 int main() {
     shm::pubsub::Subscriber sub("topic_name", callback);
 
-    // Using `spinOnce` with a manual loop
+    // Using `spin_once` with a manual loop
     while(true) {
         sub.spin_once();
     }
