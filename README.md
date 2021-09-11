@@ -2,13 +2,10 @@
 
 ![C/C++ CI](https://github.com/Squadrick/shadesmar/workflows/C/C++%20CI/badge.svg)
 
-[Soulcast](https://stormlightarchive.fandom.com/wiki/Soulcasting) [hoid](https://stormlightarchive.fandom.com/wiki/Hoid) pointers.
+An IPC library that uses the system's shared memory to pass messages. Supports
+publish-subscribe and RPC (under development).
 
-An IPC library that uses the system's shared memory to pass messages. 
-The communication paradigm is either publish-subscibe or RPC.
-
-Caution: Pre-alpha software.
-
+Caution: Pre-alpha software. Linux only.
 
 #### Features
 
@@ -16,9 +13,12 @@ Caution: Pre-alpha software.
 
 * Uses a circular buffer to pass messages between processes.
 
-* Faster than using the network stack.
+* Faster than using the network stack. High throughput, low latency for large
+  messages.
 
 * Decentralized, without [resource starvation](https://squadrick.github.io/journal/ipc-locks.html).
+
+* Minimize or optimize data movement using custom copiers.
 
 ---
 
@@ -26,7 +26,6 @@ Caution: Pre-alpha software.
 
 Publisher:
 ```c++
-#include <shadesmar/memory/copier.h>
 #include <shadesmar/pubsub/publisher.h>
 
 int main() {
@@ -42,7 +41,6 @@ int main() {
 
 Subscriber:
 ```c++
-#include <shadesmar/memory/copier.h>
 #include <shadesmar/pubsub/subscriber.h>
 
 void callback(shm::memory::Memblock *msg) {
