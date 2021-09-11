@@ -79,13 +79,13 @@ class Channel {
    * read_client()
    */
 
-  bool write_client(memory::Memblock memblock, uint32_t *pos) {}
+  bool write_client(memory::Memblock memblock, uint32_t *pos) { return false; }
 
-  bool read_client(uint32_t pos, memory::Memblock *memblock) {}
+  bool read_client(uint32_t pos, memory::Memblock *memblock) { return false; }
 
-  bool write_server(memory::Memblock memblock, uint32_t pos) {}
+  bool write_server(memory::Memblock memblock, uint32_t pos) { return false; }
 
-  bool read_server(memory::Memblock *memblock, uint32_t *pos) {}
+  bool read_server(memory::Memblock *memblock, uint32_t *pos) { return false; }
 
   inline __attribute__((always_line)) void inc_counter() {
     memory_.shared_queue_->counter++;
@@ -102,7 +102,7 @@ class Channel {
  private:
   memory::Memory<ChannelElem> memory_;
   memory::Copier *copier_;
-}
+};
 
 }  // namespace shm::pubsub
 
