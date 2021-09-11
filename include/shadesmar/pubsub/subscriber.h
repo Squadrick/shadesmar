@@ -24,13 +24,13 @@ SOFTWARE.
 #ifndef INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_
 #define INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_
 
+#include <atomic>
 #include <cstdint>
 #include <cstring>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <thread>
 #include <utility>
 
 #include "shadesmar/memory/copier.h"
@@ -53,10 +53,12 @@ class Subscriber {
   memory::Memblock get_message();
   void spin_once();
   void spin();
+  void stop();
 
   std::atomic<uint32_t> counter_{0};
 
  private:
+  std::atomic_bool running_{false};
   std::function<void(memory::Memblock *)> callback_;
   std::string topic_name_;
   std::unique_ptr<Topic> topic_;
@@ -138,7 +140,14 @@ void Subscriber::spin_once() {
   }
 }
 
-void Subscriber::spin() {}
+void Subscriber::spin() {
+  running_ = true;
+  while (running_.load()) {
+    spin_once();
+  }
+}
+
+void Subscriber::stop() { running_ = false; }
 
 }  // namespace shm::pubsub
 #endif  // INCLUDE_SHADESMAR_PUBSUB_SUBSCRIBER_H_

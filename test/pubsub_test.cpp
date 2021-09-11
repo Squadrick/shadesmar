@@ -22,6 +22,8 @@ SOFTWARE.
 ==============================================================================*/
 
 #include <iostream>
+#include <mutex>
+#include <thread>
 #include <vector>
 
 #ifdef SINGLE_HEADER
@@ -328,6 +330,40 @@ TEST_CASE("sub_after_pub_dtor") {
       sub.spin_once();
     }
   }
+
+  REQUIRE(answers == messages);
+}
+
+TEST_CASE("spin_on_thread") {
+  std::string topic = "spin_on_thread";
+
+  std::vector<int> messages = {1, 2, 3, 4, 5};
+  std::vector<int> answers;
+  std::mutex mu;
+
+  auto callback = [&answers, &mu](shm::memory::Memblock *memblock) {
+    std::unique_lock<std::mutex> lock(mu);
+    int answer = *(reinterpret_cast<int *>(memblock->ptr));
+    answers.push_back(answer);
+  };
+
+  shm::pubsub::Publisher pub(topic);
+  for (int message : messages) {
+    std::cout << "Publishing: " << message << std::endl;
+    pub.publish(reinterpret_cast<void *>(&message), sizeof(int));
+  }
+
+  shm::pubsub::Subscriber sub(topic, callback);
+  std::thread th([&]() { sub.spin(); });
+  while (true) {
+    std::unique_lock<std::mutex> lock(mu);
+    if (answers.size() == messages.size()) {
+      break;
+    }
+  }
+
+  sub.stop();
+  th.join();
 
   REQUIRE(answers == messages);
 }
