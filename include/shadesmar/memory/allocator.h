@@ -52,6 +52,7 @@ class Allocator {
   uint8_t *alloc(uint32_t bytes, size_t alignment);
   bool free(const uint8_t *ptr);
   void reset();
+  void lock_reset();
 
   inline handle ptr_to_handle(uint8_t *p) {
     return p - reinterpret_cast<uint8_t *>(heap_());
@@ -196,6 +197,8 @@ void Allocator::reset() {
   alloc_index_ = 0;
   free_index_ = 0;
 }
+
+void Allocator::lock_reset() { lock_.reset(); }
 
 }  // namespace shm::memory
 #endif  // INCLUDE_SHADESMAR_MEMORY_ALLOCATOR_H_

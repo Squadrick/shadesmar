@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "shadesmar/concurrency/scope.h"
 #include "shadesmar/macros.h"
+#include "shadesmar/memory/allocator.h"
 #include "shadesmar/memory/copier.h"
 #include "shadesmar/memory/memory.h"
 
@@ -203,7 +204,7 @@ class Topic {
   inline std::shared_ptr<memory::Copier> copier() const { return copier_; }
 
  private:
-  memory::Memory<TopicElem> memory_;
+  memory::Memory<TopicElem, memory::Allocator> memory_;
   std::shared_ptr<memory::Copier> copier_;
 };
 }  // namespace shm::pubsub

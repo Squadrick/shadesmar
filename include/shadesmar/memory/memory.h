@@ -160,7 +160,7 @@ class SharedQueue {
   std::array<ElemT, QUEUE_SIZE> elements;
 };
 
-template <class ElemT>
+template <class ElemT, class AllocatorT>
 class Memory {
   static_assert(std::is_base_of<Element, ElemT>::value,
                 "ElemT must be a subclass of Element");
@@ -169,7 +169,7 @@ class Memory {
   explicit Memory(const std::string &name) : name_(name) {
     auto pid_set_size = sizeof(PIDSet);
     auto shared_queue_size = sizeof(SharedQueue<ElemT>);
-    auto allocator_size = sizeof(Allocator);
+    auto allocator_size = sizeof(AllocatorT);
 
     auto total_size = pid_set_size + shared_queue_size + allocator_size +
                       buffer_size + 4 * GAP;
@@ -191,7 +191,7 @@ class Memory {
       pid_set_ = new (pid_set_address) PIDSet();
       shared_queue_ = new (shared_queue_address) SharedQueue<ElemT>();
       allocator_ = new (allocator_address)
-          Allocator(buffer_address - allocator_address, buffer_size);
+          AllocatorT(buffer_address - allocator_address, buffer_size);
 
       pid_set_->insert(getpid());
       init_shared_queue();
@@ -206,7 +206,7 @@ class Memory {
       pid_set_ = reinterpret_cast<PIDSet *>(pid_set_address);
       shared_queue_ =
           reinterpret_cast<SharedQueue<ElemT> *>(shared_queue_address);
-      allocator_ = reinterpret_cast<Allocator *>(allocator_address);
+      allocator_ = reinterpret_cast<AllocatorT *>(allocator_address);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
       /*
@@ -222,7 +222,7 @@ class Memory {
        */
       pid_set_->lock();
       if (!pid_set_->any_alive()) {
-        allocator_->lock_.reset();
+        allocator_->lock_reset();
         for (auto &elem : shared_queue_->elements) {
           elem.empty = true;
           elem.size = 0;
@@ -253,7 +253,7 @@ class Memory {
 
   std::string name_;
   PIDSet *pid_set_;
-  Allocator *allocator_;
+  AllocatorT *allocator_;
   SharedQueue<ElemT> *shared_queue_;
 };
 
