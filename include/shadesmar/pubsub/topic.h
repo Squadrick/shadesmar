@@ -170,7 +170,7 @@ class Topic {
       return true;
     }
 
-    // See comment in `pubsub/subscriber.h`, in function `get_function()` for
+    // See comment in `pubsub/subscriber.h`, in function `get_message()` for
     // more info. *pos is outdated, the publisher has already written here
     // before the reader lock was held. Jump ahead optimisically.
     //
