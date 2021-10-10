@@ -151,6 +151,12 @@ struct Element {
   Allocator::handle address_handle;
 
   Element() : size(0), address_handle(0), empty(true) {}
+
+  void reset() {
+    size = 0;
+    address_handle = 0;
+    empty = true;
+  }
 };
 
 template <class ElemT>
@@ -162,9 +168,6 @@ class SharedQueue {
 
 template <class ElemT, class AllocatorT>
 class Memory {
-  static_assert(std::is_base_of<Element, ElemT>::value,
-                "ElemT must be a subclass of Element");
-
  public:
   explicit Memory(const std::string &name) : name_(name) {
     auto pid_set_size = sizeof(PIDSet);
@@ -224,10 +227,7 @@ class Memory {
       if (!pid_set_->any_alive()) {
         allocator_->lock_reset();
         for (auto &elem : shared_queue_->elements) {
-          elem.empty = true;
-          elem.size = 0;
-          elem.address_handle = 0;
-          elem.mutex.reset();
+          elem.reset();
         }
         shared_queue_->counter = 0;
         allocator_->reset();

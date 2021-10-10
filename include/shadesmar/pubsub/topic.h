@@ -46,13 +46,20 @@ inline uint32_t jumpahead(uint32_t counter, uint32_t queue_size) {
 }
 
 template <class LockT>
-struct TopicElemT : public memory::Element {
+struct TopicElemT {
+  memory::Element msg;
   LockT mutex;
 
-  TopicElemT() : Element(), mutex() {}
+  TopicElemT() : msg(), mutex() {}
 
-  TopicElemT(const TopicElemT &topic_elem) : Element(topic_elem) {
+  TopicElemT(const TopicElemT &topic_elem) {
+    msg = topic_elem.msg;
     mutex = topic_elem.mutex;
+  }
+
+  void reset() {
+    msg.reset();
+    mutex.reset();
   }
 };
 
@@ -116,12 +123,14 @@ class Topic {
        * include `elem` can be put outside this block.
        */
       Scope<concurrent::EXCLUSIVE> _(&elem->mutex);
-      if (!elem->empty) {
-        old_address = memory_.allocator_->handle_to_ptr(elem->address_handle);
+      if (!elem->msg.empty) {
+        old_address =
+            memory_.allocator_->handle_to_ptr(elem->msg.address_handle);
       }
-      elem->address_handle = memory_.allocator_->ptr_to_handle(new_address);
-      elem->size = memblock.size;
-      elem->empty = false;
+      elem->msg.address_handle =
+          memory_.allocator_->ptr_to_handle(new_address);
+      elem->msg.size = memblock.size;
+      elem->msg.empty = false;
     }
 
     while (!memory_.allocator_->free(old_address)) {
@@ -156,13 +165,13 @@ class Topic {
     Scope<concurrent::SHARED> _(&elem->mutex);
 
 // Using a lambda for this reduced throughput.
-#define MOVE_ELEM(_elem)                                                \
-  if (_elem->empty) {                                                   \
-    return false;                                                       \
-  }                                                                     \
-  auto *dst = memory_.allocator_->handle_to_ptr(_elem->address_handle); \
-  memblock->size = _elem->size;                                         \
-  memblock->ptr = copier_->alloc(memblock->size);                       \
+#define MOVE_ELEM(_elem)                                                    \
+  if (_elem->msg.empty) {                                                   \
+    return false;                                                           \
+  }                                                                         \
+  auto *dst = memory_.allocator_->handle_to_ptr(_elem->msg.address_handle); \
+  memblock->size = _elem->msg.size;                                         \
+  memblock->ptr = copier_->alloc(memblock->size);                           \
   copier_->shm_to_user(memblock->ptr, dst, memblock->size);
 
     if (queue_size() > counter() - *pos) {

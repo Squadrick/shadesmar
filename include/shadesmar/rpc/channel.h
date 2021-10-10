@@ -28,6 +28,8 @@ SOFTWARE.
 #include <memory>
 #include <string>
 
+#include "shadesmar/concurrency/cond_var.h"
+#include "shadesmar/concurrency/lock.h"
 #include "shadesmar/concurrency/scope.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/allocator.h"
@@ -37,32 +39,34 @@ SOFTWARE.
 
 namespace shm::rpc {
 
-template <class LockT>
-struct ChannelElemT : public memory::Element {
+struct ChannelElem {
   // TODO(squadrick): Find how to order these best.
-  bool result_written;
-  memory::Allocator::handle result_address_handle;
-  LockT mutex;
-  // add condvar here too.
+  memory::Element req;
+  memory::Element resp;
+  concurrent::PthreadWriteLock mutex;
+  concurrent::CondVar cond_var;
 
-  ChannelElemT()
-      : Element(), mutex(), result_written(false), result_address_handle(0) {}
+  ChannelElem() : req(), resp(), mutex(), cond_var() {}
 
-  ChannelElemT(const ChannelElemT &topic_elem) : Element(topic_elem) {
-    mutex = topic_elem.mutex;
-    result_address_handle = topic_elem.result_address_handle;
-    result_written = topic_elem.result_written;
+  ChannelElem(const ChannelElem &channel_elem) {
+    mutex = channel_elem.mutex;
+    cond_var = channel_elem.cond_var;
+    req = channel_elem.req;
+    resp = channel_elem.resp;
+  }
+
+  void reset() {
+    req.reset();
+    resp.reset();
+    mutex.reset();
+    // TODO: cond_var.reset() ?
   }
 };
 
-using LockType = concurrent::PthreadReadWriteLock;
-
 // clients are calling RPCs provided by servers.
 class Channel {
-  using ChannelElem = ChannelElemT<LockType>;
-
-  template <concurrent::ExlOrShr type>
-  using Scope = concurrent::ScopeGuard<LockType, type>;
+  using Scope = concurrent::ScopeGuard<concurrent::PthreadWriteLock,
+                                       concurrent::EXCLUSIVE>;
 
  public:
   explicit Channel(const std::string &channel)
@@ -91,60 +95,116 @@ class Channel {
       std::cerr << "Increase buffer_size" << std::endl;
       return false;
     }
-    uint32_t q_pos = counter() & (queue_size() - 1);
-    ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
-
-    /*
-     * Code path:
-     *  1. Allocate shared memory buffer `new_address`
-     *  2. Copy msg data to `new_address`
-     *  3. Acquire exclusive lock
-     *  4. Complex "swap" of old and new fields
-     *
-     */
+    *pos = counter() & (queue_size() - 1);
+    ChannelElem *elem = &(memory_.shared_queue_->elements[*pos]);
 
     {
-      Scope<concurrent::EXCLUSIVE> _(&elem->mutex);
-      if (!elem->empty) {
+      Scope _(&elem->mutex);
+      if (!elem->req.empty) {
         std::cerr << "Queue is full, try again." << std::endl;
         return false;
       }
       inc_counter();  // move this after successful alloc? It'll prevent empty
                       // req cells.
-      elem->empty = false;
+      elem->req.empty = false;
     }
+
+    // With the code-block, when a thread reaches here, it is the only one that
+    // can access `elem`. No need for lock.
 
     uint8_t *new_address = memory_.allocator_->req.alloc(memblock.size);
     if (new_address == nullptr) {
-      elem->empty = true;
+      elem->req.reset();
       return false;
     }
 
     copier_->user_to_shm(new_address, memblock.ptr, memblock.size);
     {
-      Scope<concurrent::EXCLUSIVE> _(&elem->mutex);  // redundant?
-      elem->address_handle =
+      elem->req.address_handle =
           memory_.allocator_->req.ptr_to_handle(new_address);
-      elem->size = memblock.size;
+      elem->req.size = memblock.size;
     }
     return true;
   }
 
-  bool read_client(uint32_t pos, memory::Memblock *memblock) { return false; }
+  bool read_client(uint32_t pos, memory::Memblock *memblock) {
+    uint32_t q_pos = pos & (queue_size() - 1);
+    ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
 
-  bool write_server(memory::Memblock memblock, uint32_t pos) { return false; }
+    {
+      Scope _(&elem->mutex);
+      while (elem->resp.empty) {
+        elem->cond_var.wait(&elem->mutex);
+      }
+    }
+
+    auto clean_up_locked = [](ChannelElem *elem) {
+      elem->resp.reset();
+      elem->req.reset();
+    };
+
+    if (elem->resp.size == 0) {
+      // result has error
+      clean_up_locked(elem);
+    }
+
+    uint8_t *address =
+        memory_.allocator_->resp.handle_to_ptr(elem->resp.address_handle);
+    memblock->size = elem->resp.size;
+    memblock->ptr = copier_->alloc(memblock->size);
+    copier_->shm_to_user(memblock->ptr, address, memblock->size);
+    clean_up_locked(elem);
+    return false;
+  }
+
+  bool write_server(memory::Memblock memblock, uint32_t pos) {
+    uint32_t q_pos = pos & (queue_size() - 1);
+    ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
+
+    auto signal_error = [](ChannelElem *elem) {
+      // This is how we convey an error: We mark that the result is written,
+      // so `read_client` will still read this value, but since the address
+      // handle for the result is 0, it can't read from buffer.
+      Scope _(&elem->mutex);
+      elem->resp.reset();
+      elem->resp.empty = false;
+      elem->cond_var.signal();
+    };
+
+    if (memblock.size > memory_.allocator_->resp.get_free_memory()) {
+      std::cerr << "Increase buffer_size" << std::endl;
+      signal_error(elem);
+      return false;
+    }
+
+    uint8_t *resp_address = memory_.allocator_->resp.alloc(memblock.size);
+    if (resp_address == nullptr) {
+      std::cerr << "Failed to alloc resp buffer" << std::endl;
+      signal_error(elem);
+      return false;
+    }
+
+    copier_->user_to_shm(resp_address, memblock.ptr, memblock.size);
+    Scope _(&elem->mutex);
+    elem->resp.empty = false;
+    elem->resp.address_handle =
+        memory_.allocator_->resp.ptr_to_handle(resp_address);
+    elem->resp.size = memblock.size;
+    elem->cond_var.signal();
+    return true;
+  }
 
   bool read_server(uint32_t pos, memory::Memblock *memblock) {
     uint32_t q_pos = pos & (queue_size() - 1);
     ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
-    Scope<concurrent::EXCLUSIVE> _(&elem->mutex);
+    Scope _(&elem->mutex);
     // TODO(squadrick): Use MOVE_ELEM from topic.h here.
-    if (elem->empty) {
+    if (elem->req.empty) {
       return false;
     }
     uint8_t *address =
-        memory_.allocator_->req.handle_to_ptr(elem->address_handle);
-    memblock->size = elem->size;
+        memory_.allocator_->req.handle_to_ptr(elem->req.address_handle);
+    memblock->size = elem->req.size;
     memblock->ptr = copier_->alloc(memblock->size);
     copier_->shm_to_user(memblock->ptr, address, memblock->size);
     return true;
