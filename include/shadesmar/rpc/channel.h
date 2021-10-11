@@ -59,7 +59,7 @@ struct ChannelElem {
     req.reset();
     resp.reset();
     mutex.reset();
-    // TODO: cond_var.reset() ?
+    // TODO(squadrick): cond_var.reset() ?
   }
 };
 
@@ -95,8 +95,9 @@ class Channel {
       std::cerr << "Increase buffer_size" << std::endl;
       return false;
     }
-    *pos = counter() & (queue_size() - 1);
-    ChannelElem *elem = &(memory_.shared_queue_->elements[*pos]);
+    *pos = counter();
+    auto q_pos = *pos & (queue_size() - 1);
+    ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
 
     {
       Scope _(&elem->mutex);
@@ -138,14 +139,15 @@ class Channel {
       }
     }
 
-    auto clean_up_locked = [](ChannelElem *elem) {
+    auto clean_up = [](ChannelElem *elem) {
       elem->resp.reset();
       elem->req.reset();
     };
 
+    Scope _(&elem->mutex);
     if (elem->resp.size == 0) {
       // result has error
-      clean_up_locked(elem);
+      clean_up(elem);
     }
 
     uint8_t *address =
@@ -153,7 +155,7 @@ class Channel {
     memblock->size = elem->resp.size;
     memblock->ptr = copier_->alloc(memblock->size);
     copier_->shm_to_user(memblock->ptr, address, memblock->size);
-    clean_up_locked(elem);
+    clean_up(elem);
     return false;
   }
 

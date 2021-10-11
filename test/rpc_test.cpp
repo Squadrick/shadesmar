@@ -24,13 +24,21 @@ SOFTWARE.
 #ifdef SINGLE_HEADER
 #include "shadesmar.h"
 #else
-#include "shadesmar/rpc/channel.h"
+#include "shadesmar/memory/memory.h"
+#include "shadesmar/rpc/client.h"
+#include "shadesmar/rpc/server.h"
 #endif
 
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+bool callback(const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+  return true;
+}
+
 TEST_CASE("basic") {
-  std::string channel_name = "single_message";
-  shm::rpc::Channel channel(channel_name);
+  std::string channel_name = "basic";
+  shm::rpc::Client client(channel_name);
+  shm::rpc::Server server(channel_name, callback);
+  shm::memory::Memblock req, resp;
 }
