@@ -66,3 +66,53 @@ int main() {
     sub.spin();
 }
 ```
+
+---
+
+#### RPC
+
+Client:
+```c++
+#include <shadesmar/rpc/client.h>
+
+int main() {
+  Client client("channel_name");
+  shm::memory::Memblock req, resp;
+  // Populate req.
+  client.call(req, &resp);
+  // Use resp here.
+
+  // resp needs to be explicitly free'd.
+  client.free_resp(&resp);
+}
+```
+
+Server:
+
+```c++
+#include <shadesmar/rpc/server.h>
+
+bool callback(const shm::memory::Memblock &req,
+              shm::memory::Memblock *resp) {
+  // resp->ptr is a void ptr, resp->size is the size of the buffer.
+  // You can allocate memory here, which can be free'd in the clean-up lambda.
+  return true;
+}
+
+void clean_up(shm::memory::Memblock *resp) {
+  // This function is called *after* the callback is finished. Any memory
+  // allocated for the response can be free'd here. A different copy of the
+  // buffer is sent to the client, this can be safely cleaned.
+}
+
+int main() {
+  shm::rpc::Server server("channel_name", callback, clean_up);
+
+  // Using `serve_once` with a manual loop
+  while(true) {
+    server.serve_once();
+  }
+  // OR
+  // Using `serve`
+  server.serve();
+}
