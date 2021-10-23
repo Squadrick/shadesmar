@@ -81,15 +81,6 @@ class Channel {
 
   ~Channel() = default;
 
-  /*
-   * client->call()
-   * write_client()
-   * read_server()
-   * RPC()
-   * write_server()
-   * read_client()
-   */
-
   bool write_client(memory::Memblock memblock, uint32_t *pos) {
     if (memblock.size > memory_.allocator_->req.get_free_memory()) {
       std::cerr << "Increase buffer_size" << std::endl;

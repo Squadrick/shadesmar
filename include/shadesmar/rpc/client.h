@@ -41,7 +41,9 @@ class Client {
   Client(const Client &) = delete;
   Client(Client &&);
 
-  bool call(const memory::Memblock &req, memory::Memblock *resp);
+  bool call(const memory::Memblock &req, memory::Memblock *resp) const;
+  bool send(const memory::Memblock &req, uint32_t *pos) const;
+  bool recv(uint32_t pos, memory::Memblock *resp) const;
 
  private:
   std::string channel_name_;
@@ -63,19 +65,27 @@ Client::Client(Client &&other) {
   channel_ = std::move(other.channel_);
 }
 
-bool Client::call(const memory::Memblock &req, memory::Memblock *resp) {
+bool Client::call(const memory::Memblock &req, memory::Memblock *resp) const {
   bool success;
   uint32_t pos;
 
-  success = channel_->write_client(req, &pos);
+  success = send(req, &pos);
   if (!success) {
     return success;
   }
-  success = channel_->read_client(pos, resp);
+  success = recv(pos, resp);
   if (!success) {
     return success;
   }
   return true;
+}
+
+bool Client::send(const memory::Memblock &req, uint32_t *pos) const {
+  return channel_->write_client(req, pos);
+}
+
+bool Client::recv(uint32_t pos, memory::Memblock *resp) const {
+  return channel_->read_client(pos, resp);
 }
 
 }  // namespace shm::rpc

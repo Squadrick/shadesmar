@@ -41,4 +41,8 @@ TEST_CASE("basic") {
   shm::rpc::Client client(channel_name);
   shm::rpc::Server server(channel_name, callback);
   shm::memory::Memblock req, resp;
+  uint32_t pos;
+  client.send(req, &pos);
+  server.serve_once();
+  client.recv(pos, &resp);
 }
