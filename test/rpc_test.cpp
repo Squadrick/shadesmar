@@ -35,12 +35,34 @@ SOFTWARE.
 TEST_CASE("basic") {
   std::string channel_name = "basic";
   shm::rpc::Client client(channel_name);
-  shm::rpc::Server server(channel_name,
-                          [](const shm::memory::Memblock &req,
-                             shm::memory::Memblock *resp) { return true; });
+  shm::rpc::Server server(channel_name, [](const shm::memory::Memblock &req,
+                                           shm::memory::Memblock *resp) {
+    resp->ptr = malloc(1024);
+    resp->size = 1024;
+    return true;
+  });
   shm::memory::Memblock req, resp;
   uint32_t pos;
   REQUIRE(client.send(req, &pos));
-  server.serve_once();
+  REQUIRE(server.serve_once());
   REQUIRE(client.recv(pos, &resp));
+  REQUIRE(!resp.is_empty());
+  REQUIRE(resp.size == 1024);
+}
+
+TEST_CASE("failure") {
+  std::string channel_name = "failure";
+  shm::rpc::Client client(channel_name);
+  shm::rpc::Server server(channel_name, [](const shm::memory::Memblock &req,
+                                           shm::memory::Memblock *resp) {
+    resp->ptr = malloc(1024);
+    resp->size = 1024;
+    return false;
+  });
+  shm::memory::Memblock req, resp;
+  uint32_t pos;
+  REQUIRE(client.send(req, &pos));
+  REQUIRE(server.serve_once());
+  REQUIRE(client.recv(pos, &resp));
+  REQUIRE(resp.size == 0);
 }

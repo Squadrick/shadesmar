@@ -46,12 +46,12 @@ class Server {
   Server(const Server& other) = delete;
   Server(Server&& other);
 
-  void serve_once();
+  bool serve_once();
   void serve();
   void stop();
 
  private:
-  bool process(uint32_t pos);
+  bool process(uint32_t pos) const;
   std::atomic_uint32_t pos_{0};
   std::atomic_bool running_{false};
   Callback callback_;
@@ -75,22 +75,22 @@ Server::Server(Server&& other) {
   channel_ = std::move(other.channel_);
 }
 
-bool Server::process(uint32_t pos) {
-  bool success;
+bool Server::process(uint32_t pos) const {
   memory::Memblock req, resp;
 
-  success = channel_->read_server(pos, &req);
+  bool success = channel_->read_server(pos, &req);
   if (!success) return success;
-  success = callback_(req, &resp);
-  if (!success) return success;
-  success = channel_->write_server(resp, pos);
-  if (!success) return success;
-  return true;
+  bool cbSuccess = callback_(req, &resp);
+  if (!cbSuccess) {
+    resp = memory::Memblock(nullptr, 0);
+  }
+  return channel_->write_server(resp, pos);
 }
 
-void Server::serve_once() {
+bool Server::serve_once() {
   bool success = process(pos_.load());
   pos_ += 1;
+  return success;
 }
 
 void Server::serve() {

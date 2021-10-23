@@ -66,18 +66,11 @@ Client::Client(Client &&other) {
 }
 
 bool Client::call(const memory::Memblock &req, memory::Memblock *resp) const {
-  bool success;
   uint32_t pos;
 
-  success = send(req, &pos);
-  if (!success) {
-    return success;
-  }
-  success = recv(pos, resp);
-  if (!success) {
-    return success;
-  }
-  return true;
+  bool success = send(req, &pos);
+  if (!success) return success;
+  return recv(pos, resp);
 }
 
 bool Client::send(const memory::Memblock &req, uint32_t *pos) const {
