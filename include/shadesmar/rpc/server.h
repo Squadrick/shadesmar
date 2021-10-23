@@ -38,10 +38,20 @@ namespace shm::rpc {
 using Callback =
     std::function<bool(const memory::Memblock& req, memory::Memblock* resp)>;
 
+using Cleanup = std::function<void(memory::Memblock* resp)>;
+
+inline Cleanup empty_cleanup() {
+  return [](memory::Memblock* resp) {
+    resp->ptr = nullptr;
+    resp->size = 0;
+  };
+}
+
 class Server {
  public:
   Server(const std::string& channel_name, Callback cb);
-  Server(const std::string& channel_name, Callback cb,
+  Server(const std::string& channel_name, Callback cb, Cleanup cln);
+  Server(const std::string& channel_name, Callback cb, Cleanup cln,
          std::shared_ptr<memory::Copier> copier);
   Server(const Server& other) = delete;
   Server(Server&& other);
@@ -55,23 +65,36 @@ class Server {
   std::atomic_uint32_t pos_{0};
   std::atomic_bool running_{false};
   Callback callback_;
+  Cleanup cleanup_;
   std::string channel_name_;
   std::unique_ptr<Channel> channel_;
 };
 
 Server::Server(const std::string& channel_name, Callback cb)
-    : channel_name_(channel_name), callback_(std::move(cb)) {
+    : channel_name_(channel_name),
+      callback_(std::move(cb)),
+      cleanup_(std::move(empty_cleanup())) {
   channel_ = std::make_unique<Channel>(channel_name);
 }
 
-Server::Server(const std::string& channel_name, Callback cb,
+Server::Server(const std::string& channel_name, Callback cb, Cleanup cleanup)
+    : channel_name_(channel_name),
+      callback_(std::move(cb)),
+      cleanup_(cleanup) {
+  channel_ = std::make_unique<Channel>(channel_name);
+}
+
+Server::Server(const std::string& channel_name, Callback cb, Cleanup cleanup,
                std::shared_ptr<memory::Copier> copier)
-    : channel_name_(channel_name), callback_(std::move(cb)) {
+    : channel_name_(channel_name),
+      callback_(std::move(cb)),
+      cleanup_(cleanup) {
   channel_ = std::make_unique<Channel>(channel_name, copier);
 }
 
 Server::Server(Server&& other) {
   callback_ = std::move(other.callback_);
+  cleanup_ = std::move(other.cleanup_);
   channel_ = std::move(other.channel_);
 }
 
@@ -82,9 +105,12 @@ bool Server::process(uint32_t pos) const {
   if (!success) return success;
   bool cbSuccess = callback_(req, &resp);
   if (!cbSuccess) {
+    cleanup_(&resp);
     resp = memory::Memblock(nullptr, 0);
   }
-  return channel_->write_server(resp, pos);
+  success = channel_->write_server(resp, pos);
+  cleanup_(&resp);
+  return success;
 }
 
 bool Server::serve_once() {

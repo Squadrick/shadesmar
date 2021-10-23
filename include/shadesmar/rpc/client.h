@@ -44,6 +44,7 @@ class Client {
   bool call(const memory::Memblock &req, memory::Memblock *resp) const;
   bool send(const memory::Memblock &req, uint32_t *pos) const;
   bool recv(uint32_t pos, memory::Memblock *resp) const;
+  void free_resp(memory::Memblock *resp) const;
 
  private:
   std::string channel_name_;
@@ -79,6 +80,12 @@ bool Client::send(const memory::Memblock &req, uint32_t *pos) const {
 
 bool Client::recv(uint32_t pos, memory::Memblock *resp) const {
   return channel_->read_client(pos, resp);
+}
+
+void Client::free_resp(memory::Memblock *resp) const {
+  channel_->copier()->dealloc(resp->ptr);
+  resp->ptr = nullptr;
+  resp->size = 0;
 }
 
 }  // namespace shm::rpc

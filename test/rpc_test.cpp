@@ -32,15 +32,23 @@ SOFTWARE.
 #define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
+void free_cleanup(shm::memory::Memblock *resp) {
+  free(resp->ptr);
+  resp->ptr = nullptr;
+  resp->size = 0;
+}
+
 TEST_CASE("basic") {
   std::string channel_name = "basic";
   shm::rpc::Client client(channel_name);
-  shm::rpc::Server server(channel_name, [](const shm::memory::Memblock &req,
-                                           shm::memory::Memblock *resp) {
-    resp->ptr = malloc(1024);
-    resp->size = 1024;
-    return true;
-  });
+  shm::rpc::Server server(
+      channel_name,
+      [](const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+        resp->ptr = malloc(1024);
+        resp->size = 1024;
+        return true;
+      },
+      free_cleanup);
   shm::memory::Memblock req, resp;
   uint32_t pos;
   REQUIRE(client.send(req, &pos));
@@ -48,21 +56,26 @@ TEST_CASE("basic") {
   REQUIRE(client.recv(pos, &resp));
   REQUIRE(!resp.is_empty());
   REQUIRE(resp.size == 1024);
+  client.free_resp(&resp);
+  REQUIRE(resp.is_empty());
 }
 
 TEST_CASE("failure") {
   std::string channel_name = "failure";
   shm::rpc::Client client(channel_name);
-  shm::rpc::Server server(channel_name, [](const shm::memory::Memblock &req,
-                                           shm::memory::Memblock *resp) {
-    resp->ptr = malloc(1024);
-    resp->size = 1024;
-    return false;
-  });
+  shm::rpc::Server server(
+      channel_name,
+      [](const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+        resp->ptr = malloc(1024);
+        resp->size = 1024;
+        return false;
+      },
+      free_cleanup);
   shm::memory::Memblock req, resp;
   uint32_t pos;
   REQUIRE(client.send(req, &pos));
   REQUIRE(server.serve_once());
   REQUIRE(client.recv(pos, &resp));
   REQUIRE(resp.size == 0);
+  client.free_resp(&resp);
 }
