@@ -147,7 +147,7 @@ class Channel {
     memblock->ptr = copier_->alloc(memblock->size);
     copier_->shm_to_user(memblock->ptr, address, memblock->size);
     clean_up(elem);
-    return false;
+    return true;
   }
 
   bool write_server(memory::Memblock memblock, uint32_t pos) {
