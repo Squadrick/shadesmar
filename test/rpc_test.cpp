@@ -80,10 +80,10 @@ TEST_CASE("failure") {
   client.free_resp(&resp);
 }
 
-TEST_CASE("simple") {
+TEST_CASE("single_message") {
   char value = 137;
   size_t size = 10;
-  std::string channel_name = "simple";
+  std::string channel_name = "single_message";
   shm::rpc::Client client(channel_name);
   shm::rpc::Server server(
       channel_name,
@@ -112,4 +112,41 @@ TEST_CASE("simple") {
     REQUIRE(static_cast<char *>(resp.ptr)[0] == value);
     client.free_resp(&resp);
   }
+}
+
+TEST_CASE("multiple_messages") {
+  std::string channel_name = "multiple_messages";
+
+  std::vector<char> messages = {1, 2, 3, 4, 5};
+  std::vector<char> returns;
+  std::vector<char> expected = {2, 4, 6, 8, 10};
+
+  shm::rpc::Client client(channel_name);
+  shm::rpc::Server server(
+      channel_name,
+      [](const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+        resp->ptr = malloc(req.size);
+        resp->size = req.size;
+        std::memset(resp->ptr, 2 * (static_cast<char *>(req.ptr)[0]),
+                    req.size);
+        return true;
+      },
+      free_cleanup);
+
+  for (auto message : messages) {
+    uint32_t pos;
+    shm::memory::Memblock req;
+    req.ptr = malloc(sizeof(char));
+    req.size = sizeof(char);
+    std::memset(req.ptr, message, req.size);
+    REQUIRE(client.send(req, &pos));
+    REQUIRE(server.serve_once());
+    free(req.ptr);
+    shm::memory::Memblock resp;
+    REQUIRE(client.recv(pos, &resp));
+    REQUIRE(resp.size == sizeof(char));
+    returns.push_back(static_cast<char *>(resp.ptr)[0]);
+    client.free_resp(&resp);
+  }
+  REQUIRE(returns == expected);
 }
