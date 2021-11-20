@@ -62,6 +62,7 @@ class Server {
 
  private:
   bool process(uint32_t pos) const;
+  void cleanup_req(memory::Memblock*) const;
   std::atomic_uint32_t pos_{0};
   std::atomic_bool running_{false};
   Callback callback_;
@@ -98,17 +99,29 @@ Server::Server(Server&& other) {
   channel_ = std::move(other.channel_);
 }
 
+void Server::cleanup_req(memory::Memblock* req) const {
+  // TODO(squadrick): Move this into Channel.
+  if (req->is_empty()) return;
+  channel_->copier()->dealloc(req->ptr);
+  *req = memory::Memblock(nullptr, 0);
+}
+
 bool Server::process(uint32_t pos) const {
   memory::Memblock req, resp;
 
   bool success = channel_->read_server(pos, &req);
-  if (!success) return success;
+  if (!success) {
+    cleanup_req(&req);
+    return success;
+  }
   bool cbSuccess = callback_(req, &resp);
   if (!cbSuccess) {
     cleanup_(&resp);
     resp = memory::Memblock(nullptr, 0);
+    cleanup_req(&req);
   }
   success = channel_->write_server(resp, pos);
+  cleanup_req(&req);
   cleanup_(&resp);
   return success;
 }

@@ -134,7 +134,7 @@ class Channel {
       auto address =
           memory_.allocator_->req.handle_to_ptr(elem->req.address_handle);
       if (elem->req.size != 0) {
-        copier_->dealloc(address);
+        memory_.allocator_->req.free(address);
       }
       elem->resp.reset();
       elem->req.reset();

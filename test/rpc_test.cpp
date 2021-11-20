@@ -79,3 +79,37 @@ TEST_CASE("failure") {
   REQUIRE(resp.size == 0);
   client.free_resp(&resp);
 }
+
+TEST_CASE("simple") {
+  char value = 137;
+  size_t size = 10;
+  std::string channel_name = "simple";
+  shm::rpc::Client client(channel_name);
+  shm::rpc::Server server(
+      channel_name,
+      [](const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+        resp->ptr = malloc(req.size);
+        resp->size = req.size;
+        std::memset(resp->ptr, static_cast<char *>(req.ptr)[0], req.size);
+        return true;
+      },
+      free_cleanup);
+
+  uint32_t pos;
+  {
+    shm::memory::Memblock req;
+    req.ptr = malloc(size);
+    req.size = size;
+    std::memset(req.ptr, value, req.size);
+    REQUIRE(client.send(req, &pos));
+    free(req.ptr);
+  }
+  REQUIRE(server.serve_once());
+  {
+    shm::memory::Memblock resp;
+    REQUIRE(client.recv(pos, &resp));
+    REQUIRE(resp.size == size);
+    REQUIRE(static_cast<char *>(resp.ptr)[0] == value);
+    client.free_resp(&resp);
+  }
+}
