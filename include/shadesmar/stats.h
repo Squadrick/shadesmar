@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
 
 namespace shm::stats {
 
