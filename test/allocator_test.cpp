@@ -152,6 +152,7 @@ TEST_CASE("cyclic") {
   free(alloc);
 }
 
+#ifndef __APPLE__
 TEST_CASE("multithread", "[!mayfail]") {
   int nthreads = 32;
   std::vector<int> allocs = {10, 200, 3000};
@@ -217,3 +218,4 @@ TEST_CASE("multithread", "[!mayfail]") {
 
   free(alloc);
 }
+#endif
