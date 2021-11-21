@@ -150,3 +150,77 @@ TEST_CASE("multiple_messages") {
   }
   REQUIRE(returns == expected);
 }
+
+TEST_CASE("mutliple_clients") {
+  std::string channel_name = "multiple_clients";
+
+  std::vector<char> messages = {1, 2, 3, 4, 5};
+  std::vector<char> returns;
+  std::vector<char> expected = {2, 4, 6, 8, 10};
+
+  shm::rpc::Client client1(channel_name);
+  shm::rpc::Client client2(channel_name);
+  shm::rpc::Client *client;
+  shm::rpc::Server server(
+      channel_name,
+      [](const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+        resp->ptr = malloc(req.size);
+        resp->size = req.size;
+        std::memset(resp->ptr, 2 * (static_cast<char *>(req.ptr)[0]),
+                    req.size);
+        return true;
+      },
+      free_cleanup);
+
+  for (auto message : messages) {
+    client = message % 2 ? &client1 : &client2;
+    uint32_t pos;
+    shm::memory::Memblock req;
+    req.ptr = malloc(sizeof(char));
+    req.size = sizeof(char);
+    std::memset(req.ptr, message, req.size);
+    REQUIRE(client->send(req, &pos));
+    REQUIRE(server.serve_once());
+    free(req.ptr);
+    shm::memory::Memblock resp;
+    REQUIRE(client->recv(pos, &resp));
+    REQUIRE(resp.size == sizeof(char));
+    returns.push_back(static_cast<char *>(resp.ptr)[0]);
+    client->free_resp(&resp);
+  }
+  REQUIRE(returns == expected);
+}
+
+TEST_CASE("serve_on_separate_thread") {
+  std::string channel_name = "serve_on_separate_thread";
+
+  std::vector<char> messages = {1, 2, 3, 4, 5};
+  std::vector<char> returns;
+  std::vector<char> expected = {2, 4, 6, 8, 10};
+
+  shm::rpc::Server server(
+      channel_name,
+      [](const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+        resp->ptr = malloc(req.size);
+        resp->size = req.size;
+        std::memset(resp->ptr, 2 * (static_cast<char *>(req.ptr)[0]),
+                    req.size);
+        return true;
+      },
+      free_cleanup);
+  std::thread th([&]() { server.serve(); });
+
+  shm::rpc::Client client(channel_name);
+  for (auto message : messages) {
+    shm::memory::Memblock req, resp;
+    req.ptr = malloc(sizeof(char));
+    req.size = sizeof(char);
+    std::memset(req.ptr, message, req.size);
+    REQUIRE(client.call(req, &resp));
+    returns.push_back(static_cast<char *>(resp.ptr)[0]);
+    client.free_resp(&resp);
+  }
+  server.stop();
+  th.join();
+  REQUIRE(returns == expected);
+}
