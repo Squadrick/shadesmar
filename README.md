@@ -3,9 +3,10 @@
 ![C/C++ CI](https://github.com/Squadrick/shadesmar/workflows/C/C++%20CI/badge.svg)
 
 An IPC library that uses the system's shared memory to pass messages. Supports
-publish-subscribe and RPC (under development).
+publish-subscribe and RPC.
 
-Caution: Pre-alpha software. Linux only.
+Requires: Linux and x86.
+Caution: Alpha software.
 
 #### Features
 
