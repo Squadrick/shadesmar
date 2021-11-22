@@ -21,6 +21,18 @@ Caution: Alpha software.
 
 * Minimize or optimize data movement using custom copiers.
 
+#### Usage
+
+There's a single header file generated from the source code which can be
+found [here](https://raw.githubusercontent.com/Squadrick/shadesmar/master/release/shadesmar.h).
+
+If you want to generate the single header file yourself, clone the repo and run:
+```
+$ cd shadesmar
+$ python3 simul/simul.py
+```
+This will generate the file in `include/`.
+
 ---
 
 #### Publish-Subscribe
