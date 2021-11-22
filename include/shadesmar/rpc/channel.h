@@ -40,7 +40,6 @@ SOFTWARE.
 namespace shm::rpc {
 
 struct ChannelElem {
-  // TODO(squadrick): Find how to order these best.
   memory::Element req;
   memory::Element resp;
   concurrent::PthreadWriteLock mutex;
@@ -59,7 +58,7 @@ struct ChannelElem {
     req.reset();
     resp.reset();
     mutex.reset();
-    // TODO(squadrick): cond_var.reset() ?
+    cond_var.reset();
   }
 };
 
@@ -196,7 +195,7 @@ class Channel {
     uint32_t q_pos = pos & (queue_size() - 1);
     ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
     Scope _(&elem->mutex);
-    // TODO(squadrick): Use MOVE_ELEM from topic.h here.
+
     if (elem->req.empty) {
       return false;
     }
@@ -208,9 +207,6 @@ class Channel {
     return true;
   }
 
-  // TODO(squadrick): Create an abstract class called Carrier with below
-  // params, parameterized on ElementT and AllocatorT, and extend Topic/Channel
-  // from this abstract class.
   inline __attribute__((always_inline)) void inc_counter() {
     memory_.shared_queue_->counter++;
   }
