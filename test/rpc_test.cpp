@@ -81,7 +81,7 @@ TEST_CASE("failure") {
 }
 
 TEST_CASE("single_message") {
-  char value = 137;
+  char value = 127;
   size_t size = 10;
   std::string channel_name = "single_message";
   shm::rpc::Client client(channel_name);
