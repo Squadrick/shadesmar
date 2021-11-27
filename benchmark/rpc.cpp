@@ -1,6 +1,6 @@
 /* MIT License
 
-Copyright (c) 2020 Dheeraj R Reddy
+Copyright (c) 2021 Dheeraj R Reddy
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,12 +30,12 @@ SOFTWARE.
 #else
 #include "shadesmar/memory/copier.h"
 #include "shadesmar/memory/dragons.h"
-#include "shadesmar/pubsub/publisher.h"
-#include "shadesmar/pubsub/subscriber.h"
+#include "shadesmar/rpc/client.h"
+#include "shadesmar/rpc/server.h"
 #include "shadesmar/stats.h"
 #endif
 
-const char topic[] = "raw_benchmark_topic_pubsub";
+const char topic[] = "raw_benchmark_topic_rpc";
 
 shm::stats::Welford per_second_lag;
 
@@ -46,50 +46,61 @@ struct Message {
 };
 
 uint64_t current_count = 0;
+uint8_t *resp_buffer = nullptr;
+uint64_t resp_size = 0;
 
-void callback(shm::memory::Memblock *memblock) {
-  if (memblock->is_empty()) {
-    return;
-  }
-  auto *msg = reinterpret_cast<Message *>(memblock->ptr);
+bool callback(const shm::memory::Memblock &req, shm::memory::Memblock *resp) {
+  auto *msg = reinterpret_cast<Message *>(req.ptr);
   auto lag = shm::current_time() - msg->timestamp;
-  // assert(current_count == msg->count - 1);
+  std::cout << current_count << ", " << msg->count << "\n";
   assert(current_count < msg->count);
   current_count = msg->count;
   per_second_lag.add(lag);
+  resp->ptr = resp_buffer;
+  resp->size = resp_size;
+  return true;
 }
 
-void subscribe_loop(int seconds) {
-  shm::pubsub::Subscriber sub(topic, callback);
+void cleanup(shm::memory::Memblock *resp) {}
+
+void server_loop(int seconds) {
+  shm::rpc::Server server(topic, callback, cleanup);
 
   for (int sec = 0; sec < seconds; ++sec) {
     auto start = std::chrono::steady_clock::now();
     for (auto now = start; now < start + std::chrono::seconds(1);
          now = std::chrono::steady_clock::now()) {
-      sub.spin_once();
+      server.serve_once();
     }
     std::cout << per_second_lag << std::endl;
     per_second_lag.clear();
   }
 }
 
-void publish_loop(int seconds, int vector_size) {
+void client_loop(int seconds, int vector_size) {
   std::cout << "Number of bytes = " << vector_size << std::endl;
   std::cout << "Time unit = " << TIMESCALE_NAME << std::endl;
+
+  resp_buffer = reinterpret_cast<uint8_t *>(malloc(vector_size));
+  std::memset(resp_buffer, 255, vector_size);
+  resp_size = vector_size;
 
   auto *rawptr = malloc(vector_size);
   std::memset(rawptr, 255, vector_size);
   Message *msg = reinterpret_cast<Message *>(rawptr);
   msg->count = 0;
 
-  shm::pubsub::Publisher pub(topic);
+  shm::rpc::Client client(topic);
 
   auto start = std::chrono::steady_clock::now();
   for (auto now = start; now < start + std::chrono::seconds(seconds);
        now = std::chrono::steady_clock::now()) {
     msg->count++;
     msg->timestamp = shm::current_time();
-    pub.publish(msg, vector_size);
+    shm::memory::Memblock req, resp;
+    req.ptr = msg;
+    req.size = vector_size;
+    client.call(req, &resp);
   }
   free(msg);
 }
@@ -97,9 +108,9 @@ void publish_loop(int seconds, int vector_size) {
 int main() {
   const int SECONDS = 10;
   const int VECTOR_SIZE = 32 * 1024;
-  std::thread subscribe_thread(subscribe_loop, SECONDS);
-  std::thread publish_thread(publish_loop, SECONDS, VECTOR_SIZE);
+  std::thread server_thread(server_loop, SECONDS);
+  std::thread client_thread(client_loop, SECONDS, VECTOR_SIZE);
 
-  subscribe_thread.join();
-  publish_thread.join();
+  server_thread.join();
+  client_thread.join();
 }

@@ -46,3 +46,6 @@ target_link_libraries(dragons_bench ${libs} benchmark::benchmark)
 add_executable(pubsub_bench benchmark/pubsub.cpp)
 target_link_libraries(pubsub_bench ${libs})
 
+add_executable(rpc_bench benchmark/rpc.cpp)
+target_link_libraries(rpc_bench ${libs})
+
