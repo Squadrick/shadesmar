@@ -42,7 +42,7 @@ Publisher:
 #include <shadesmar/pubsub/publisher.h>
 
 int main() {
-    shm::pubsub::Publisher pub("topic_name");
+    shm::pubsub::Publisher p("topic_name");
     const uint32_t data_size = 1024;
     void *data = malloc(data_size);
     
