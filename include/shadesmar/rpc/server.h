@@ -127,8 +127,7 @@ bool Server::process(uint32_t pos) const {
 }
 
 bool Server::serve_once() {
-  bool success = process(pos_.load());
-  pos_ += 1;
+  bool success = process(pos_.fetch_add(1));
   return success;
 }
 

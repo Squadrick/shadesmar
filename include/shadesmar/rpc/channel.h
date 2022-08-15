@@ -122,27 +122,24 @@ class Channel {
     uint32_t q_pos = pos & (queue_size() - 1);
     ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
 
-    {
-      Scope _(&elem->mutex);
-      while (elem->resp.empty) {
-        elem->cond_var.wait(&elem->mutex);
-      }
+    Scope _(&elem->mutex);
+    while (elem->resp.empty) {
+      elem->cond_var.wait(&elem->mutex);
     }
 
     auto clean_up = [this](ChannelElem *elem) {
-      auto address =
-          memory_.allocator_->req.handle_to_ptr(elem->req.address_handle);
       if (elem->req.size != 0) {
+        auto address =
+            memory_.allocator_->req.handle_to_ptr(elem->req.address_handle);
         memory_.allocator_->req.free(address);
       }
       elem->resp.reset();
       elem->req.reset();
     };
 
-    Scope _(&elem->mutex);
-    if (elem->resp.size == 0) {
-      // result has error
+    if (elem->resp.address_handle == 0) {
       clean_up(elem);
+      return false;
     }
 
     uint8_t *address =

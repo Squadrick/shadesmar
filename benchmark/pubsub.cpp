@@ -74,8 +74,8 @@ void subscribe_loop(int seconds) {
 }
 
 void publish_loop(int seconds, int vector_size) {
-  std::cout << "Number of bytes = " << vector_size << std::endl;
-  std::cout << "Time unit = " << TIMESCALE_NAME << std::endl;
+  std::cout << "Number of bytes = " << vector_size << std::endl
+            << "Time unit = " << TIMESCALE_NAME << std::endl;
 
   auto *rawptr = malloc(vector_size);
   std::memset(rawptr, 255, vector_size);
