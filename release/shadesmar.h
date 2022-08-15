@@ -26,7 +26,7 @@ SOFTWARE.
   THIS SINGLE HEADER FILE WAS AUTO-GENERATED USING `simul/simul.py`.
   DO NOT MAKE CHANGES HERE.
 
-  GENERATION TIME: 2021-11-22 17:55:58.576279 UTC
+  GENERATION TIME: 2022-08-15 10:40:23.622183 UTC
 */
 
 #ifndef SHADESMAR_SINGLE_H_
@@ -142,83 +142,6 @@ void CondVar::reset() {
   pthread_cond_init(&cond, &attr);
 }
 }   
-#if defined(__cpp_lib_filesystem)
-#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
-#elif defined(__cpp_lib_experimental_filesystem)
-#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
-#elif __has_include(<filesystem>)
-#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 0
-#elif __has_include(<experimental/filesystem>)
-#define INCLUDE_STD_FILESYSTEM_EXPERIMENTAL 1
-#else
-#error Could not find system header "<filesystem>"
-#endif   
-#if INCLUDE_STD_FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-namespace std {
-namespace filesystem = experimental::filesystem;
-}
-#else
-#include <filesystem>
-#endif   
-#include <sys/stat.h>
-#include <algorithm>
-#include <fstream>
-#include <iterator>
-#include <random>
-#include <string>
-#include <vector>
-namespace shm::memory::tmp {
-char const default_chars[] =
-    "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-char const tmp_prefix[] = "/tmp/shm/";
-inline std::string random_string(size_t len = 15) {
-  std::mt19937_64 gen{std::random_device()()};
-  std::uniform_int_distribution<size_t> dist{0, sizeof(default_chars) - 1};
-  std::string ret;
-  std::generate_n(std::back_inserter(ret), len,
-                  [&] { return default_chars[dist(gen)]; });
-  return ret;
-}
-inline bool file_exists(const std::string &file_name) {
-  struct stat buffer {};
-  return (stat(file_name.c_str(), &buffer) == 0);
-}
-inline void write(const std::string &name) {
-  if (!file_exists(tmp_prefix)) {
-    std::filesystem::create_directories(tmp_prefix);
-  }
-  std::fstream file;
-  std::string file_name = tmp_prefix + random_string();
-  file.open(file_name, std::ios::out);
-  file << name.c_str() << std::endl;
-  file.close();
-}
-inline std::vector<std::string> get_tmp_names() {
-  std::vector<std::string> names{};
-  if (!file_exists(tmp_prefix)) {
-    return names;
-  }
-  for (const auto &entry : std::filesystem::directory_iterator(tmp_prefix)) {
-    std::fstream file;
-    file.open(entry.path().generic_string(), std::ios::in);
-    std::string name;
-    file >> name;
-    names.push_back(name);
-  }
-  return names;
-}
-inline bool exists(const std::string &name) {
-  auto existing_names = get_tmp_names();
-  for (auto &existing_name : existing_names) {
-    if (existing_name == name) {
-      return true;
-    }
-  }
-  return false;
-}
-inline void delete_topics() { std::filesystem::remove_all(tmp_prefix); }
-}   
 #include <cstring>
 #include <memory>
 namespace shm::memory {
@@ -297,9 +220,6 @@ std::ostream& operator<<(std::ostream& o, const Welford& w) {
 #define TIMESCALE std::chrono::microseconds
 #define TIMESCALE_COUNT 1e6
 #define TIMESCALE_NAME "us"
-#ifdef __APPLE__
-#define __pid_t __darwin_pid_t
-#endif
 namespace shm {
 uint64_t current_time() {
   auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();
@@ -712,9 +632,6 @@ static size_t GAP = 1024;
 inline uint8_t *create_memory_segment(const std::string &name, size_t size,
                                       bool *new_segment,
                                       size_t alignment = 32) {
-  std::cout << "Creating memory segment. "
-            << "Name: " << name << "; "
-            << "Size: " << size << std::endl;
   int fd;
   while (true) {
     *new_segment = true;
@@ -924,24 +841,22 @@ class Channel {
   bool read_client(uint32_t pos, memory::Memblock *memblock) {
     uint32_t q_pos = pos & (queue_size() - 1);
     ChannelElem *elem = &(memory_.shared_queue_->elements[q_pos]);
-    {
-      Scope _(&elem->mutex);
-      while (elem->resp.empty) {
-        elem->cond_var.wait(&elem->mutex);
-      }
+    Scope _(&elem->mutex);
+    while (elem->resp.empty) {
+      elem->cond_var.wait(&elem->mutex);
     }
     auto clean_up = [this](ChannelElem *elem) {
-      auto address =
-          memory_.allocator_->req.handle_to_ptr(elem->req.address_handle);
       if (elem->req.size != 0) {
+        auto address =
+            memory_.allocator_->req.handle_to_ptr(elem->req.address_handle);
         memory_.allocator_->req.free(address);
       }
       elem->resp.reset();
       elem->req.reset();
     };
-    Scope _(&elem->mutex);
-    if (elem->resp.size == 0) {
+    if (elem->resp.address_handle == 0) {
       clean_up(elem);
+      return false;
     }
     uint8_t *address =
         memory_.allocator_->resp.handle_to_ptr(elem->resp.address_handle);
@@ -1140,8 +1055,7 @@ bool Server::process(uint32_t pos) const {
   return success;
 }
 bool Server::serve_once() {
-  bool success = process(pos_.load());
-  pos_ += 1;
+  bool success = process(pos_.fetch_add(1));
   return success;
 }
 void Server::serve() {

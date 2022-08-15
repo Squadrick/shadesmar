@@ -41,7 +41,6 @@ SOFTWARE.
 #include "shadesmar/concurrency/robust_lock.h"
 #include "shadesmar/macros.h"
 #include "shadesmar/memory/allocator.h"
-#include "shadesmar/memory/tmp.h"
 
 namespace shm::memory {
 

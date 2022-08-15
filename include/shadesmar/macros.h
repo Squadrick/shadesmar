@@ -34,10 +34,6 @@ SOFTWARE.
 #define TIMESCALE_COUNT 1e6
 #define TIMESCALE_NAME "us"
 
-#ifdef __APPLE__
-#define __pid_t __darwin_pid_t
-#endif
-
 namespace shm {
 uint64_t current_time() {
   auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();

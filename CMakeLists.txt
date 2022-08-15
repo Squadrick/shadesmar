@@ -8,25 +8,17 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG_BUILD")
 
 find_package(benchmark REQUIRED)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 include_directories(include)
-
-if (UNIX AND NOT APPLE)
-  list(APPEND libs rt pthread stdc++fs)
-endif ()
-
+list(APPEND libs rt pthread stdc++fs)
 add_compile_options(-march=native)
 IF(SINGLE_H)
   add_definitions(-DSINGLE_HEADER)
 ENDIF(SINGLE_H)
 
 
-add_executable(flush_tmp src/flush_tmp.cpp)
-target_link_libraries(flush_tmp ${libs})
-
 # TESTS
-
 add_executable(pubsub_test test/pubsub_test.cpp)
 target_link_libraries(pubsub_test ${libs})
 

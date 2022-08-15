@@ -21,19 +21,6 @@ jobs:
     - name: Tests
       run: ./scripts/run_tests.sh
 
-#  build-macos:
-#    runs-on: macOS-latest
-#    steps:
-#    - uses: actions/checkout@v1
-#    - name: Install dependencies
-#      run: ./scripts/install_deps.sh
-#    - name: Configure
-#      run: ./configure Debug
-#    - name: Build
-#      run: cmake --build build
-#    - name: Tests
-#      run: ./scripts/run_tests.sh
-#
   lint-check:
     runs-on: ubuntu-latest
     steps:
